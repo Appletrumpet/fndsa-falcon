@@ -34,7 +34,7 @@ from falcon.modq import div_mod_q
 from falcon.ntrugen import generate_ntru_keys
 from falcon.params import FALCON_512, FALCON_1024
 from falcon.tree import build_basis_fft, build_falcon_tree
-from support import FixedRNG, SeededRNG, load_kat, load_sampler_vectors
+from support import FixedRNG, SeededRNG, load_kat, load_sampler_vectors, nmul
 
 Q = 12289
 PARAMS_BY_N = {512: FALCON_512, 1024: FALCON_1024}
@@ -44,19 +44,6 @@ KEY_SETS = pytest.mark.parametrize("n", [512, 1024], ids=["falcon512", "falcon10
 # ---------------------------------------------------------------------------
 # Hilfen
 # ---------------------------------------------------------------------------
-
-def nmul(a, b):
-    n = len(a)
-    c = [0] * n
-    for i, ai in enumerate(a):
-        if ai:
-            for j, bj in enumerate(b):
-                if i + j < n:
-                    c[i + j] += ai * bj
-                else:
-                    c[i + j - n] -= ai * bj
-    return c
-
 
 def centered(x):
     x %= Q
@@ -131,6 +118,7 @@ class TestKeygen:
         T = build_falcon_tree(B, FALCON_512)
         assert _leaves(sk.tree) == pytest.approx(_leaves(T))
 
+    @pytest.mark.slow
     def test_uses_generate_ntru_keys_with_rng(self):
         # Doku §5.2: f, g, F, G = generate_ntru_keys(params, rng) ist der erste Schritt
         sk, _ = keygen(FALCON_512, SeededRNG(101))
@@ -141,11 +129,13 @@ class TestKeygen:
         b, _ = keygen(FALCON_512, SeededRNG(102))
         assert (a.f, a.g, a.F, a.G) == (b.f, b.g, b.F, b.G)
 
+    @pytest.mark.slow
     def test_default_rng_gives_different_keys(self):
         a, _ = keygen(FALCON_512)
         b, _ = keygen(FALCON_512)
         assert a.f != b.f
 
+    @pytest.mark.slow
     def test_falcon_1024(self):
         sk, pk = keygen(FALCON_1024, SeededRNG(103))
         assert len(sk.f) == len(pk.h) == 1024

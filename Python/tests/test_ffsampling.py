@@ -32,7 +32,7 @@ from falcon.ffsampling import ff_sampling
 from falcon.fft import fft, ifft
 from falcon.params import FALCON_512, FALCON_1024
 from falcon.tree import build_basis_fft, build_falcon_tree
-from support import FixedRNG, load_sampler_vectors
+from support import FixedRNG, load_sampler_vectors, nmul
 
 Q = 12289
 PARAMS_BY_N = {512: FALCON_512, 1024: FALCON_1024}
@@ -187,21 +187,8 @@ class TestFfSamplingNistVectors:
         # Alg. 10 Z. 9: s₁ + s₂·h = c mod q ⇔ s₁·f + s₂·g = c·f mod q (h = g/f)
         v, params, B, T, t, rb = real_setup(n)
         s1, s2 = compute_s(t, ff_sampling(t, T, params, FixedRNG(rb)), B)
-
-        def mul(a, b):
-            out = [0] * n
-            for i, ai in enumerate(a):
-                if ai:
-                    for j, bj in enumerate(b):
-                        k = i + j
-                        if k < n:
-                            out[k] += ai * bj
-                        else:
-                            out[k - n] -= ai * bj
-            return out
-
-        lhs = [(x + y) % Q for x, y in zip(mul(s1, v.f), mul(s2, v.g))]
-        rhs = [x % Q for x in mul(v.hashed_message, v.f)]
+        lhs = [(x + y) % Q for x, y in zip(nmul(s1, v.f), nmul(s2, v.g))]
+        rhs = [x % Q for x in nmul(v.hashed_message, v.f)]
         assert lhs == rhs
 
     def test_shift_by_integer_polynomial(self):

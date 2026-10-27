@@ -63,6 +63,23 @@ class SeededRNG:
         return self._r.randbytes(k)
 
 
+def nmul(a: List[int], b: List[int]) -> List[int]:
+    """Schulbuch-Multiplikation in ℤ[x]/(xⁿ+1), exakt.
+
+    Unabhängig von falcon.poly, damit Testdaten und Erwartungen auch dann
+    geprüft werden können, wenn poly (noch) nicht implementiert ist."""
+    n = len(a)
+    c = [0] * n
+    for i, ai in enumerate(a):
+        if ai:
+            for j, bj in enumerate(b):
+                if i + j < n:
+                    c[i + j] += ai * bj
+                else:
+                    c[i + j - n] -= ai * bj
+    return c
+
+
 # ---------------------------------------------------------------------------
 # Parser für test-vector-sampler-falcon{512,1024}.txt
 # ---------------------------------------------------------------------------

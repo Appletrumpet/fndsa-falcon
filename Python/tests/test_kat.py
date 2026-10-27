@@ -20,7 +20,7 @@ from falcon.datatypes import PublicKey
 from falcon.encoding import decode_kat_message, decode_pk, decode_sk, encode_pk, encode_sk
 from falcon.falcon import compute_public_key, load_secret_key, sign, verify
 from falcon.ntrugen import recompute_G
-from support import SeededRNG, load_kat
+from support import SeededRNG, load_kat, nmul
 
 Q = 12289
 PARAMS_BY_N = {512: FALCON_512, 1024: FALCON_1024}
@@ -29,18 +29,6 @@ PARAMS_BY_N = {512: FALCON_512, 1024: FALCON_1024}
 def kat_cases(n):
     return pytest.mark.parametrize("rec", load_kat(n), ids=lambda r: f"count{r.count}")
 
-
-def nmul(a, b):
-    n = len(a)
-    c = [0] * n
-    for i, ai in enumerate(a):
-        if ai:
-            for j, bj in enumerate(b):
-                if i + j < n:
-                    c[i + j] += ai * bj
-                else:
-                    c[i + j - n] -= ai * bj
-    return c
 
 
 @kat_cases(512)
@@ -64,6 +52,7 @@ def test_kat_verify_1024(rec):
     assert verify(PublicKey(decode_pk(rec.pk)), msg, sig, FALCON_1024) is True
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("n", [512, 1024])
 def test_kat_key_formats(n):
     """decode_pk und decode_sk gegen KAT; für jeden sk gilt:

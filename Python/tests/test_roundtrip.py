@@ -10,13 +10,24 @@ from falcon.encoding import decode_pk, decode_sig, encode_pk, encode_sig, encode
 from support import SeededRNG
 
 PARAM_SETS = pytest.mark.parametrize(
-    "params", [FALCON_512, FALCON_1024], ids=["FALCON_512", "FALCON_1024"]
+    "params",
+    [FALCON_512, pytest.param(FALCON_1024, marks=pytest.mark.slow)],
+    ids=["FALCON_512", "FALCON_1024"],
 )
+
+
+class _LazyKeys(dict):
+    """Erzeugt jedes Schlüsselpaar erst bei Bedarf (keygen 1024 ist langsam)."""
+
+    def __missing__(self, n):
+        params = {512: FALCON_512, 1024: FALCON_1024}[n]
+        self[n] = keygen(params, SeededRNG(n))
+        return self[n]
 
 
 @pytest.fixture(scope="module")
 def keys():
-    return {p.n: keygen(p, SeededRNG(p.n)) for p in (FALCON_512, FALCON_1024)}
+    return _LazyKeys()
 
 
 @PARAM_SETS
@@ -56,6 +67,7 @@ def test_many_messages(params, keys):
         assert verify(pk, m, sign(sk, m, params, SeededRNG(10 + i)), params)
 
 
+@pytest.mark.slow
 def test_signature_not_valid_for_other_parameter_set(keys):
     # Falcon-512-Signatur unter Falcon-1024-Parametern: Kodierung passt nicht → ablehnen
     sk, _ = keys[512]

@@ -33,7 +33,7 @@ from falcon.ntrugen import (
     solve_ntru, field_norm, xgcd, reduce, recompute_G,
 )
 from falcon.params import FALCON_512, FALCON_1024
-from support import SeededRNG, load_kat, load_sampler_vectors
+from support import SeededRNG, load_kat, load_sampler_vectors, nmul
 
 Q = 12289
 GS_BOUND = 1.17 * math.sqrt(Q)          # Alg. 5 Z. 10
@@ -45,20 +45,6 @@ KEY_SETS = pytest.mark.parametrize("n", [512, 1024], ids=["falcon512", "falcon10
 # ---------------------------------------------------------------------------
 # Hilfen (exakt, unabhängig von der Implementierung)
 # ---------------------------------------------------------------------------
-
-def nmul(a, b):
-    """Schulbuch-Multiplikation in ℤ[x]/(xⁿ+1)."""
-    n = len(a)
-    c = [0] * n
-    for i, ai in enumerate(a):
-        if ai:
-            for j, bj in enumerate(b):
-                if i + j < n:
-                    c[i + j] += ai * bj
-                else:
-                    c[i + j - n] -= ai * bj
-    return c
-
 
 def ntru_lhs(f, g, F, G):
     """fG − gF in ℤ[x]/(xⁿ+1)."""
@@ -271,7 +257,8 @@ class TestReduce:
         f, g, F, G = real_key(n)
         assert reduce(f, g, F, G) == (F, G)
 
-    @KEY_SETS
+    @pytest.mark.parametrize("n", [512, pytest.param(1024, marks=pytest.mark.slow)],
+                             ids=["falcon512", "falcon1024"])
     def test_recovers_from_huge_offset(self, n):
         # (F + K·f, G + K·g) mit 2000-Bit-Koeffizienten in K → wieder (F, G);
         # Docstring: Koeffizienten übersteigen den Gleitkommabereich
@@ -282,6 +269,7 @@ class TestReduce:
         G2 = [a + b for a, b in zip(G, nmul(K, g))]
         assert reduce(f, g, F2, G2) == (F, G)
 
+    @pytest.mark.slow
     def test_recovers_from_9400_bit_offset(self):
         # Grössenordnung aus §4.4.3 (Tabelle: ≈ 9'400 Bit)
         f, g, F, G = real_key(512)
@@ -337,7 +325,8 @@ class TestReduce:
 class TestSolveNtru:
     """solve_ntru – Alg. 6: fG − gF = q, rekursiv über die Feldnorm."""
 
-    @KEY_SETS
+    @pytest.mark.parametrize("n", [512, pytest.param(1024, marks=pytest.mark.slow)],
+                             ids=["falcon512", "falcon1024"])
     def test_reproduces_vector_key(self, n):
         # Eindeutig dank vollständiger Reduktion (siehe Moduldocstring)
         f, g, F, G = real_key(n)
@@ -529,6 +518,7 @@ class TestGenerateNtruKeys:
     def test_falcon_512(self, seed):
         assert_valid_key(*generate_ntru_keys(FALCON_512, SeededRNG(seed)), 512)
 
+    @pytest.mark.slow
     def test_falcon_1024(self):
         assert_valid_key(*generate_ntru_keys(FALCON_1024, SeededRNG(12)), 1024)
 

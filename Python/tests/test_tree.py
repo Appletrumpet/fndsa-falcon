@@ -35,7 +35,7 @@ from falcon.tree import (
     build_basis_fft, build_falcon_tree, gram_matrix,
     ldl, ff_ldl, normalize_leaves,
 )
-from support import load_sampler_vectors
+from support import load_sampler_vectors, nmul
 
 Q = 12289
 PARAMS_BY_N = {512: FALCON_512, 1024: FALCON_1024}
@@ -69,20 +69,6 @@ def assert_close(actual, expected, rel=1e-9):
     scale = max([abs(x) for x in expected] + [1.0])
     worst = max((abs(a - e) for a, e in zip(actual, expected)), default=0.0)
     assert worst <= rel * scale, f"max. Abweichung {worst} > {rel * scale}"
-
-
-def negacyclic_mul(a, b):
-    """Schulbuch-Multiplikation in ℤ[x]/(xⁿ+1), nur für Datenprüfungen."""
-    n = len(a)
-    c = [0] * n
-    for i, ai in enumerate(a):
-        if ai:
-            for j, bj in enumerate(b):
-                if i + j < n:
-                    c[i + j] += ai * bj
-                else:
-                    c[i + j - n] -= ai * bj
-    return c
 
 
 def rand_key(rng, n, bound=5):
@@ -148,7 +134,7 @@ class TestData:
     def test_vector_key_satisfies_ntru_equation(self, n):
         # Gl. 3.15: fG − gF = q mod ϕ
         f, g, F, G = real_key(n)
-        lhs = [a - b for a, b in zip(negacyclic_mul(f, G), negacyclic_mul(g, F))]
+        lhs = [a - b for a, b in zip(nmul(f, G), nmul(g, F))]
         assert lhs == [Q] + [0] * (n - 1)
 
     @KEY_SETS
