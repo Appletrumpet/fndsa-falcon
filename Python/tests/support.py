@@ -51,6 +51,18 @@ class FixedRNG:
         return len(self._data) - self._pos
 
 
+class SeededRNG:
+    """Reproduzierbare Zufallsquelle (random.Random mit fester Saat) für
+    statistische Tests und Schlüsselerzeugung in Tests."""
+
+    def __init__(self, seed: int):
+        import random
+        self._r = random.Random(seed)
+
+    def random_bytes(self, k: int) -> bytes:
+        return self._r.randbytes(k)
+
+
 # ---------------------------------------------------------------------------
 # Parser für test-vector-sampler-falcon{512,1024}.txt
 # ---------------------------------------------------------------------------

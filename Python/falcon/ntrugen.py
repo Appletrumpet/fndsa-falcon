@@ -47,8 +47,11 @@ def field_norm(a: List[int]) -> List[int]:
     raise NotImplementedError
 
 
-def xgcd(a: List[int], b: List[int]) -> Tuple[List[int], List[int], List[int]]:
-    """Erweiterter euklidischer Algorithmus. Alg. 6, Z. 2."""
+def xgcd(a: int, b: int) -> Tuple[int, int, int]:
+    """Erweiterter euklidischer Algorithmus über ℤ. Alg. 6, Z. 2.
+
+    Liefert (d, u, v) mit u·a − v·b = d = gcd(a, b) (Vorzeichenkonvention
+    der Spec), sodass Alg. 6 Z. 5 direkt (F, G) = (v·q, u·q) ergibt."""
     raise NotImplementedError
 
 

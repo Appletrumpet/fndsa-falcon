@@ -26,7 +26,7 @@ from falcon.sampler import (
     RNG, SystemRNG, SYSTEM_RNG, uniform_bits,
     base_sampler, approx_exp, ber_exp, sample_integer_gaussian,
 )
-from support import FixedRNG, load_sampler_vectors
+from support import FixedRNG, SeededRNG, load_sampler_vectors
 
 
 # ---------------------------------------------------------------------------
@@ -76,16 +76,6 @@ LN2 = math.log(2)
 
 PARAMS_BY_N = {512: FALCON_512, 1024: FALCON_1024}
 VECTOR_FILES = pytest.mark.parametrize("n", [512, 1024], ids=["falcon512", "falcon1024"])
-
-
-class SeededRNG:
-    """Reproduzierbare Zufallsquelle für statistische Tests."""
-
-    def __init__(self, seed: int):
-        self._r = random.Random(seed)
-
-    def random_bytes(self, k: int) -> bytes:
-        return self._r.randbytes(k)
 
 
 def u_bytes(u: int) -> bytes:
