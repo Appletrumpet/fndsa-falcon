@@ -68,13 +68,18 @@ def decode_sk(b: bytes) -> Tuple[List[int], List[int], List[int]]:
 # Signatur-Kodierung (§3.11.3)
 # ---------------------------------------------------------------------------
 
-def encode_sig(sig: Signature) -> bytes:
-    """Header + Salt + komprimiertes s₂. §3.11.3."""
+def encode_sig(sig: Signature, params: Params) -> bytes:
+    """Header + Salt + komprimiertes s₂. §3.11.3.
+
+    params wird für den Header 0011nnnn (ℓ = log₂ n) benötigt; Signature
+    selbst enthält n nicht."""
     raise NotImplementedError
 
 
-def decode_sig(b: bytes) -> Signature:
-    """Umkehrung von encode_sig. §3.11.3."""
+def decode_sig(b: bytes, params: Params) -> Signature:
+    """Umkehrung von encode_sig. §3.11.3.
+
+    Prüft den Header gegen params (n muss übereinstimmen)."""
     raise NotImplementedError
 
 

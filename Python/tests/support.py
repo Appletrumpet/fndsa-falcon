@@ -197,3 +197,44 @@ def load_sampler_vectors(n: int) -> SignatureTestVector:
         hashed_message=header["hashed"], samplerz=traces,
         signature_vector=header["sig"],
     )
+
+
+# ---------------------------------------------------------------------------
+# Parser für NIST-KAT-Dateien falcon{512,1024}-KAT.rsp (§3.11.6)
+# ---------------------------------------------------------------------------
+
+KAT_DIR = DATA_DIR / "kat"
+
+
+@dataclass
+class KatRecord:
+    count: int
+    seed: bytes
+    msg: bytes
+    pk: bytes
+    sk: bytes
+    sm: bytes
+
+
+@lru_cache(maxsize=None)
+def load_kat(n: int) -> List[KatRecord]:
+    """Liest data/kat/falcon{n}-KAT.rsp (100 Einträge)."""
+    records, cur = [], {}
+    for line in (KAT_DIR / f"falcon{n}-KAT.rsp").read_text().splitlines():
+        line = line.strip()
+        if " = " not in line:
+            continue
+        key, value = line.split(" = ", 1)
+        cur[key] = value
+        if key == "sm":
+            mlen = int(cur["mlen"])
+            msg = bytes.fromhex(cur["msg"]) if mlen else b""
+            sm = bytes.fromhex(cur["sm"])
+            assert len(msg) == mlen and len(sm) == int(cur["smlen"])
+            records.append(KatRecord(
+                count=int(cur["count"]), seed=bytes.fromhex(cur["seed"]),
+                msg=msg, pk=bytes.fromhex(cur["pk"]), sk=bytes.fromhex(cur["sk"]),
+                sm=sm,
+            ))
+            cur = {}
+    return records
