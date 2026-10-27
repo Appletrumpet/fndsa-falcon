@@ -235,6 +235,11 @@ class TestPolyMul:
         #   x³:  1·8 + 2·7 + 3·6 + 4·5                   = 60
         assert poly_mul([1, 2, 3, 4], [5, 6, 7, 8]) == [-56, -36, 2, 60]
 
+    def test_example_from_documentation(self):
+        # Falcon_Documentation §3 (n = 4): (1 + 2x³)·3x = 3x + 6x⁴ = −6 + 3x
+        # (die Doku reduziert danach mod 17; poly_mul rechnet in ℤ, ohne mod q)
+        assert poly_mul([1, 0, 0, 2], [0, 3, 0, 0]) == [-6, 3, 0, 0]
+
     def test_example_with_negative_coefficients(self):
         # (1 − x)(1 + x) = 1 − x² in ℤ[x]/(x⁴ + 1)
         assert poly_mul([1, -1, 0, 0], [1, 1, 0, 0]) == [1, 0, -1, 0]
