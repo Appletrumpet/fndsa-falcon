@@ -10,10 +10,12 @@ Alg. 3 mit q = 12289:
     sonst     → t verwerfen (nicht reduzieren!), nächste 16 Bit
   bis n Koeffizienten vorliegen.
 
-Die Spec enthält keine Testvektoren für HashToPoint. Die Beispiele unten sind
-aus den rohen SHAKE-256-Bytes von Hand nachvollziehbar (Bytes → 16-Bit-Blöcke →
-annehmen/verwerfen → mod q). Indirekt wird HashToPoint zusätzlich über die
-KAT-Verifikation geprüft (test_kat.py).
+Die Spec selbst enthält keine Testvektoren für HashToPoint. Zwei Quellen:
+  - Beispiele, die aus den rohen SHAKE-256-Bytes von Hand nachvollziehbar sind
+    (Bytes → 16-Bit-Blöcke → annehmen/verwerfen → mod q).
+  - Offizielle Vektoren aus dem NIST-Paket: test-vector-sampler-falcon{512,1024}.txt
+    enthält „nonce“, „data“ und „hashed message“ = HashToPoint(nonce ‖ data).
+Indirekt zusätzlich über die KAT-Verifikation geprüft (test_kat.py).
 """
 
 import dataclasses
@@ -22,6 +24,7 @@ import hashlib
 import pytest
 from falcon.hashing import hash_to_point
 from falcon.params import FALCON_512, FALCON_1024
+from support import load_sampler_vectors
 
 Q = 12289
 KQ = 5 * Q  # 61445
@@ -101,6 +104,15 @@ class TestHashToPoint:
         # Kleinster verworfener Wert: 61445 = 5q (wäre sonst 0)
         c = hash_to_point(bytes.fromhex("000035af"), params_with_n(2))
         assert c == [11137, 6189]
+
+    # --- Offizielle Vektoren (NIST-Paket) -------------------------------------
+
+    @PARAM_SETS
+    def test_nist_vector(self, params):
+        # Alg. 10 Z. 2: c = HashToPoint(r ‖ m) mit 40-Byte-Nonce r und m = b"data1"
+        v = load_sampler_vectors(params.n)
+        assert len(v.nonce) == 40
+        assert hash_to_point(v.nonce + v.data, params) == v.hashed_message
 
     # --- Struktur der Ausgabe ---------------------------------------------------
 
