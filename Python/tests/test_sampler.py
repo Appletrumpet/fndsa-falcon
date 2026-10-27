@@ -299,12 +299,21 @@ class TestApproxExp:
 
     @pytest.mark.parametrize("ccs", [1.0, 0.75, 1.277833697 / 1.8205])
     def test_accuracy_over_domain(self, ccs):
-        # f(−x) nähert exp(−x) auf [0, ln 2] sehr gut an (§3.9.3, [ZSS20]).
-        # Relativer Fehler gegenüber 2⁶³·ccs·exp(−x) klein (Toleranz 2⁻⁴⁰).
+        # f(−x) nähert exp(−x) auf [0, ln 2] sehr gut an (§3.9.3, [ZSS20]);
+        # die Spec nennt keine Zahl. Bit-Exaktheit prüft test_all_vectors_via_berexp_trace,
+        # dieser Test fängt grobe Fehler ab (f(x) statt f(−x), Konstanten vertauscht,
+        # ccs vergessen, 2⁶³/2⁶⁴ verwechselt → Fehler 10⁻³ bis 1).
+        #
+        # Toleranz 2⁻⁴⁸, gewählt im Fenster zwischen:
+        #   - unten: gemessener Fehler von Alg. 13 ≈ 2⁻⁵¹·¹ (100'001 Punkte je ccs,
+        #     Referenz exp mit 50 Stellen) – darunter würde korrekter Code scheitern;
+        #     dazu Rundungsrauschen der Float-Referenz hier im Test (≈ 2⁻⁵³ je Operation)
+        #   - oben: Grössenordnung echter Fehler (≥ 10⁻³)
+        # 2⁻⁴⁸ lässt ≈ 8× Abstand zum gemessenen Fehler.
         for j in range(101):
             x = LN2 * j / 100
             exact = TWO_63 * ccs * math.exp(-x)
-            assert abs(approx_exp(x, ccs) - exact) <= exact * 2 ** -40
+            assert abs(approx_exp(x, ccs) - exact) <= exact * 2 ** -48
 
     def test_decreasing_in_x(self):
         values = [approx_exp(LN2 * j / 50, 0.9) for j in range(51)]
@@ -316,7 +325,7 @@ class TestApproxExp:
 
     def test_upper_end_of_domain(self):
         # x = ln 2: ≈ 2⁶³·ccs/2
-        assert approx_exp(LN2, 1.0) == pytest.approx(2 ** 62, rel=2 ** -40)
+        assert approx_exp(LN2, 1.0) == pytest.approx(2 ** 62, rel=2 ** -48)
 
     def test_returns_int_in_range(self):
         for j in range(21):
