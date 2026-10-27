@@ -328,6 +328,15 @@ class TestVerify:
         zero = compress([0] * 512, params)
         assert verify(pk, msg, Signature(sig.salt, zero), params) is False
 
+    @pytest.mark.parametrize("big", [5000, 20000, -20000])
+    def test_rejects_huge_valid_coefficient(self, good, big):
+        # Gültig kodiert (langer unärer Teil, Alg. 18 kennt keine Obergrenze),
+        # aber ‖s₂‖² > ⌊β²⌋ → ablehnen, ohne Fehler zu werfen
+        pk, msg, sig, params = good
+        enc = compress([big] + [0] * 511, params)
+        assert enc is not None
+        assert verify(pk, msg, Signature(sig.salt, enc), params) is False
+
     def test_rejects_signature_from_other_key(self, vector_keys):
         _, params, sk, _ = vector_keys[512]
         other_pk = PublicKey(decode_pk(load_kat(512)[3].pk))
