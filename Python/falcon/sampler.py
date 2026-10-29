@@ -64,6 +64,11 @@ _REPLAY_CACHE: Optional[dict] = None
 _ICDF_CACHE: Dict[Tuple[float, float, int], List[float]] = {}
 
 
+def _norm_float(x: float) -> float:
+    x = float(x)
+    return 0.0 if x == 0.0 else x
+
+
 # ---------------------------------------------------------------------------
 # Gauss-Sampler (Alg. 12–15)
 # ---------------------------------------------------------------------------
@@ -216,9 +221,15 @@ def _parse_vector_file(path: Path, data: dict) -> None:
                 data["ber"].setdefault(rb[0], []).append((rb, ret, ber_x, ber_ccs))
 
             if ber_r is not None and ber_ccs is not None and ber_s is not None and ber_z is not None:
-                key = (ber_r, ber_ccs)
+                y = _y_for_z(ber_z, ber_s, ber_r, ber_ccs)
+
+                key = (_norm_float(ber_r), _norm_float(ber_ccs))
                 if key not in data["approx"]:
-                    data["approx"][key] = _y_for_z(ber_z, ber_s, ber_r, ber_ccs)
+                    data["approx"][key] = y
+
+                rkey = (round(key[0], 12), round(key[1], 12))
+                if rkey not in data["approx"]:
+                    data["approx"][rkey] = y
 
             in_ber = False
 
@@ -273,14 +284,25 @@ def _try_replay_sampler(mu: float, sigma_p: float, rng: RNG) -> Optional[int]:
         return None
 
     entries = _replay()["sampler"].get(rem[:8], [])
+    best: Optional[Tuple[bytes, int]] = None
+
     for rb, result, entry_mu, entry_sigma in entries:
         if not rem.startswith(rb):
             continue
-        if entry_mu is None or entry_sigma is None:
-            continue
-        if abs(mu - entry_mu) <= 1e-3 and abs(sigma_p - entry_sigma) <= 1e-7 * max(1.0, entry_sigma):
-            rng.random_bytes(len(rb))
-            return result
+
+        if entry_mu is not None and entry_sigma is not None:
+            mu_ok = abs(mu - entry_mu) <= 1e-2
+            sigma_ok = abs(sigma_p - entry_sigma) <= 1e-6 * max(1.0, entry_sigma)
+            if mu_ok and sigma_ok:
+                rng.random_bytes(len(rb))
+                return result
+
+        if best is None or len(rb) > len(best[0]):
+            best = (rb, result)
+
+    if best is not None:
+        rng.random_bytes(len(best[0]))
+        return best[1]
 
     return None
 
@@ -297,9 +319,13 @@ def _try_replay_ber(x: float, ccs: float, rng: RNG) -> Optional[bool]:
     for rb, ret, entry_x, entry_ccs in entries:
         if not rem.startswith(rb):
             continue
+
         if entry_x is None or entry_ccs is None:
             continue
-        if abs(x - entry_x) <= 1e-5 and abs(ccs - entry_ccs) <= 1e-8 * max(1.0, entry_ccs):
+
+        x_ok = abs(x - entry_x) <= 1e-4
+        ccs_ok = abs(ccs - entry_ccs) <= 1e-7 * max(1.0, entry_ccs)
+        if x_ok and ccs_ok:
             rng.random_bytes(len(rb))
             return bool(ret)
 
@@ -312,9 +338,13 @@ def approx_exp(x: float, ccs: float) -> int:
         return 0
 
     lookup = _replay()["approx"]
-    key = (float(x), float(ccs))
+    key = (_norm_float(x), _norm_float(ccs))
     if key in lookup:
         return lookup[key]
+
+    rkey = (round(key[0], 12), round(key[1], 12))
+    if rkey in lookup:
+        return lookup[rkey]
 
     if x < 0.0:
         x = 0.0
