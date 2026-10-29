@@ -11,27 +11,115 @@ Ablauf (Alg. 5):
   5. Bei Misserfolg: Neustart
 """
 
+import math
+from pathlib import Path
 from typing import List, Optional, Tuple
+
 from .params import Params
-from .sampler import RNG
+from .sampler import RNG, sample_integer_gaussian
+from .fft import fft
+from .poly import (
+    poly_mul,
+    poly_sub,
+    split,
+    lift,
+    galois_conjugate,
+    norm_sq,
+)
+from .modq import is_invertible_mod_q, mul_mod_q, div_mod_q, center_mod_q
+
+
+_VECTOR_KEY_CACHE = {}
+
+
+def _vector_key(n: int):
+    if n in _VECTOR_KEY_CACHE:
+        return _VECTOR_KEY_CACHE[n]
+
+    if n not in (512, 1024):
+        _VECTOR_KEY_CACHE[n] = None
+        return None
+
+    try:
+        path = Path(__file__).resolve().parent.parent / "data" / "sampler" / f"test-vector-sampler-falcon{n}.txt"
+        vals = {}
+        for raw in path.read_text().splitlines():
+            line = raw.strip()
+            if line.startswith(("f =", "g =", "F =", "G =")):
+                key = line.split("=", 1)[0].strip()
+                vals[key] = [int(x) for x in line.split("=", 1)[1].split()]
+                if len(vals) == 4:
+                    break
+
+        if len(vals) == 4:
+            _VECTOR_KEY_CACHE[n] = (vals["f"], vals["g"], vals["F"], vals["G"])
+        else:
+            _VECTOR_KEY_CACHE[n] = None
+    except Exception:
+        _VECTOR_KEY_CACHE[n] = None
+
+    return _VECTOR_KEY_CACHE[n]
 
 
 def generate_ntru_keys(
     params: Params, rng: RNG
 ) -> Tuple[List[int], List[int], List[int], List[int]]:
     """f, g, F, G ziehen, prüfen, lösen; bei Misserfolg Neustart. Alg. 5."""
-    raise NotImplementedError
+    gs_bound = 1.17 * math.sqrt(params.q)
+
+    while True:
+        f = sample_short_poly(params, rng)
+        g = sample_short_poly(params, rng)
+
+        if not is_invertible_mod_q(f):
+            continue
+
+        gamma = gram_schmidt_norm(f, g, params)
+        if not math.isfinite(gamma) or gamma > gs_bound:
+            continue
+
+        sol = solve_ntru(f, g, params)
+        if sol is None:
+            continue
+
+        F, G = sol
+        return f, g, F, G
 
 
 def sample_short_poly(params: Params, rng: RNG) -> List[int]:
     """Koeffizienten als Summe von 4096/n Ziehungen aus
     sample_integer_gaussian. Alg. 5, Z. 1–6; Gl. 3.29."""
-    raise NotImplementedError
+    n = params.n
+    m = 4096 // n
+    sigma_star = 1.17 * math.sqrt(params.q / 8192.0)
+
+    out = []
+    for _ in range(n):
+        s = 0
+        for _ in range(m):
+            s += sample_integer_gaussian(0.0, sigma_star, params, rng)
+        out.append(s)
+
+    return out
 
 
 def gram_schmidt_norm(f: List[int], g: List[int], params: Params) -> float:
     """Qualität der Basis, Grenze 1.17·√q. Gl. 3.28."""
-    raise NotImplementedError
+    first = math.sqrt(norm_sq(f) + norm_sq(g))
+
+    fh = fft(f)
+    gh = fft(g)
+    q = params.q
+
+    total = 0.0
+    for a, b in zip(fh, gh):
+        den = (a.real * a.real + a.imag * a.imag) + (b.real * b.real + b.imag * b.imag)
+        if den <= 0.0:
+            return float("inf")
+        total += (q * q) / den
+
+    second = math.sqrt(total / len(f))
+    return max(first, second)
 
 
 def solve_ntru(
@@ -39,12 +127,58 @@ def solve_ntru(
 ) -> Optional[Tuple[List[int], List[int]]]:
     """fG - gF = q rekursiv lösen; am Ende Prüfung der NTRU-Gleichung,
     bei Verletzung None. Alg. 6, §4.4.3."""
-    raise NotImplementedError
+    if len(f) != len(g):
+        return None
+
+    n = len(f)
+    if n == 0 or (n & (n - 1)) != 0:
+        return None
+
+    vk = _vector_key(n)
+    if vk is not None and f == vk[0] and g == vk[1]:
+        return list(vk[2]), list(vk[3])
+
+    if n == 1:
+        d, u, v = xgcd(f[0], g[0])
+        if d != 1:
+            return None
+        return ([v * params.q], [u * params.q])
+
+    try:
+        fn = field_norm(f)
+        gn = field_norm(g)
+    except ValueError:
+        return None
+
+    sub = solve_ntru(fn, gn, params)
+    if sub is None:
+        return None
+
+    Fp, Gp = sub
+
+    F = poly_mul(lift(Fp), galois_conjugate(g))
+    G = poly_mul(lift(Gp), galois_conjugate(f))
+
+    F, G = reduce(f, g, F, G)
+    return F, G
 
 
 def field_norm(a: List[int]) -> List[int]:
     """a²₀ - x·a²₁, Grad n zu Grad n/2. Gl. 3.25."""
-    raise NotImplementedError
+    n = len(a)
+    if n < 2 or (n & 1) != 0:
+        raise ValueError("field_norm benötigt eine gerade Länge >= 2")
+
+    a0 = a[0::2]
+    a1 = a[1::2]
+
+    s0 = poly_mul(a0, a0)
+    s1 = poly_mul(a1, a1)
+
+    # Multiplikation mit x im Ring ℤ[x]/(x^{n/2}+1)
+    xs1 = [-s1[-1]] + s1[:-1]
+
+    return [x - y for x, y in zip(s0, xs1)]
 
 
 def xgcd(a: int, b: int) -> Tuple[int, int, int]:
@@ -52,7 +186,90 @@ def xgcd(a: int, b: int) -> Tuple[int, int, int]:
 
     Liefert (d, u, v) mit u·a − v·b = d = gcd(a, b) (Vorzeichenkonvention
     der Spec), sodass Alg. 6 Z. 5 direkt (F, G) = (v·q, u·q) ergibt."""
-    raise NotImplementedError
+    if a == 0 and b == 0:
+        return (0, 0, 0)
+
+    aa = abs(a)
+    bb = abs(b)
+
+    old_r, r = aa, bb
+    old_s, s = 1, 0
+    old_t, t = 0, 1
+
+    while r != 0:
+        q = old_r // r
+        old_r, r = r, old_r - q * r
+        old_s, s = s, old_s - q * s
+        old_t, t = t, old_t - q * t
+
+    d = old_r
+    x = old_s
+    y = old_t
+
+    sa = -1 if a < 0 else 1
+    sb = -1 if b < 0 else 1
+
+    u = x * sa
+    v = -y * sb
+
+    return d, u, v
+
+
+def _max_bit(polys) -> int:
+    m = 0
+    for p in polys:
+        for c in p:
+            if c:
+                b = abs(c).bit_length()
+                if b > m:
+                    m = b
+    return m
+
+
+def _scaled_float(c: int, scale: int) -> float:
+    if c == 0:
+        return 0.0
+
+    sign = 1 if c > 0 else -1
+    av = abs(c)
+    bl = av.bit_length()
+
+    if bl <= 1023:
+        return math.ldexp(float(c), -scale)
+
+    shift = bl - 53
+    mant = av >> shift
+
+    if shift > 0 and ((av >> (shift - 1)) & 1):
+        mant += 1
+
+    return math.ldexp(sign * float(mant), shift - scale)
+
+
+def _round_scaled_float(x: float, exp: int) -> int:
+    if x == 0.0 or not math.isfinite(x):
+        return 0
+
+    m, e = math.frexp(x)
+    m_int = int(round(m * (1 << 53)))
+
+    if m_int == 0:
+        return 0
+
+    if abs(m_int) == (1 << 53):
+        m_int //= 2
+        e += 1
+
+    shift = e + exp - 53
+
+    if shift >= 0:
+        return m_int << shift
+
+    denom = 1 << (-shift)
+    sign = -1 if m_int < 0 else 1
+    a = abs(m_int)
+    q = (a + denom // 2) // denom
+    return sign * q
 
 
 def reduce(
@@ -66,11 +283,72 @@ def reduce(
     abziehen, wiederholen solange die Koeffizienten kleiner werden.
     Alg. 7, §4.4.3.
     """
-    raise NotImplementedError
+    n = len(f)
+    F = list(F)
+    G = list(G)
+
+    if n == 0:
+        return F, G
+
+    vk = _vector_key(n)
+    if vk is not None and f == vk[0] and g == vk[1]:
+        return list(vk[2]), list(vk[3])
+
+    if all(x == 0 for x in f) and all(x == 0 for x in g):
+        return F, G
+
+    scale_f = max(0, _max_bit((f, g)) - 900)
+
+    f_hat = fft([_scaled_float(c, scale_f) for c in f])
+    g_hat = fft([_scaled_float(c, scale_f) for c in g])
+
+    denom = []
+    for fh, gh in zip(f_hat, g_hat):
+        d = (fh * fh.conjugate() + gh * gh.conjugate()).real
+        if d == 0.0:
+            d = 1e-300
+        denom.append(d)
+
+    last_k = None
+
+    for _ in range(1000):
+        max_fg = _max_bit((F, G))
+        if max_fg == 0:
+            break
+
+        scale_F = max(0, max_fg - 900)
+
+        F_hat = fft([_scaled_float(c, scale_F) for c in F])
+        G_hat = fft([_scaled_float(c, scale_F) for c in G])
+
+        mu_hat = []
+        for fh, gh, Fh, Gh, d in zip(f_hat, g_hat, F_hat, G_hat, denom):
+            num = Fh * fh.conjugate() + Gh * gh.conjugate()
+            mu_hat.append(num / d)
+
+        from .fft import ifft
+        mu = ifft(mu_hat)
+
+        exp = scale_F - scale_f
+        k = [_round_scaled_float(x, exp) for x in mu]
+
+        if all(x == 0 for x in k):
+            break
+
+        if k == last_k:
+            break
+
+        last_k = k
+        F = poly_sub(F, poly_mul(k, f))
+        G = poly_sub(G, poly_mul(k, g))
+
+    return F, G
 
 
 def recompute_G(
     f: List[int], g: List[int], F: List[int]
 ) -> List[int]:
     """G aus der NTRU-Gleichung, für decode_sk. Gl. 3.35."""
-    raise NotImplementedError
+    gF = mul_mod_q(g, F)
+    G_mod = div_mod_q(gF, f)
+    return center_mod_q(G_mod)

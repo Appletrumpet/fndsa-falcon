@@ -8,6 +8,23 @@ Ebene 0: Falcon Specification v1.2, Tab. 3.3.
 from dataclasses import dataclass
 
 
+def _is_prime(x: int) -> bool:
+    if x < 2:
+        return False
+    if x % 2 == 0:
+        return x == 2
+    if x % 3 == 0:
+        return x == 3
+    i = 5
+    w = 2
+    while i * i <= x:
+        if x % i == 0:
+            return False
+        i += w
+        w = 6 - w
+    return True
+
+
 @dataclass(frozen=True)
 class Params:
     """Parametersatz für eine Falcon-Instanz.
@@ -29,16 +46,42 @@ class Params:
     sig_bound: int
     sig_bytelen: int
 
+    def __post_init__(self) -> None:
+        if not isinstance(self.n, int):
+            raise ValueError("n muss ein Integer sein")
+        if self.n <= 0 or (self.n & (self.n - 1)) != 0:
+            raise ValueError("n muss eine Zweierpotenz sein")
+        logn = self.n.bit_length() - 1
+        if not (1 <= logn <= 10):
+            raise ValueError("log n muss im Bereich 1..10 liegen")
+
+        if not isinstance(self.q, int) or not _is_prime(self.q):
+            raise ValueError("q muss prim sein")
+        if (self.q - 1) % (2 * self.n) != 0:
+            raise ValueError("q muss eine primitive 2n-te Einheitswurzel besitzen")
+
+        if not (self.sigma > 0.0):
+            raise ValueError("sigma muss positiv sein")
+        if not (1.0 <= self.sigma_min < self.sigma_max):
+            raise ValueError("es muss 1 <= sigma_min < sigma_max gelten")
+        if not (self.sig_bound > 0):
+            raise ValueError("sig_bound muss positiv sein")
+        if not (self.sig_bytelen > 0):
+            raise ValueError("sig_bytelen muss positiv sein")
+
+    @property
+    def logn(self) -> int:
+        return self.n.bit_length() - 1
+
     @property
     def pk_bytes(self) -> int:
         """Länge des Public Keys in Bytes (§3.11.4)."""
-        # Header (1 Byte) + 14 Bit pro Koeffizient (n-1 Einträge, da a_n = 1)
-        return 1 + ((self.n - 1) * 14 + 7) // 8
+        return 1 + (14 * self.n + 7) // 8
 
     @property
     def sk_header_byte(self) -> int:
         """Header-Byte für Secret-Key-Kodierung (§3.11.5)."""
-        return 0x50 if self.n == 512 else 0x51
+        return 0x50 | self.logn
 
 
 # Falcon-512: NIST-Sicherheitsstufe I
