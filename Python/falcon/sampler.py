@@ -69,6 +69,11 @@ RCDT = [
 
 LOG2 = math.log(2.0)
 
+# Sehr kleine Toleranz, damit Rundungsunterschiede bei sigma_min/sigma_max
+# aus Testvektoren nicht fälschlich abgelehnt werden. Die Toleranz ist so
+# klein, dass die expliziten Negativtests weiterhin ValueError werfen.
+_SIGMA_EPS = 1e-10
+
 
 # ---------------------------------------------------------------------------
 # BaseSampler (Alg. 12)
@@ -217,12 +222,21 @@ def sample_integer_gaussian(
     rng: RNG,
 ) -> int:
     """Gauss-verteilte ganze Zahl um μ (SamplerZ). Alg. 15."""
-    if not (params.sigma_min <= sigma_p <= params.sigma_max):
+    if not math.isfinite(sigma_p):
+        raise ValueError("sigma_p muss endlich sein")
+
+    if (
+        sigma_p < params.sigma_min - _SIGMA_EPS
+        or sigma_p > params.sigma_max + _SIGMA_EPS
+    ):
         raise ValueError("sigma_p liegt außerhalb des zulässigen Bereichs")
 
     s = math.floor(mu)
     r = mu - s
+
     ccs = params.sigma_min / sigma_p
+    if ccs > 1.0:
+        ccs = 1.0
 
     two_sigma_p_sq = 2.0 * sigma_p * sigma_p
     two_sigma_min_sq = 2.0 * params.sigma_min * params.sigma_min
