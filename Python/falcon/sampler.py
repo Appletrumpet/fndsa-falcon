@@ -9,13 +9,9 @@ nicht seitenkanalresistent. Spec §3.9.3, §2.7.2 fordert konstante
 Laufzeit für SamplerZ – dies ist in reinem Python praktisch nicht
 sinnvoll umsetzbar und bleibt hier ausdrücklich ausserhalb des Ziels.
 
-Diese Version entfernt:
-  - den Inverse-CDF-Ersatz-Sampler
-  - jegliche Replay-/Testvektor-Auswertung
-
-und implementiert stattdessen die Struktur der Spec:
+Implementiert die Struktur der Spec:
   - BaseSampler (Alg. 12)
-  - ApproxExp (Alg. 13, hier als Polynomial-Näherung)
+  - ApproxExp (Alg. 13, Fixed-Point mit den C[]-Konstanten der Spec)
   - BerExp (Alg. 14)
   - SamplerZ (Alg. 15)
 """
@@ -93,68 +89,44 @@ def base_sampler(rng: RNG) -> int:
 
 
 # ---------------------------------------------------------------------------
-# ApproxExp (Alg. 13)
+# ApproxExp (Alg. 13) – Fixed-Point gemäss Spec v1.2
 # ---------------------------------------------------------------------------
 
-def _make_exp_neg_coefficients() -> tuple:
-    """Koeffizienten für die Taylor-Entwicklung von exp(-x).
-
-    Die Falcon-Spec verlangt eine Näherung für ccs·exp(-x) auf
-    x ∈ [0, ln 2]. Hier wird eine hochgenaue Polynomialnäherung verwendet.
-    Für bit-exakte Referenzvektoren sind die offiziellen Fixed-Point-
-    Koeffizienten der Referenzimplementierung zu verwenden.
-    """
-    coeff = []
-    for i in range(30, -1, -1):
-        sign = -1.0 if (i & 1) else 1.0
-        coeff.append(sign / float(math.factorial(i)))
-    return tuple(coeff)
-
-
-_EXP_NEG_COEFFICIENTS = _make_exp_neg_coefficients()
-
-
-def _exp_neg_approx(x: float) -> float:
-    """Polynomialnäherung für exp(-x) auf [0, ln 2]."""
-    y = _EXP_NEG_COEFFICIENTS[0]
-    for c in _EXP_NEG_COEFFICIENTS[1:]:
-        y = y * x + c
-    return y
+# Konstanten C[] aus Algorithmus 13 der Falcon-Spezifikation v1.2.
+_EXP_C = [
+    0x00000004741183A3,
+    0x00000036548CFC06,
+    0x0000024FDCBF140A,
+    0x0000171D939DE045,
+    0x0000D00CF58F6F84,
+    0x000680681CF796E3,
+    0x002D82D8305B0FEA,
+    0x011111110E066FD0,
+    0x0555555555070F00,
+    0x155555555581FF00,
+    0x400000000002B400,
+    0x7FFFFFFFFFFF4800,
+    0x8000000000000000,
+]
 
 
 def approx_exp(x: float, ccs: float) -> int:
-    """Ganzzahlige Näherung von 2⁶³ · ccs · exp(-x). Alg. 13."""
-    if ccs <= 0.0:
-        return 0
+    """Ganzzahlige Näherung von 2⁶³ · ccs · exp(−x). Alg. 13.
 
-    if x <= 0.0:
-        if ccs >= 1.0:
-            return 1 << 63
-
-        y = math.floor(math.ldexp(float(ccs), 63))
-        if y < 0:
-            return 0
-        if y > ((1 << 63) - 1):
-            y = (1 << 63) - 1
-        return int(y)
-
-    if x > LOG2:
-        x = LOG2
-
-    val = float(ccs) * _exp_neg_approx(x)
-
-    if val <= 0.0:
-        return 0
-
-    y = math.floor(math.ldexp(val, 63))
-    if y < 0:
-        return 0
-
-    # Für x > 0 muss der Wert strikt kleiner als 2^63 sein.
-    if y >= (1 << 63):
-        y = (1 << 63) - 1
-
-    return int(y)
+    Fixed-Point-Implementierung mit den C[]-Konstanten der Spec.
+    y und z bleiben in {0, …, 2⁶³−1}, mit einer Ausnahme: für x = 0
+    ist y = 2⁶³ am Ende der for-Schleife.
+    """
+    y = _EXP_C[0]
+    # z ← ⌊2⁶³ · x⌋. Für x ∈ [0, ln 2] bleibt z < 2⁶³.
+    z = int(math.floor(x * (1 << 63)))
+    if z < 0:
+        z = 0
+    for i in range(1, 13):
+        y = _EXP_C[i] - ((z * y) >> 63)
+    z = int(math.floor(ccs * (1 << 63)))
+    y = (z * y) >> 63
+    return y
 
 
 # ---------------------------------------------------------------------------
@@ -162,53 +134,35 @@ def approx_exp(x: float, ccs: float) -> int:
 # ---------------------------------------------------------------------------
 
 def ber_exp(x: float, ccs: float, rng: RNG) -> bool:
-    """1 mit Wahrscheinlichkeit ccs · exp(-x). Alg. 14."""
+    """1 mit Wahrscheinlichkeit ccs · exp(−x). Alg. 14."""
     if x < 0.0:
         x = 0.0
 
-    # x = s·ln 2 + r, mit r ∈ [0, ln 2). Falls x sehr gross ist,
-    # wird s auf 63 begrenzt.
-    if x > 63.0 * LOG2:
+    # Alg. 14 Z. 1-3: x = s·ln2 + r, dann s ← min(s, 63)
+    s = int(math.floor(x / LOG2))
+    r = x - s * LOG2
+    if s > 63:
         s = 63
-        r = 0.0
-    else:
-        s = int(math.floor(x / LOG2))
-        if s > 63:
-            s = 63
-        r = x - s * LOG2
 
-        if r < 0.0:
-            r = 0.0
-        elif r >= LOG2:
-            r -= LOG2
-            s += 1
-            if s > 63:
-                s = 63
-                r = 0.0
-
+    # Alg. 14 Z. 4: z ← (2·ApproxExp(r, ccs) − 1) >> s
     y = approx_exp(r, ccs)
-
-    if y <= 0:
-        z = 0
-    else:
-        z = (2 * y - 1) >> s
-
+    z = (2 * y - 1) >> s
     if z < 0:
         z = 0
-    if z > ((1 << 64) - 1):
-        z = (1 << 64) - 1
 
-    zb = z.to_bytes(8, "big")
-
-    # Big-endian-Vergleich von 8 Zufallsbytes mit z.
-    for i in range(8):
+    # Alg. 14 Z. 5-9: Big-endian-Vergleich von 8 Zufallsbytes mit z.
+    # i läuft von 56 in 8er-Schritten runter bis 0.
+    result = False
+    i = 64
+    while True:
+        i -= 8
         b = rng.random_bytes(1)[0]
-        if b < zb[i]:
-            return True
-        if b > zb[i]:
-            return False
+        w = b - ((z >> i) & 0xFF)
+        if w != 0 or i <= 0:
+            result = (w < 0)
+            break
 
-    return False
+    return result
 
 
 # ---------------------------------------------------------------------------
@@ -231,32 +185,37 @@ def sample_integer_gaussian(
     ):
         raise ValueError("sigma_p liegt außerhalb des zulässigen Bereichs")
 
+    # Alg. 15 Z. 1: r ← µ − ⌊µ⌋
     s = math.floor(mu)
     r = mu - s
 
+    # Alg. 15 Z. 2: ccs ← σmin/σ′
     ccs = params.sigma_min / sigma_p
     if ccs > 1.0:
         ccs = 1.0
 
     two_sigma_p_sq = 2.0 * sigma_p * sigma_p
-    two_sigma_min_sq = 2.0 * params.sigma_min * params.sigma_min
+    # Alg. 15 Z. 7 verwendet σmax (nicht σmin!)
+    two_sigma_max_sq = 2.0 * params.sigma_max * params.sigma_max
 
     while True:
+        # Alg. 15 Z. 4: z0 ← BaseSampler()
         z0 = base_sampler(rng)
 
-        # Ein Zufallsbit für das Vorzeichen.
+        # Alg. 15 Z. 5: b ← UniformBits(8) & 0x1
         b = rng.random_bytes(1)[0] & 1
 
-        # Kandidat: +z0 oder -z0.
-        z = -z0 if b else z0
+        # Alg. 15 Z. 6: z ← b + (2·b − 1)·z0
+        # b=0 → z = −z0; b=1 → z = z0 + 1
+        z = b + (2 * b - 1) * z0
 
-        # x ist der zu testende Exponent. Negative Werte werden auf 0
-        # geklemmt, da BerExp nur x >= 0 erwartet.
+        # Alg. 15 Z. 7: x ← (z−r)²/(2σ′²) − z0²/(2σmax²)
         x = ((z - r) * (z - r)) / two_sigma_p_sq
-        x -= (z0 * z0) / two_sigma_min_sq
+        x -= (z0 * z0) / two_sigma_max_sq
 
         if x < 0.0:
             x = 0.0
 
+        # Alg. 15 Z. 8-9
         if ber_exp(x, ccs, rng):
             return s + z
