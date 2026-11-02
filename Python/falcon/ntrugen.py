@@ -27,29 +27,52 @@ from .poly import (
 from .modq import is_invertible_mod_q, mul_mod_q, div_mod_q, center_mod_q
 
 
+class KeygenError(RuntimeError):
+    """Wird geworfen, wenn die Schlüsselerzeugung nach zu vielen Versuchen
+    keinen gültigen Schlüssel produziert hat."""
+    pass
+
+
 def generate_ntru_keys(
-    params: Params, rng: RNG
+    params: Params, rng: RNG, max_attempts: int = 200
 ) -> Tuple[List[int], List[int], List[int], List[int]]:
-    """f, g, F, G ziehen, prüfen, lösen; bei Misserfolg Neustart. Alg. 5."""
+    """f, g, F, G ziehen, prüfen, lösen; bei Misserfolg Neustart. Alg. 5.
+
+    Nach max_attempts Fehlversuchen wird KeygenError geworfen mit einer
+    Zusammenfassung der Ablehnungsgründe.
+    """
     gs_bound = 1.17 * math.sqrt(params.q)
 
-    while True:
+    reasons = {"not_invertible": 0, "gamma_too_large": 0, "solve_failed": 0}
+
+    for attempt in range(max_attempts):
         f = sample_short_poly(params, rng)
         g = sample_short_poly(params, rng)
 
         if not is_invertible_mod_q(f):
+            reasons["not_invertible"] += 1
             continue
 
         gamma = gram_schmidt_norm(f, g, params)
         if not math.isfinite(gamma) or gamma > gs_bound:
+            reasons["gamma_too_large"] += 1
             continue
 
         sol = solve_ntru(f, g, params)
         if sol is None:
+            reasons["solve_failed"] += 1
             continue
 
         F, G = sol
         return f, g, F, G
+
+    raise KeygenError(
+        f"generate_ntru_keys: kein gültiger Schlüssel nach {max_attempts} Versuchen. "
+        f"Ablehnungsgründe: f nicht invertierbar={reasons['not_invertible']}, "
+        f"gamma zu gross={reasons['gamma_too_large']}, "
+        f"NTRUSolve fehlgeschlagen={reasons['solve_failed']}. "
+        f"gs_bound={gs_bound:.4f}"
+    )
 
 
 def sample_short_poly(params: Params, rng: RNG) -> List[int]:
@@ -70,7 +93,13 @@ def sample_short_poly(params: Params, rng: RNG) -> List[int]:
 
 
 def gram_schmidt_norm(f: List[int], g: List[int], params: Params) -> float:
-    """Qualität der Basis, Grenze 1.17·√q. Gl. 3.28."""
+    """Qualität der Basis, Grenze 1.17·√q. Gl. 3.28.
+
+    γ = max{ ‖(g, −f)‖, ‖(q·f⋆/(ff⋆+gg⋆), q·g⋆/(ff⋆+gg⋆))‖ }
+
+    Erster Term: sqrt(‖f‖² + ‖g‖²) = sqrt(norm_sq(f) + norm_sq(g)).
+    Zweiter Term: sqrt((1/n)·Σ q²/(|f̂_k|² + |ĝ_k|²)) via Parseval (Gl. 3.8).
+    """
     first = math.sqrt(norm_sq(f) + norm_sq(g))
 
     fh = fft(f)
@@ -86,6 +115,13 @@ def gram_schmidt_norm(f: List[int], g: List[int], params: Params) -> float:
 
     second = math.sqrt(total / len(f))
     return max(first, second)
+
+
+def _ntru_lhs(f, g, F, G):
+    """fG − gF in ℤ[x]/(xⁿ+1), exakt."""
+    fg = poly_mul(f, G)
+    gF = poly_mul(g, F)
+    return [a - b for a, b in zip(fg, gF)]
 
 
 def solve_ntru(
@@ -104,7 +140,12 @@ def solve_ntru(
         d, u, v = xgcd(f[0], g[0])
         if d != 1:
             return None
-        return ([v * params.q], [u * params.q])
+        F = [v * params.q]
+        G = [u * params.q]
+        # Prüfung im Basisfall
+        if f[0] * G[0] - g[0] * F[0] != params.q:
+            return None
+        return F, G
 
     try:
         fn = field_norm(f)
@@ -122,11 +163,21 @@ def solve_ntru(
     G = poly_mul(lift(Gp), galois_conjugate(f))
 
     F, G = reduce(f, g, F, G)
+
+    # Prüfung der NTRU-Gleichung nach der Reduktion.
+    lhs = _ntru_lhs(f, g, F, G)
+    if lhs != [params.q] + [0] * (n - 1):
+        return None
+
     return F, G
 
 
 def field_norm(a: List[int]) -> List[int]:
-    """a²₀ - x·a²₁, Grad n zu Grad n/2. Gl. 3.25."""
+    """a²₀ - x·a²₁, Grad n zu Grad n/2. Gl. 3.25.
+
+    N(a) = a₀(x²)² − x·a₁(x²)² im Ring ℤ[x]/(x^{n/2}+1).
+    Äquivalent: N(a)(x²) = a(x)·a(−x) (Gl. 3.26).
+    """
     n = len(a)
     if n < 2 or (n & 1) != 0:
         raise ValueError("field_norm benötigt eine gerade Länge >= 2")
@@ -137,7 +188,8 @@ def field_norm(a: List[int]) -> List[int]:
     s0 = poly_mul(a0, a0)
     s1 = poly_mul(a1, a1)
 
-    # Multiplikation mit x im Ring ℤ[x]/(x^{n/2}+1)
+    # Multiplikation mit x im Ring ℤ[x]/(x^{n/2}+1):
+    # x·(c₀ + c₁x + … + c_{m−1}x^{m−1}) = −c_{m−1} + c₀x + … + c_{m−2}x^{m−1}
     xs1 = [-s1[-1]] + s1[:-1]
 
     return [x - y for x, y in zip(s0, xs1)]
@@ -189,6 +241,8 @@ def _max_bit(polys) -> int:
 
 
 def _scaled_float(c: int, scale: int) -> float:
+    """Konvertiert einen Integer zu Float, skaliert um 2^{-scale}.
+    Behält die oberen 53 Bits (Mantisse eines Double)."""
     if c == 0:
         return 0.0
 
@@ -196,23 +250,29 @@ def _scaled_float(c: int, scale: int) -> float:
     av = abs(c)
     bl = av.bit_length()
 
-    if bl <= 1023:
+    if bl <= 53:
         return math.ldexp(float(c), -scale)
 
     shift = bl - 53
     mant = av >> shift
 
+    # Rundung: wenn das nächste Bit 1 ist, aufrunden
     if shift > 0 and ((av >> (shift - 1)) & 1):
         mant += 1
+        if mant == (1 << 53):
+            mant >>= 1
+            shift += 1
 
     return math.ldexp(sign * float(mant), shift - scale)
 
 
 def _round_scaled_float(x: float, exp: int) -> int:
+    """Berechnet round(x · 2^exp) für einen Float x und Integer-Exponent exp."""
     if x == 0.0 or not math.isfinite(x):
         return 0
 
     m, e = math.frexp(x)
+    # m ist in [0.5, 1.0), e ist der Exponent: x = m * 2^e
     m_int = int(round(m * (1 << 53)))
 
     if m_int == 0:
@@ -222,11 +282,13 @@ def _round_scaled_float(x: float, exp: int) -> int:
         m_int //= 2
         e += 1
 
+    # x * 2^exp = m_int * 2^{e + exp - 53}
     shift = e + exp - 53
 
     if shift >= 0:
         return m_int << shift
 
+    # Runden: m_int / 2^{-shift}
     denom = 1 << (-shift)
     sign = -1 if m_int < 0 else 1
     a = abs(m_int)
@@ -237,7 +299,10 @@ def _round_scaled_float(x: float, exp: int) -> int:
 def reduce(
     f: List[int], g: List[int], F: List[int], G: List[int]
 ) -> Tuple[List[int], List[int]]:
-    """F, G gegen f, g verkleinern.
+    """F, G gegen f, g verkleinern (Babai-Reduktion).
+
+    k = ⌊(Ff⋆ + Gg⋆)/(ff⋆ + gg⋆)⌉, dann F ← F − kf, G ← G − kg.
+    Wiederholen bis k = 0.
 
     Hinweis: Koeffizienten erreichen in der Rekursion rund 9'400 Bit und
     übersteigen den Wertebereich von Gleitkommazahlen; daher skalieren,
@@ -255,13 +320,14 @@ def reduce(
     if all(x == 0 for x in f) and all(x == 0 for x in g):
         return F, G
 
-    # f und g werden so skaliert, dass ihre FFT-Werte und besonders die
-    # Quadrate im Denominator sicher im Double-Bereich bleiben.
+    # f und g werden so skaliert, dass ihre FFT-Werte sicher im
+    # Double-Bereich bleiben. Wir behalten etwa 350 Bit Präzision.
     scale_f = max(0, _max_bit((f, g)) - 350)
 
     f_hat = fft([_scaled_float(c, scale_f) for c in f])
     g_hat = fft([_scaled_float(c, scale_f) for c in g])
 
+    # Denominator |f̂|² + |ĝ|² für jede FFT-Komponente
     denom = []
     for fh, gh in zip(f_hat, g_hat):
         d = (fh * fh.conjugate() + gh * gh.conjugate()).real
@@ -271,13 +337,15 @@ def reduce(
             d = 1e-300
         denom.append(d)
 
-    for _ in range(1000):
+    prev_max = _max_bit((F, G))
+    stall_count = 0
+
+    for _ in range(500):
         max_fg = _max_bit((F, G))
         if max_fg == 0:
             break
 
-        # F und G werden so skaliert, dass die FFT-Werte ebenfalls im
-        # Double-Bereich bleiben, aber genug führende Bits behalten.
+        # F und G skalieren: genug führende Bits behalten für Präzision
         scale_F = max(0, max_fg - 500)
 
         F_hat = fft([_scaled_float(c, scale_F) for c in F])
@@ -296,8 +364,23 @@ def reduce(
         if all(x == 0 for x in k):
             break
 
-        F = poly_sub(F, poly_mul(k, f))
-        G = poly_sub(G, poly_mul(k, g))
+        F_new = poly_sub(F, poly_mul(k, f))
+        G_new = poly_sub(G, poly_mul(k, g))
+
+        new_max = _max_bit((F_new, G_new))
+
+        # Konvergenzprüfung: wenn die Koeffizienten nicht kleiner werden,
+        # ist die Reduktion nicht mehr hilfreich (Oszillation).
+        if new_max >= prev_max:
+            stall_count += 1
+            if stall_count >= 3:
+                break
+        else:
+            stall_count = 0
+
+        F = F_new
+        G = G_new
+        prev_max = new_max
 
     return F, G
 
