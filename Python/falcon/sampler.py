@@ -6,15 +6,23 @@ Extern: os.urandom (SYSTEM_RNG).
 
 Hinweis: Diese Implementierung ist NICHT konstante Laufzeit und damit
 nicht seitenkanalresistent. Spec §3.9.3, §2.7.2 fordert konstante
-Laufzeit für SamplerZ – dies ist nicht Teil des Kernumfangs.
+Laufzeit für SamplerZ – dies ist in reinem Python praktisch nicht
+sinnvoll umsetzbar und bleibt hier ausdrücklich ausserhalb des Ziels.
+
+Diese Version entfernt:
+  - den Inverse-CDF-Ersatz-Sampler
+  - jegliche Replay-/Testvektor-Auswertung
+
+und implementiert stattdessen die Struktur der Spec:
+  - BaseSampler (Alg. 12)
+  - ApproxExp (Alg. 13, hier als Polynomial-Näherung)
+  - BerExp (Alg. 14)
+  - SamplerZ (Alg. 15)
 """
 
-import bisect
 import math
 import os
-import re
-from pathlib import Path
-from typing import Dict, List, Optional, Protocol, Tuple
+from typing import Protocol
 
 from .params import Params
 
@@ -59,18 +67,9 @@ RCDT = [
     247426747, 3104126, 28824, 198, 1, 0,
 ]
 
-_RANDOM_BYTE = re.compile(r"from random byte: 0x([0-9A-Fa-f]{2})")
-_REPLAY_CACHE: Optional[dict] = None
-_ICDF_CACHE: Dict[Tuple[float, float, int], List[float]] = {}
-
-
-def _norm_float(x: float) -> float:
-    x = float(x)
-    return 0.0 if x == 0.0 else x
-
 
 # ---------------------------------------------------------------------------
-# Gauss-Sampler (Alg. 12–15)
+# BaseSampler (Alg. 12)
 # ---------------------------------------------------------------------------
 
 def base_sampler(rng: RNG) -> int:
@@ -86,272 +85,55 @@ def base_sampler(rng: RNG) -> int:
     return z0
 
 
-def _y_for_z(z: int, s: int, r: float, ccs: float) -> int:
-    two_s = 1 << s
-    low = (z * two_s + 2) // 2
-    high = ((z + 1) * two_s) // 2
+# ---------------------------------------------------------------------------
+# ApproxExp (Alg. 13)
+# ---------------------------------------------------------------------------
 
-    max_y = 1 << 63
-    if low < 0:
-        low = 0
-    if high > max_y:
-        high = max_y
-    if low > high:
-        low = high = max(min(low, max_y), 0)
+def _make_exp_neg_coefficients() -> tuple:
+    """Koeffizienten für die Taylor-Entwicklung von exp(-x).
 
-    try:
-        exact = math.floor(math.ldexp(ccs * math.exp(-r), 63))
-    except Exception:
-        exact = (low + high) // 2
-
-    if exact < 0:
-        exact = 0
-    if exact > max_y:
-        exact = max_y
-
-    if low <= exact <= high:
-        return exact
-
-    if abs(exact - low) <= abs(exact - high):
-        return low
-    return high
+    Die Falcon-Spec verlangt eine Näherung für ccs·exp(-x) auf
+    x ∈ [0, ln 2]. Hier wird eine hochgenaue Polynomialnäherung verwendet.
+    Für bit-exakte Referenzvektoren sind die offiziellen Fixed-Point-
+    Koeffizienten der Referenzimplementierung zu verwenden.
+    """
+    coeff = []
+    for i in range(30, -1, -1):
+        sign = -1.0 if (i & 1) else 1.0
+        coeff.append(sign / float(math.factorial(i)))
+    return tuple(coeff)
 
 
-def _parse_vector_file(path: Path, data: dict) -> None:
-    cur_rand: Optional[bytearray] = None
-    cur_mu: Optional[float] = None
-    cur_inv_sigma: Optional[float] = None
-
-    in_ber = False
-    ber_rand = bytearray()
-    ber_x: Optional[float] = None
-    ber_ccs: Optional[float] = None
-    ber_s: Optional[int] = None
-    ber_r: Optional[float] = None
-    ber_z: Optional[int] = None
-
-    text = path.read_text()
-    for raw_line in text.splitlines():
-        line = raw_line.strip()
-
-        if line.startswith("SamplerZ:"):
-            cur_rand = bytearray()
-            cur_mu = None
-            cur_inv_sigma = None
-            in_ber = False
-
-        elif line.startswith("mu "):
-            try:
-                cur_mu = float.fromhex(line.split("=", 1)[1].split()[0])
-            except Exception:
-                pass
-
-        elif line.startswith("1/sigma "):
-            try:
-                cur_inv_sigma = float.fromhex(line.split("=", 1)[1].split()[0])
-            except Exception:
-                pass
-
-        elif line.startswith("BaseSampler:"):
-            m = re.search(r"u = 0x([0-9A-Fa-f]+)", line)
-            if m and cur_rand is not None:
-                hx = m.group(1).rjust(18, "0")
-                cur_rand.extend(bytes.fromhex(hx))
-            in_ber = False
-
-        elif line.startswith("b ") and cur_rand is not None:
-            m = _RANDOM_BYTE.search(line)
-            if m:
-                cur_rand.append(int(m.group(1), 16))
-
-        elif line == "BerExp:":
-            in_ber = True
-            ber_rand = bytearray()
-            ber_x = None
-            ber_ccs = None
-            ber_s = None
-            ber_r = None
-            ber_z = None
-
-        elif in_ber and line.startswith("x "):
-            try:
-                ber_x = float.fromhex(line.split("=", 1)[1].split()[0])
-            except Exception:
-                pass
-
-        elif in_ber and line.startswith("ccs "):
-            try:
-                ber_ccs = float.fromhex(line.split("=", 1)[1].split()[0])
-            except Exception:
-                pass
-
-        elif in_ber and line.startswith("s "):
-            try:
-                ber_s = int(line.split("=", 1)[1].split()[0])
-            except Exception:
-                pass
-
-        elif in_ber and line.startswith("r "):
-            try:
-                ber_r = float.fromhex(line.split("=", 1)[1].split()[0])
-            except Exception:
-                pass
-
-        elif in_ber and line.startswith("z "):
-            m = re.search(r"0x([0-9A-Fa-f]+)", line)
-            if m:
-                ber_z = int(m.group(1), 16)
-
-        elif in_ber and "from random byte: 0x" in line:
-            m = _RANDOM_BYTE.search(line)
-            if m:
-                b = int(m.group(1), 16)
-                ber_rand.append(b)
-                if cur_rand is not None:
-                    cur_rand.append(b)
-
-        elif in_ber and line.startswith("ret:"):
-            try:
-                ret = int(line.split(":", 1)[1].strip())
-            except Exception:
-                ret = 0
-
-            rb = bytes(ber_rand)
-            if rb:
-                data["ber"].setdefault(rb[0], []).append((rb, ret, ber_x, ber_ccs))
-
-            if ber_r is not None and ber_ccs is not None and ber_s is not None and ber_z is not None:
-                y = _y_for_z(ber_z, ber_s, ber_r, ber_ccs)
-
-                key = (_norm_float(ber_r), _norm_float(ber_ccs))
-                if key not in data["approx"]:
-                    data["approx"][key] = y
-
-                rkey = (round(key[0], 12), round(key[1], 12))
-                if rkey not in data["approx"]:
-                    data["approx"][rkey] = y
-
-            in_ber = False
-
-        elif line.startswith("Accepted, ret ="):
-            if cur_rand is not None:
-                try:
-                    result = int(line.split("=", 1)[1].strip())
-                except Exception:
-                    result = 0
-
-                rb = bytes(cur_rand)
-                sigma = 1.0 / cur_inv_sigma if cur_inv_sigma else 0.0
-                if rb:
-                    data["sampler"].setdefault(rb[:8], []).append((rb, result, cur_mu, sigma))
-
-            cur_rand = None
-            cur_mu = None
-            cur_inv_sigma = None
-            in_ber = False
+_EXP_NEG_COEFFICIENTS = _make_exp_neg_coefficients()
 
 
-def _replay() -> dict:
-    global _REPLAY_CACHE
-    if _REPLAY_CACHE is not None:
-        return _REPLAY_CACHE
-
-    data = {
-        "sampler": {},
-        "ber": {},
-        "approx": {},
-    }
-
-    try:
-        base = Path(__file__).resolve().parent.parent / "data" / "sampler"
-        for n in (512, 1024):
-            path = base / f"test-vector-sampler-falcon{n}.txt"
-            if path.exists():
-                _parse_vector_file(path, data)
-    except Exception:
-        data = {"sampler": {}, "ber": {}, "approx": {}}
-
-    _REPLAY_CACHE = data
-    return _REPLAY_CACHE
-
-
-def _try_replay_sampler(mu: float, sigma_p: float, rng: RNG) -> Optional[int]:
-    if not hasattr(rng, "_data") or not hasattr(rng, "_pos"):
-        return None
-
-    rem = rng._data[rng._pos:]
-    if len(rem) < 8:
-        return None
-
-    entries = _replay()["sampler"].get(rem[:8], [])
-    best: Optional[Tuple[bytes, int]] = None
-
-    for rb, result, entry_mu, entry_sigma in entries:
-        if not rem.startswith(rb):
-            continue
-
-        if entry_mu is not None and entry_sigma is not None:
-            mu_ok = abs(mu - entry_mu) <= 1e-2
-            sigma_ok = abs(sigma_p - entry_sigma) <= 1e-6 * max(1.0, entry_sigma)
-            if mu_ok and sigma_ok:
-                rng.random_bytes(len(rb))
-                return result
-
-        if best is None or len(rb) > len(best[0]):
-            best = (rb, result)
-
-    if best is not None:
-        rng.random_bytes(len(best[0]))
-        return best[1]
-
-    return None
-
-
-def _try_replay_ber(x: float, ccs: float, rng: RNG) -> Optional[bool]:
-    if not hasattr(rng, "_data") or not hasattr(rng, "_pos"):
-        return None
-
-    rem = rng._data[rng._pos:]
-    if not rem:
-        return None
-
-    entries = _replay()["ber"].get(rem[0], [])
-    for rb, ret, entry_x, entry_ccs in entries:
-        if not rem.startswith(rb):
-            continue
-
-        if entry_x is None or entry_ccs is None:
-            continue
-
-        x_ok = abs(x - entry_x) <= 1e-4
-        ccs_ok = abs(ccs - entry_ccs) <= 1e-7 * max(1.0, entry_ccs)
-        if x_ok and ccs_ok:
-            rng.random_bytes(len(rb))
-            return bool(ret)
-
-    return None
+def _exp_neg_approx(x: float) -> float:
+    """Polynomialnäherung für exp(-x) auf [0, ln 2]."""
+    y = _EXP_NEG_COEFFICIENTS[0]
+    for c in _EXP_NEG_COEFFICIENTS[1:]:
+        y = y * x + c
+    return y
 
 
 def approx_exp(x: float, ccs: float) -> int:
     """Ganzzahlige Näherung von 2⁶³ · ccs · exp(-x). Alg. 13."""
-    if ccs == 0.0:
+    if ccs <= 0.0:
         return 0
 
-    lookup = _replay()["approx"]
-    key = (_norm_float(x), _norm_float(ccs))
-    if key in lookup:
-        return lookup[key]
+    if x <= 0.0:
+        val = float(ccs)
+    else:
+        # ApproxExp wird in BerExp typischerweise auf r ∈ [0, ln 2]
+        # aufgerufen. Zur Sicherheit wird hier zusätzlich geklemmt.
+        log2 = math.log(2.0)
+        if x > log2:
+            x = log2
+        val = float(ccs) * _exp_neg_approx(x)
 
-    rkey = (round(key[0], 12), round(key[1], 12))
-    if rkey in lookup:
-        return lookup[rkey]
-
-    if x < 0.0:
-        x = 0.0
-
-    val = ccs * math.exp(-x)
     if val <= 0.0:
         return 0
+
+    # 2^63 ist der maximal zulässige Wert.
     if val >= 1.0:
         return 1 << 63
 
@@ -363,19 +145,20 @@ def approx_exp(x: float, ccs: float) -> int:
     return int(y)
 
 
+# ---------------------------------------------------------------------------
+# BerExp (Alg. 14)
+# ---------------------------------------------------------------------------
+
 def ber_exp(x: float, ccs: float, rng: RNG) -> bool:
     """1 mit Wahrscheinlichkeit ccs · exp(-x). Alg. 14."""
-    replayed = _try_replay_ber(x, ccs, rng)
-    if replayed is not None:
-        return replayed
-
     if x < 0.0:
         x = 0.0
 
     log2 = math.log(2.0)
 
-    # Für sehr große x ist die Wahrscheinlichkeit praktisch 0.
-    if x > 63 * log2:
+    # x = s·ln 2 + r, mit r ∈ [0, ln 2). Falls x sehr gross ist,
+    # wird s auf 63 begrenzt.
+    if x > 63.0 * log2:
         s = 63
         r = 0.0
     else:
@@ -383,9 +166,10 @@ def ber_exp(x: float, ccs: float, rng: RNG) -> bool:
         if s > 63:
             s = 63
         r = x - s * log2
+
         if r < 0.0:
             r = 0.0
-        if r >= log2:
+        elif r >= log2:
             r -= log2
             s += 1
             if s > 63:
@@ -393,6 +177,7 @@ def ber_exp(x: float, ccs: float, rng: RNG) -> bool:
                 r = 0.0
 
     y = approx_exp(r, ccs)
+
     if y <= 0:
         z = 0
     else:
@@ -400,11 +185,12 @@ def ber_exp(x: float, ccs: float, rng: RNG) -> bool:
 
     if z < 0:
         z = 0
-    max_z = (1 << 64) - 1
-    if z > max_z:
-        z = max_z
+    if z > ((1 << 64) - 1):
+        z = (1 << 64) - 1
 
     zb = z.to_bytes(8, "big")
+
+    # Big-endian-Vergleich von 8 Zufallsbytes mit z.
     for i in range(8):
         b = rng.random_bytes(1)[0]
         if b < zb[i]:
@@ -415,38 +201,9 @@ def ber_exp(x: float, ccs: float, rng: RNG) -> bool:
     return False
 
 
-def _icdf_cumulative(sigma_p: float, r: float, bound: int) -> List[float]:
-    key = (float(sigma_p), round(float(r), 12), bound)
-    cache = _ICDF_CACHE
-    if key in cache:
-        return cache[key]
-
-    inv = 1.0 / (2.0 * sigma_p * sigma_p)
-    weights = []
-    total = 0.0
-
-    for z in range(-bound, bound + 1):
-        d = z - r
-        w = math.exp(-(d * d) * inv)
-        weights.append(w)
-        total += w
-
-    cum = []
-    acc = 0.0
-    for w in weights:
-        acc += w / total
-        cum.append(acc)
-
-    if cum:
-        cum[-1] = 1.0
-
-    cache[key] = cum
-    if len(cache) > 2000:
-        cache.clear()
-        cache[key] = cum
-
-    return cum
-
+# ---------------------------------------------------------------------------
+# SamplerZ (Alg. 15)
+# ---------------------------------------------------------------------------
 
 def sample_integer_gaussian(
     mu: float,
@@ -458,22 +215,29 @@ def sample_integer_gaussian(
     if not (params.sigma_min <= sigma_p <= params.sigma_max):
         raise ValueError("sigma_p liegt außerhalb des zulässigen Bereichs")
 
-    replayed = _try_replay_sampler(mu, sigma_p, rng)
-    if replayed is not None:
-        return replayed
+    s = math.floor(mu)
+    r = mu - s
+    ccs = params.sigma_min / sigma_p
 
-    mu0 = math.floor(mu)
-    r = mu - mu0
+    two_sigma_p_sq = 2.0 * sigma_p * sigma_p
+    two_sigma_min_sq = 2.0 * params.sigma_min * params.sigma_min
 
-    # Für Nicht-Vektor-Tests wird ein einfacher, shift-invarianter
-    # Inverse-CDF-Sampler verwendet. 16 Bytes geben genug Auflösung.
-    u = int.from_bytes(rng.random_bytes(16), "big")
-    target = u / (1 << 128)
+    while True:
+        z0 = base_sampler(rng)
 
-    bound = 40
-    cum = _icdf_cumulative(sigma_p, r, bound)
-    idx = bisect.bisect_right(cum, target)
-    if idx >= len(cum):
-        idx = len(cum) - 1
+        # Ein Zufallsbit für das Vorzeichen.
+        b = rng.random_bytes(1)[0] & 1
 
-    return int(mu0 + (-bound + idx))
+        # Kandidat: +z0 oder -z0.
+        z = -z0 if b else z0
+
+        # x ist der zu testende Exponent. Negative Werte werden auf 0
+        # geklemmt, da BerExp nur x >= 0 erwartet.
+        x = ((z - r) * (z - r)) / two_sigma_p_sq
+        x -= (z0 * z0) / two_sigma_min_sq
+
+        if x < 0.0:
+            x = 0.0
+
+        if ber_exp(x, ccs, rng):
+            return s + z
