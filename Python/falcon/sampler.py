@@ -70,6 +70,17 @@ LOG2 = math.log(2.0)
 # klein, dass die expliziten Negativtests weiterhin ValueError werfen.
 _SIGMA_EPS = 1e-10
 
+_RCDT_COMPARE_BITS = 72
+
+
+def _ct_lt_72(a: int, b: int) -> int:
+    """Ohne frühen Vergleichsabbruch: 1 falls a < b, sonst 0.
+
+    Hinweis: Echtes Constant-Time ist in Python nicht garantierbar; diese
+    Form entfernt aber den frühen Kontrollfluss-Abbruch im BaseSampler.
+    """
+    return ((a - b) >> _RCDT_COMPARE_BITS) & 1
+
 
 # ---------------------------------------------------------------------------
 # BaseSampler (Alg. 12)
@@ -77,14 +88,15 @@ _SIGMA_EPS = 1e-10
 
 def base_sampler(rng: RNG) -> int:
     """Halb-Gauss über die Tabelle RCDT (Tab. 3.1). Alg. 12.
-    Liefert Werte 0 bis 18."""
+
+    Liefert Werte 0 bis 18. Es wird nicht mehr nach dem ersten
+    fehlgeschlagenen Vergleich abgebrochen; alle relevanten Einträge werden
+    geprüft.
+    """
     u = uniform_bits(72, rng)
     z0 = 0
     for i in range(18):
-        if u < RCDT[i]:
-            z0 += 1
-        else:
-            break
+        z0 += _ct_lt_72(u, RCDT[i])
     return z0
 
 

@@ -15,14 +15,12 @@ from .sampler import RNG, SYSTEM_RNG
 
 from .ntrugen import generate_ntru_keys, recompute_G
 from .tree import build_basis_fft, build_falcon_tree
-from .modq import div_mod_q, mul_mod_q, center_mod_q
+from .modq import div_mod_q, mul_mod_q, center_mod_q, Q
 from .hashing import hash_to_point
 from .ffsampling import ff_sampling
 from .fft import fft, ifft, fft_add, fft_sub, fft_mul, fft_norm_sq
 from .poly import norm_sq
 from .encoding import compress, decompress, decode_sk
-
-Q = 12289
 
 
 # ---------------------------------------------------------------------------
@@ -63,7 +61,7 @@ def sign(
     Ablauf:
       1. salt = rng.random_bytes(40)
       2. c = hash_to_point(salt + message, params)
-      3. t = compute_target(c, sk)
+      3. t = compute_target(c, sk, params.q)
       4. while True:
            z = ff_sampling(t, sk.tree, params, rng)
            s = compute_signature_vector(t, z, sk)
@@ -74,7 +72,7 @@ def sign(
     """
     salt = rng.random_bytes(40)
     c = hash_to_point(salt + message, params)
-    t = compute_target(c, sk)
+    t = compute_target(c, sk, params.q)
 
     while True:
         while True:
@@ -130,7 +128,7 @@ def load_secret_key(b: bytes, params: Params) -> SecretKey:
     if len(f) != params.n or len(g) != params.n or len(F) != params.n:
         raise ValueError("Secret Key passt nicht zum Parametersatz")
 
-    G = recompute_G(f, g, F)
+    G = recompute_G(f, g, F, params.q)
     basis_fft = build_basis_fft(f, g, F, G)
     tree = build_falcon_tree(basis_fft, params)
 
@@ -143,17 +141,17 @@ def load_secret_key(b: bytes, params: Params) -> SecretKey:
 
 def compute_public_key(f: list, g: list, params: Params) -> list:
     """h = g · f⁻¹ mod q. Alg. 4, Z. 9."""
-    return div_mod_q(g, f)
+    return div_mod_q(g, f, params.q)
 
 
-def compute_target(c: list, sk: SecretKey) -> object:
+def compute_target(c: list, sk: SecretKey, q: int = Q) -> object:
     """(c, 0) in Koordinaten der geheimen Basis. Alg. 10, Z. 3."""
     c_hat = fft(c)
     f_hat = fft(sk.f)
     F_hat = fft(sk.F)
 
-    t0 = [-(ch * fh) / Q for ch, fh in zip(c_hat, F_hat)]
-    t1 = [(ch * fh) / Q for ch, fh in zip(c_hat, f_hat)]
+    t0 = [-(ch * fh) / q for ch, fh in zip(c_hat, F_hat)]
+    t1 = [(ch * fh) / q for ch, fh in zip(c_hat, f_hat)]
 
     return (t0, t1)
 
@@ -195,9 +193,9 @@ def to_coefficients(s: object) -> Tuple[list, list]:
 
 def compute_s1(c: list, s2: list, h: list, params: Params) -> list:
     """c - s2·h mod q, zentriert. Alg. 16, Z. 5."""
-    s2h = mul_mod_q(s2, h)
+    s2h = mul_mod_q(s2, h, params.q)
     diff = [(ci - si) % params.q for ci, si in zip(c, s2h)]
-    return center_mod_q(diff)
+    return center_mod_q(diff, params.q)
 
 
 def is_short(s1: list, s2: list, params: Params) -> bool:

@@ -2,7 +2,8 @@
 HashToPoint: Nachricht auf Polynom in ℤ_q[x]/(xⁿ+1) abbilden.
 
 Verwendet SHAKE-256 (FIPS 202). Pro Koeffizient werden 16 Bits gelesen;
-nur Werte < 5·q werden akzeptiert (Rejection Sampling), dann mod q.
+nur Werte < k·q werden akzeptiert (Rejection Sampling), dann mod q,
+mit k = ⌊2¹⁶ / q⌋.
 
 Spec-Referenz: §3.7, Alg. 3.
 Extern: SHAKE-256 aus hashlib.
@@ -14,14 +15,22 @@ from .params import Params
 
 
 def hash_to_point(data: bytes, params: Params) -> List[int]:
-    """SHAKE-256, je 16 Bit lesen, Werte < 5q annehmen,
+    """SHAKE-256, je 16 Bit lesen, Werte < k·q annehmen,
     Koeffizient = Wert mod q. Alg. 3."""
     if isinstance(data, str):
         raise TypeError("data muss Bytes sein, nicht str")
 
     n = params.n
     q = params.q
-    limit = 5 * q
+
+    if q <= 0:
+        raise ValueError("q muss positiv sein")
+
+    k = (1 << 16) // q
+    if k == 0:
+        raise ValueError("q ist zu gross für HashToPoint mit 16-Bit-Wörtern")
+
+    limit = k * q
 
     shake = hashlib.shake_256(data)
 

@@ -1,84 +1,134 @@
 """
-Rechnen mod q = 12289 über NTT (Number Theoretic Transform).
+Rechnen mod q über NTT (Number Theoretic Transform).
 
 Spec-Referenz: §3.5, §4.2.2.
+
+Standardmodulus ist q = 12289. Für benutzerdefinierte Parametersätze kann
+q explizit übergeben werden. Die NTT benötigt eine Primzahl q mit
+q ≡ 1 (mod 2n).
 """
 
 from functools import lru_cache
-from typing import List, Optional
+from typing import List
 
 Q = 12289
 
 
-def _check_length(n: int) -> None:
+def _is_prime(x: int) -> bool:
+    if x < 2:
+        return False
+    if x % 2 == 0:
+        return x == 2
+    if x % 3 == 0:
+        return x == 3
+    i = 5
+    w = 2
+    while i * i <= x:
+        if x % i == 0:
+            return False
+        i += w
+        w = 6 - w
+    return True
+
+
+def _check_length(n: int, q: int) -> None:
     if n <= 0 or (n & (n - 1)) != 0:
         raise ValueError("Länge muss eine Zweierpotenz > 0 sein")
-    if (Q - 1) % (2 * n) != 0:
+    if q < 3 or (q & 1) == 0:
+        raise ValueError("q muss eine ungerade Primzahl sein")
+    if (q - 1) % (2 * n) != 0:
         raise ValueError("für diese Länge zerfällt x^n + 1 mod q nicht vollständig")
 
 
 @lru_cache(maxsize=None)
-def _primitive_root() -> int:
-    # q - 1 = 2^12 * 3. Ein Generator muss zu beiden Primfaktoren Ordnung != 1 haben.
-    for g in range(2, Q):
-        if pow(g, (Q - 1) // 2, Q) != 1 and pow(g, (Q - 1) // 3, Q) != 1:
+def _factorize(x: int):
+    factors = []
+    n = x
+    d = 2
+    while d * d <= n:
+        if n % d == 0:
+            factors.append(d)
+            while n % d == 0:
+                n //= d
+        d += 1 if d == 2 else 2
+    if n > 1:
+        factors.append(n)
+    return tuple(factors)
+
+
+@lru_cache(maxsize=None)
+def _primitive_root(q: int) -> int:
+    if not _is_prime(q):
+        raise ValueError("q muss prim sein")
+    if q == 2:
+        return 1
+
+    factors = _factorize(q - 1)
+    for g in range(2, q):
+        ok = True
+        for p in factors:
+            if pow(g, (q - 1) // p, q) == 1:
+                ok = False
+                break
+        if ok:
             return g
+
     raise RuntimeError("keine primitive Wurzel gefunden")
 
 
 @lru_cache(maxsize=None)
-def _ntt_tables(n: int):
-    _check_length(n)
-    psi = pow(_primitive_root(), (Q - 1) // (2 * n), Q)
-    zetas = [pow(psi, 2 * k + 1, Q) for k in range(n)]
-    inv_zetas = [pow(z, Q - 2, Q) for z in zetas]
-    return zetas, inv_zetas
+def _ntt_tables(n: int, q: int):
+    _check_length(n, q)
+    psi = pow(_primitive_root(q), (q - 1) // (2 * n), q)
+    zetas = [pow(psi, 2 * k + 1, q) for k in range(n)]
+    inv_zetas = [pow(z, q - 2, q) for z in zetas]
+    return tuple(zetas), tuple(inv_zetas)
 
 
-def _ntt_rec(a: List[int]) -> List[int]:
+def _ntt_rec(a: List[int], q: int) -> List[int]:
     n = len(a)
     if n == 1:
-        return [a[0] % Q]
+        return [a[0] % q]
 
     h = n // 2
     a0 = a[0::2]
     a1 = a[1::2]
 
-    v0 = _ntt_rec(a0)
-    v1 = _ntt_rec(a1)
-    zetas, _ = _ntt_tables(n)
+    v0 = _ntt_rec(a0, q)
+    v1 = _ntt_rec(a1, q)
+    zetas, _ = _ntt_tables(n, q)
 
     out = [0] * n
     for k in range(h):
-        t = (zetas[k] * v1[k]) % Q
+        t = (zetas[k] * v1[k]) % q
         s = v0[k]
-        out[k] = (s + t) % Q
-        out[k + h] = (s - t) % Q
+        out[k] = (s + t) % q
+        out[k + h] = (s - t) % q
     return out
 
 
-def _intt_rec(a_hat: List[int]) -> List[int]:
+def _intt_rec(a_hat: List[int], q: int) -> List[int]:
     n = len(a_hat)
     if n == 1:
-        return [a_hat[0] % Q]
+        return [a_hat[0] % q]
 
     h = n // 2
-    zetas, inv_zetas = _ntt_tables(n)
-    inv2 = (Q + 1) // 2
+    _, inv_zetas = _ntt_tables(n, q)
+    inv2 = (q + 1) // 2
 
     v0 = [0] * h
     v1 = [0] * h
 
     for k in range(h):
-        x = a_hat[k] % Q
-        y = a_hat[k + h] % Q
-        s = (x + y) % Q
-        d = (x - y) % Q
-        v0[k] = (s * inv2) % Q
-        v1[k] = (d * inv_zetas[k] % Q) * inv2 % Q
+        x = a_hat[k] % q
+        y = a_hat[k + h] % q
+        s = (x + y) % q
+        d = (x - y) % q
+        v0[k] = (s * inv2) % q
+        v1[k] = (d * inv_zetas[k] % q) * inv2 % q
 
-    c0 = _intt_rec(v0)
-    c1 = _intt_rec(v1)
+    c0 = _intt_rec(v0, q)
+    c1 = _intt_rec(v1, q)
 
     out = [0] * n
     out[0::2] = c0
@@ -86,66 +136,69 @@ def _intt_rec(a_hat: List[int]) -> List[int]:
     return out
 
 
-def ntt(a: List[int]) -> List[int]:
+def ntt(a: List[int], q: int = Q) -> List[int]:
     """Polynom mod q in Wertedarstellung (NTT-Form). Spec §3.5, §4.2.2."""
     n = len(a)
-    _check_length(n)
-    return _ntt_rec(a)
+    _check_length(n, q)
+    return _ntt_rec(a, q)
 
 
-def intt(a_hat: List[int]) -> List[int]:
+def intt(a_hat: List[int], q: int = Q) -> List[int]:
     """Zurück in Koeffizientenform. Spec §3.5."""
     n = len(a_hat)
-    _check_length(n)
-    return _intt_rec(a_hat)
+    _check_length(n, q)
+    return _intt_rec(a_hat, q)
 
 
-def mul_mod_q(a: List[int], b: List[int]) -> List[int]:
+def mul_mod_q(a: List[int], b: List[int], q: int = Q) -> List[int]:
     """Multiplizieren mod q über NTT. Spec §4.2.2."""
     if len(a) != len(b):
         raise ValueError("Längen müssen übereinstimmen")
     n = len(a)
-    _check_length(n)
+    _check_length(n, q)
 
-    ah = ntt(a)
-    bh = ntt(b)
-    ch = [(x * y) % Q for x, y in zip(ah, bh)]
-    return intt(ch)
+    ah = ntt(a, q)
+    bh = ntt(b, q)
+    ch = [(x * y) % q for x, y in zip(ah, bh)]
+    return intt(ch, q)
 
 
-def div_mod_q(a: List[int], b: List[int]) -> List[int]:
+def div_mod_q(a: List[int], b: List[int], q: int = Q) -> List[int]:
     """a · b⁻¹ mod q, punktweise in NTT-Form. Spec §3.4.3, §4.2.2."""
     if len(a) != len(b):
         raise ValueError("Längen müssen übereinstimmen")
     n = len(a)
-    _check_length(n)
+    _check_length(n, q)
 
-    ah = ntt(a)
-    bh = ntt(b)
+    ah = ntt(a, q)
+    bh = ntt(b, q)
 
     ch = [0] * n
     for i, bi in enumerate(bh):
-        if bi % Q == 0:
+        if bi % q == 0:
             raise ValueError("Divisor ist nicht invertierbar mod q")
-        ch[i] = (ah[i] * pow(bi, Q - 2, Q)) % Q
+        ch[i] = (ah[i] * pow(bi, q - 2, q)) % q
 
-    return intt(ch)
+    return intt(ch, q)
 
 
-def is_invertible_mod_q(a: List[int]) -> bool:
+def is_invertible_mod_q(a: List[int], q: int = Q) -> bool:
     """NTT(a) enthält keine Null. Alg. 5, Z. 7."""
     n = len(a)
-    _check_length(n)
-    return all(x != 0 for x in ntt(a))
+    _check_length(n, q)
+    return all(x != 0 for x in ntt(a, q))
 
 
-def center_mod_q(a: List[int]) -> List[int]:
+def center_mod_q(a: List[int], q: int = Q) -> List[int]:
     """Koeffizienten auf [-q/2, q/2] abbilden. Alg. 16, Z. 5."""
+    if q <= 0:
+        raise ValueError("q muss positiv sein")
+
     out = []
-    half = Q // 2
+    half = q // 2
     for x in a:
-        y = x % Q
+        y = x % q
         if y > half:
-            y -= Q
+            y -= q
         out.append(y)
     return out

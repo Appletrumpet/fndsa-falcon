@@ -24,7 +24,7 @@ from .poly import (
     galois_conjugate,
     norm_sq,
 )
-from .modq import is_invertible_mod_q, mul_mod_q, div_mod_q, center_mod_q
+from .modq import is_invertible_mod_q, mul_mod_q, div_mod_q, center_mod_q, Q
 
 
 class KeygenError(RuntimeError):
@@ -49,7 +49,7 @@ def generate_ntru_keys(
         f = sample_short_poly(params, rng)
         g = sample_short_poly(params, rng)
 
-        if not is_invertible_mod_q(f):
+        if not is_invertible_mod_q(f, params.q):
             reasons["not_invertible"] += 1
             continue
 
@@ -307,7 +307,7 @@ def reduce(
     Hinweis: Koeffizienten erreichen in der Rekursion rund 9'400 Bit und
     übersteigen den Wertebereich von Gleitkommazahlen; daher skalieren,
     k in Gleitkomma berechnen und runden, k·f und k·g exakt ganzzahlig
-    abziehen, wiederholen solange die Koeffizienten kleiner werden.
+    abziehen, wiederholen solange k != 0.
     Alg. 7, §4.4.3.
     """
     n = len(f)
@@ -321,7 +321,7 @@ def reduce(
         return F, G
 
     # f und g werden so skaliert, dass ihre FFT-Werte sicher im
-    # Double-Bereich bleiben. Wir behalten etwa 350 Bit Präzision.
+    # Double-Bereich bleiben.
     scale_f = max(0, _max_bit((f, g)) - 350)
 
     f_hat = fft([_scaled_float(c, scale_f) for c in f])
@@ -337,10 +337,7 @@ def reduce(
             d = 1e-300
         denom.append(d)
 
-    prev_max = _max_bit((F, G))
-    stall_count = 0
-
-    for _ in range(500):
+    while True:
         max_fg = _max_bit((F, G))
         if max_fg == 0:
             break
@@ -364,31 +361,16 @@ def reduce(
         if all(x == 0 for x in k):
             break
 
-        F_new = poly_sub(F, poly_mul(k, f))
-        G_new = poly_sub(G, poly_mul(k, g))
-
-        new_max = _max_bit((F_new, G_new))
-
-        # Konvergenzprüfung: wenn die Koeffizienten nicht kleiner werden,
-        # ist die Reduktion nicht mehr hilfreich (Oszillation).
-        if new_max >= prev_max:
-            stall_count += 1
-            if stall_count >= 3:
-                break
-        else:
-            stall_count = 0
-
-        F = F_new
-        G = G_new
-        prev_max = new_max
+        F = poly_sub(F, poly_mul(k, f))
+        G = poly_sub(G, poly_mul(k, g))
 
     return F, G
 
 
 def recompute_G(
-    f: List[int], g: List[int], F: List[int]
+    f: List[int], g: List[int], F: List[int], q: int = Q
 ) -> List[int]:
     """G aus der NTRU-Gleichung, für decode_sk. Gl. 3.35."""
-    gF = mul_mod_q(g, F)
-    G_mod = div_mod_q(gF, f)
-    return center_mod_q(G_mod)
+    gF = mul_mod_q(g, F, q)
+    G_mod = div_mod_q(gF, f, q)
+    return center_mod_q(G_mod, q)

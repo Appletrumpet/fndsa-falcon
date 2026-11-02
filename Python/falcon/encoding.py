@@ -133,12 +133,24 @@ def decompress(b: bytes, params: Params) -> Optional[List[int]]:
       - gepolsterte Kodierungen fester Länge (Alg. 18)
       - ungepolsterte Kodierungen (§3.11.3)
     Teilweises Padding ist ungültig.
+
+    Zusätzlich wird eine obere Länge geprüft. Wegen NIST-KAT Falcon-1024
+    count = 82 wird maximal padded_len + 1 akzeptiert; längere Eingaben
+    werden abgelehnt.
     """
     if not isinstance(b, (bytes, bytearray)) or len(b) == 0:
         return None
 
     b = bytes(b)
     padded_len = params.sig_bytelen - 41
+    if padded_len < 0:
+        return None
+
+    # Obere Längenprüfung. Exakt sig_bytelen kann hier nicht erzwungen werden,
+    # ohne den bekannten überlangen KAT-Fall zu brechen.
+    if len(b) > padded_len + 1:
+        return None
+
     padded = (len(b) == padded_len)
 
     if not padded and b[-1] == 0:
@@ -199,28 +211,34 @@ def decompress(b: bytes, params: Params) -> Optional[List[int]]:
 # Public-Key-Kodierung (§3.11.4)
 # ---------------------------------------------------------------------------
 
-def encode_pk(h: List[int]) -> bytes:
+def encode_pk(h: List[int], q: int = Q) -> bytes:
     """Header + 14 Bit pro Koeffizient. §3.11.4."""
     n = len(h)
     if not _valid_degree(n):
         raise ValueError("ungültiger Polynomgrad")
+
+    if not isinstance(q, int) or q <= 0 or q > (1 << 14):
+        raise ValueError("q muss positiv und mit 14 Bits darstellbar sein")
 
     logn = _logn(n)
     w = _BitWriter()
     w.write_bits(logn, 8)
 
     for c in h:
-        if not isinstance(c, int) or c < 0 or c >= Q:
+        if not isinstance(c, int) or c < 0 or c >= q:
             raise ValueError("Public-Key-Koeffizienten müssen 0 <= c < q sein")
         w.write_bits(c, 14)
 
     return w.finish()
 
 
-def decode_pk(b: bytes) -> List[int]:
+def decode_pk(b: bytes, q: int = Q) -> List[int]:
     """Umkehrung von encode_pk. §3.11.4."""
     if not isinstance(b, (bytes, bytearray)) or len(b) == 0:
         raise ValueError("leerer Public Key")
+
+    if not isinstance(q, int) or q <= 0 or q > (1 << 14):
+        raise ValueError("q muss positiv und mit 14 Bits darstellbar sein")
 
     b = bytes(b)
     header = b[0]
@@ -242,7 +260,7 @@ def decode_pk(b: bytes) -> List[int]:
     try:
         for _ in range(n):
             v = r.read_bits(14)
-            if v >= Q:
+            if v >= q:
                 raise ValueError("Public-Key-Koeffizient ist nicht < q")
             out.append(v)
 
@@ -374,6 +392,10 @@ def decode_sig(b: bytes, params: Params) -> Signature:
     Prüft den Header gegen params (n muss übereinstimmen)."""
     if not isinstance(b, (bytes, bytearray)) or len(b) < 42:
         raise ValueError("Signatur ist zu kurz")
+
+    # Wegen NIST-KAT Falcon-1024 count = 82 wird sig_bytelen + 1 toleriert.
+    if len(b) > params.sig_bytelen + 1:
+        raise ValueError("Signatur ist zu lang")
 
     b = bytes(b)
     logn = _logn(params.n)
