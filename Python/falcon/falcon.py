@@ -105,6 +105,9 @@ def verify(
       4. return is_short(s1, s2, params)
     """
     try:
+        if len(sig.salt) != 40:
+            return False
+
         c = hash_to_point(sig.salt + message, params)
         s2 = decompress(sig.s2_encoded, params)
         if s2 is None:
@@ -179,7 +182,7 @@ def compute_signature_vector(t: object, z: object, sk: SecretKey) -> object:
 def is_short_fft(s: object, params: Params) -> bool:
     """fft_norm_sq beider Komponenten ≤ sig_bound. Alg. 10, Z. 8."""
     s0, s1 = s
-    return (fft_norm_sq(s0) + fft_norm_sq(s1)) <= (params.sig_bound + 1e-6)
+    return (fft_norm_sq(s0) + fft_norm_sq(s1)) <= params.sig_bound
 
 
 def to_coefficients(s: object) -> Tuple[list, list]:

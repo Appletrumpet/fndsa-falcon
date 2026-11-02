@@ -67,6 +67,8 @@ RCDT = [
     247426747, 3104126, 28824, 198, 1, 0,
 ]
 
+LOG2 = math.log(2.0)
+
 
 # ---------------------------------------------------------------------------
 # BaseSampler (Alg. 12)
@@ -121,27 +123,32 @@ def approx_exp(x: float, ccs: float) -> int:
         return 0
 
     if x <= 0.0:
-        val = float(ccs)
-    else:
-        # ApproxExp wird in BerExp typischerweise auf r ∈ [0, ln 2]
-        # aufgerufen. Zur Sicherheit wird hier zusätzlich geklemmt.
-        log2 = math.log(2.0)
-        if x > log2:
-            x = log2
-        val = float(ccs) * _exp_neg_approx(x)
+        if ccs >= 1.0:
+            return 1 << 63
+
+        y = math.floor(math.ldexp(float(ccs), 63))
+        if y < 0:
+            return 0
+        if y > ((1 << 63) - 1):
+            y = (1 << 63) - 1
+        return int(y)
+
+    if x > LOG2:
+        x = LOG2
+
+    val = float(ccs) * _exp_neg_approx(x)
 
     if val <= 0.0:
         return 0
 
-    # 2^63 ist der maximal zulässige Wert.
-    if val >= 1.0:
-        return 1 << 63
-
     y = math.floor(math.ldexp(val, 63))
     if y < 0:
         return 0
-    if y > (1 << 63):
-        return 1 << 63
+
+    # Für x > 0 muss der Wert strikt kleiner als 2^63 sein.
+    if y >= (1 << 63):
+        y = (1 << 63) - 1
+
     return int(y)
 
 
@@ -154,23 +161,21 @@ def ber_exp(x: float, ccs: float, rng: RNG) -> bool:
     if x < 0.0:
         x = 0.0
 
-    log2 = math.log(2.0)
-
     # x = s·ln 2 + r, mit r ∈ [0, ln 2). Falls x sehr gross ist,
     # wird s auf 63 begrenzt.
-    if x > 63.0 * log2:
+    if x > 63.0 * LOG2:
         s = 63
         r = 0.0
     else:
-        s = int(math.floor(x / log2))
+        s = int(math.floor(x / LOG2))
         if s > 63:
             s = 63
-        r = x - s * log2
+        r = x - s * LOG2
 
         if r < 0.0:
             r = 0.0
-        elif r >= log2:
-            r -= log2
+        elif r >= LOG2:
+            r -= LOG2
             s += 1
             if s > 63:
                 s = 63

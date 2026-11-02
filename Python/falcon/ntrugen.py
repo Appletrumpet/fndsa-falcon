@@ -12,53 +12,19 @@ Ablauf (Alg. 5):
 """
 
 import math
-from pathlib import Path
 from typing import List, Optional, Tuple
 
 from .params import Params
 from .sampler import RNG, sample_integer_gaussian
-from .fft import fft
+from .fft import fft, ifft
 from .poly import (
     poly_mul,
     poly_sub,
-    split,
     lift,
     galois_conjugate,
     norm_sq,
 )
 from .modq import is_invertible_mod_q, mul_mod_q, div_mod_q, center_mod_q
-
-
-_VECTOR_KEY_CACHE = {}
-
-
-def _vector_key(n: int):
-    if n in _VECTOR_KEY_CACHE:
-        return _VECTOR_KEY_CACHE[n]
-
-    if n not in (512, 1024):
-        _VECTOR_KEY_CACHE[n] = None
-        return None
-
-    try:
-        path = Path(__file__).resolve().parent.parent / "data" / "sampler" / f"test-vector-sampler-falcon{n}.txt"
-        vals = {}
-        for raw in path.read_text().splitlines():
-            line = raw.strip()
-            if line.startswith(("f =", "g =", "F =", "G =")):
-                key = line.split("=", 1)[0].strip()
-                vals[key] = [int(x) for x in line.split("=", 1)[1].split()]
-                if len(vals) == 4:
-                    break
-
-        if len(vals) == 4:
-            _VECTOR_KEY_CACHE[n] = (vals["f"], vals["g"], vals["F"], vals["G"])
-        else:
-            _VECTOR_KEY_CACHE[n] = None
-    except Exception:
-        _VECTOR_KEY_CACHE[n] = None
-
-    return _VECTOR_KEY_CACHE[n]
 
 
 def generate_ntru_keys(
@@ -133,10 +99,6 @@ def solve_ntru(
     n = len(f)
     if n == 0 or (n & (n - 1)) != 0:
         return None
-
-    vk = _vector_key(n)
-    if vk is not None and f == vk[0] and g == vk[1]:
-        return list(vk[2]), list(vk[3])
 
     if n == 1:
         d, u, v = xgcd(f[0], g[0])
@@ -290,14 +252,12 @@ def reduce(
     if n == 0:
         return F, G
 
-    vk = _vector_key(n)
-    if vk is not None and f == vk[0] and g == vk[1]:
-        return list(vk[2]), list(vk[3])
-
     if all(x == 0 for x in f) and all(x == 0 for x in g):
         return F, G
 
-    scale_f = max(0, _max_bit((f, g)) - 900)
+    # f und g werden so skaliert, dass ihre FFT-Werte und besonders die
+    # Quadrate im Denominator sicher im Double-Bereich bleiben.
+    scale_f = max(0, _max_bit((f, g)) - 350)
 
     f_hat = fft([_scaled_float(c, scale_f) for c in f])
     g_hat = fft([_scaled_float(c, scale_f) for c in g])
@@ -305,18 +265,20 @@ def reduce(
     denom = []
     for fh, gh in zip(f_hat, g_hat):
         d = (fh * fh.conjugate() + gh * gh.conjugate()).real
-        if d == 0.0:
+        if math.isinf(d):
+            d = 1e308
+        elif not math.isfinite(d) or d <= 0.0:
             d = 1e-300
         denom.append(d)
-
-    last_k = None
 
     for _ in range(1000):
         max_fg = _max_bit((F, G))
         if max_fg == 0:
             break
 
-        scale_F = max(0, max_fg - 900)
+        # F und G werden so skaliert, dass die FFT-Werte ebenfalls im
+        # Double-Bereich bleiben, aber genug führende Bits behalten.
+        scale_F = max(0, max_fg - 500)
 
         F_hat = fft([_scaled_float(c, scale_F) for c in F])
         G_hat = fft([_scaled_float(c, scale_F) for c in G])
@@ -326,7 +288,6 @@ def reduce(
             num = Fh * fh.conjugate() + Gh * gh.conjugate()
             mu_hat.append(num / d)
 
-        from .fft import ifft
         mu = ifft(mu_hat)
 
         exp = scale_F - scale_f
@@ -335,10 +296,6 @@ def reduce(
         if all(x == 0 for x in k):
             break
 
-        if k == last_k:
-            break
-
-        last_k = k
         F = poly_sub(F, poly_mul(k, f))
         G = poly_sub(G, poly_mul(k, g))
 
