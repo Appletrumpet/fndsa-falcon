@@ -34,7 +34,7 @@ class KeygenError(RuntimeError):
 
 
 def generate_ntru_keys(
-    params: Params, rng: RNG, max_attempts: int = 200
+    params: Params, rng: RNG, max_attempts: int = 5000
 ) -> Tuple[List[int], List[int], List[int], List[int]]:
     """f, g, F, G ziehen, prüfen, lösen; bei Misserfolg Neustart. Alg. 5.
 
