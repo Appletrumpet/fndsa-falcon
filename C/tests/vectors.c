@@ -199,6 +199,172 @@ int64_t vec_int(const vec_file *v, const char *field)
     return strtoll(p, NULL, 10);
 }
 
+static double double_from_bits(uint64_t bits)
+{
+    double d;
+    memcpy(&d, &bits, sizeof d);
+    return d;
+}
+
+size_t vec_doubles(const vec_file *v, const char *field, double *dst, size_t cap)
+{
+    const char *p = require(v, field);
+    size_t count = parse_header(&p);
+    if (count > cap) {
+        die("Liste zu lang", field);
+    }
+    for (size_t i = 0; i < count; i++) {
+        char *end;
+        dst[i] = double_from_bits(strtoull(p, &end, 16));
+        p = end;
+    }
+    return count;
+}
+
+double vec_double(const vec_file *v, const char *field)
+{
+    double d;
+    vec_doubles(v, field, &d, 1);
+    return d;
+}
+
+size_t vec_cplx(const vec_file *v, const char *field, falcon_cplx *dst, size_t cap)
+{
+    const char *p = require(v, field);
+    size_t count = parse_header(&p);
+    if (count > cap) {
+        die("Liste zu lang", field);
+    }
+    for (size_t i = 0; i < count; i++) {
+        char *end;
+        dst[i].re = double_from_bits(strtoull(p, &end, 16));
+        p = end;
+        dst[i].im = double_from_bits(strtoull(p, &end, 16));
+        p = end;
+    }
+    return count;
+}
+
+unsigned __int128 vec_u128(const vec_file *v, const char *field)
+{
+    const char *p = require(v, field);
+    parse_header(&p);
+    while (*p == ' ') {
+        p++;
+    }
+    unsigned __int128 value = 0;
+    for (; *p >= '0' && *p <= '9'; p++) {
+        value = value * 10 + (unsigned)(*p - '0');
+    }
+    return value;
+}
+
+falcon_params vec_params(const vec_file *v)
+{
+    int32_t pv[2];
+    vec_ints(v, "params", pv, 2);
+    falcon_params p = pv[0] == 1024 ? FALCON_1024 : FALCON_512;
+    p.n = (size_t)pv[0];
+    p.sig_bytelen = (size_t)pv[1];
+    return p;
+}
+
+static size_t tokens_for(size_t n)
+{
+    return n == 1 ? 1 : 2 * n + 2 * tokens_for(n / 2);
+}
+
+static falcon_tree_node *load_tree_rec(falcon_tree *t, const double **p, size_t n)
+{
+    falcon_tree_node *node = &t->nodes[t->nnodes++];
+    node->ell = NULL;
+    node->left = NULL;
+    node->right = NULL;
+    node->sigma = 0.0;
+    if (n == 1) {
+        node->sigma = *(*p)++;
+        return node;
+    }
+    node->ell = &t->ell[t->nell];
+    t->nell += n;
+    for (size_t i = 0; i < n; i++) {
+        node->ell[i].re = *(*p)++;
+        node->ell[i].im = *(*p)++;
+    }
+    node->left = load_tree_rec(t, p, n / 2);
+    node->right = load_tree_rec(t, p, n / 2);
+    return node;
+}
+
+size_t vec_tree(const vec_file *v, const char *field, falcon_tree *t)
+{
+    static double tokens[VEC_MAX_TREE_TOKENS];
+    size_t count = vec_doubles(v, field, tokens, VEC_MAX_TREE_TOKENS);
+    size_t n = 1;
+
+    while (tokens_for(n) < count) {
+        n *= 2;
+    }
+    if (tokens_for(n) != count) {
+        die("Baum mit unpassender Grösse", field);
+    }
+    const double *p = tokens;
+    t->nnodes = 0;
+    t->nell = 0;
+    load_tree_rec(t, &p, n);
+    return n;
+}
+
+size_t tree_tokens(double *out, const falcon_tree_node *node, size_t n)
+{
+    if (n == 1) {
+        out[0] = node->sigma;
+        return 1;
+    }
+    size_t count = 0;
+    for (size_t i = 0; i < n; i++) {
+        out[count++] = node->ell[i].re;
+        out[count++] = node->ell[i].im;
+    }
+    count += tree_tokens(out + count, node->left, n / 2);
+    count += tree_tokens(out + count, node->right, n / 2);
+    return count;
+}
+
+static void fixed_random_bytes(void *ctx, uint8_t *out, size_t k)
+{
+    fixed_rng_state *s = ctx;
+    if (s->pos + k > s->len) {
+        /* Sofort abbrechen: Mit Ersatzwerten könnte ein Fehler im Sampler endlos laufen. */
+        die("Zufallsbytes aufgebraucht", "FixedRNG");
+    }
+    memcpy(out, s->data + s->pos, k);
+    s->pos += k;
+}
+
+falcon_rng fixed_rng(fixed_rng_state *state, const uint8_t *data, size_t len)
+{
+    state->data = data;
+    state->len = len;
+    state->pos = 0;
+    falcon_rng rng = {fixed_random_bytes, state};
+    return rng;
+}
+
+static void shake_random_bytes(void *ctx, uint8_t *out, size_t k)
+{
+    falcon_shake256_extract(ctx, out, k);
+}
+
+falcon_rng shake_rng(falcon_shake256_ctx *ctx, const uint8_t *seed, size_t len)
+{
+    falcon_shake256_init(ctx);
+    falcon_shake256_inject(ctx, seed, len);
+    falcon_shake256_flip(ctx);
+    falcon_rng rng = {shake_random_bytes, ctx};
+    return rng;
+}
+
 void vec_close(vec_file *v)
 {
     free(v->lines);
