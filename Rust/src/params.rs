@@ -53,7 +53,7 @@ impl LogN {
 
     /// Länge des Public Keys in Bytes (§3.11.4).
     pub fn pk_bytes(self) -> usize {
-        1 + (14 * self.n() + 7) / 8
+        1 + (14 * self.n()).div_ceil(8)
     }
 
     /// Länge des Secret Keys in Bytes (§3.11.5).
@@ -142,7 +142,9 @@ mod tests {
         assert_eq!(FALCON_1024.sig_bytelen, 1280);
         // q ist prim und q ≡ 1 mod 2n für alle n ≤ 1024
         assert_eq!((Q - 1) % 2048, 0);
-        assert!((2..Q).take_while(|d| d * d <= Q).all(|d| Q % d != 0));
+        assert!((2..Q)
+            .take_while(|d| d * d <= Q)
+            .all(|d| !Q.is_multiple_of(d)));
     }
 
     #[test]

@@ -9,6 +9,10 @@ publish = false
 sha3 = "0.10.8"
 zeroize = { version = "1.8.1", features = ["zeroize_derive"] }
 
+[features]
+# Macht die Einstiegspunkte für `cargo fuzz` sichtbar (src/fuzzing.rs).
+fuzzing = []
+
 [profile.test]
 # Die KAT-Tests rechnen viel; ohne Optimierung dauern sie unnötig lange.
 opt-level = 2

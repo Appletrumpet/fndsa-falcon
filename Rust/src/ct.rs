@@ -1,17 +1,29 @@
 //! Hilfen für konstante Laufzeit (PLAN.md, 3.2).
 //!
 //! Masken sind `0` (falsch) oder `0xFFFF_FFFF` (wahr). Alle Funktionen
-//! arbeiten ohne Verzweigung. In Phase 2 kommen die Varianten für `u64`
-//! und die Optimierungsbarrieren dazu; ob LLVM daraus Sprünge macht, prüft
-//! Phase 6 im Assembler.
+//! arbeiten ohne Verzweigung.
+//!
+//! **Optimierungsbarriere (Regel 6):** Jede Maske läuft durch `barrier`
+//! (`core::hint::black_box`). Damit sieht LLVM nicht, dass eine Maske nur
+//! 0 oder −1 sein kann, und baut die Auswahl nicht in einen Sprung um.
+//! `black_box` ist laut Rust-Doku nur „best effort“; ob es reicht, prüft
+//! Phase 6 im Assembler und mit Valgrind. In Phase 2 kommen die Varianten
+//! für `u64` dazu.
+
+/// Verbirgt den Wert vor dem Optimierer.
+#[inline(always)]
+pub fn barrier(x: u32) -> u32 {
+    core::hint::black_box(x)
+}
 
 /// Maske aus dem obersten Bit: `0xFFFF_FFFF`, wenn Bit 31 gesetzt ist.
 #[inline(always)]
 pub fn mask_from_msb(x: u32) -> u32 {
-    0u32.wrapping_sub(x >> 31)
+    barrier(0u32.wrapping_sub(x >> 31))
 }
 
 /// Maske „x == 0“.
+#[allow(dead_code)] // nur vom Secret-Key-Format und Keygen benutzt (Phase 4/5)
 #[inline(always)]
 pub fn is_zero_mask(x: u32) -> u32 {
     // Das oberste Bit von x | −x ist genau dann 1, wenn x ≠ 0.

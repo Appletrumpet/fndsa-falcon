@@ -200,11 +200,13 @@ pub fn intt(a: &mut [u32]) {
 }
 
 /// Maske „mindestens ein Wert ist 0“, ohne Abbruch über alle Werte.
+#[allow(dead_code)] // wird erst von Keygen benutzt (Phase 5)
 pub fn any_zero_mask(a: &[u32]) -> u32 {
     a.iter().fold(0, |acc, &x| acc | ct::is_zero_mask(x))
 }
 
-/// a · b in ℤ_q[x]/(xⁿ+1), Eingaben in [0, q).
+/// a · b in ℤ_q[x]/(xⁿ+1), Eingaben in [0, q). Bisher nur für Tests.
+#[cfg(test)]
 pub fn poly_mul(a: &[u32], b: &[u32]) -> Vec<u32> {
     let mut x = a.to_vec();
     let mut y = b.to_vec();

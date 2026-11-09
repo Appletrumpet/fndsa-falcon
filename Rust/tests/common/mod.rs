@@ -17,7 +17,7 @@ pub struct KatRecord {
 
 pub fn hex(s: &str) -> Vec<u8> {
     let s = s.trim();
-    assert!(s.len() % 2 == 0, "ungerade Hex-Länge");
+    assert!(s.len().is_multiple_of(2), "ungerade Hex-Länge");
     (0..s.len())
         .step_by(2)
         .map(|i| u8::from_str_radix(&s[i..i + 2], 16).expect("ungültiges Hex"))
@@ -36,12 +36,11 @@ pub fn kat_path(n: usize) -> PathBuf {
 /// Liest alle 100 Fälle einer `.rsp`-Datei.
 pub fn load_kat(n: usize) -> Vec<KatRecord> {
     let path = kat_path(n);
-    let text = std::fs::read_to_string(&path)
-        .unwrap_or_else(|e| panic!("{}: {e}", path.display()));
+    let text = std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("{}: {e}", path.display()));
     let mut out = Vec::new();
     for block in text.split("count = ").skip(1) {
         let count: usize = block.lines().next().unwrap().trim().parse().unwrap();
-        let get =|key: &str| -> Vec<u8> {
+        let get = |key: &str| -> Vec<u8> {
             let prefix = format!("{key} = ");
             let line = block
                 .lines()
@@ -60,6 +59,65 @@ pub fn load_kat(n: usize) -> Vec<KatRecord> {
     }
     assert_eq!(out.len(), 100, "{}: erwartet 100 Fälle", path.display());
     out
+}
+
+/// Kopfteil der Sampler-Testvektoren (`Python/data/sampler/`): Nonce,
+/// Nachricht, Schlüssel, gehashte Nachricht und s₂ der Beispielsignatur.
+/// Die SamplerZ-Abläufe darin werden erst in Phase 3 gebraucht.
+pub struct SamplerVector {
+    pub nonce: Vec<u8>,
+    pub data: Vec<u8>,
+    pub f: Vec<i32>,
+    pub g: Vec<i32>,
+    pub big_f: Vec<i32>,
+    pub big_g: Vec<i32>,
+    pub hashed: Vec<u32>,
+    pub s2: Vec<i32>,
+}
+
+pub fn load_sampler_vector(n: usize) -> SamplerVector {
+    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("..")
+        .join("Python")
+        .join("data")
+        .join("sampler")
+        .join(format!("test-vector-sampler-falcon{n}.txt"));
+    let text = std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("{}: {e}", path.display()));
+    let field = |key: &str| -> &str {
+        let prefix = format!("{key} = ");
+        text.lines()
+            .map(str::trim)
+            .find(|l| l.starts_with(&prefix))
+            .unwrap_or_else(|| panic!("{}: {key} fehlt", path.display()))[prefix.len()..]
+            .trim()
+    };
+    let ints = |key: &str| -> Vec<i32> {
+        field(key)
+            .split_whitespace()
+            .map(|x| x.parse().unwrap())
+            .collect()
+    };
+    let v = SamplerVector {
+        nonce: hex(field("nonce")),
+        data: hex(field("data")),
+        f: ints("f"),
+        g: ints("g"),
+        big_f: ints("F"),
+        big_g: ints("G"),
+        hashed: ints("hashed message")
+            .into_iter()
+            .map(|x| x as u32)
+            .collect(),
+        s2: ints("signature vector"),
+    };
+    for (name, len) in [
+        ("f", v.f.len()),
+        ("hashed", v.hashed.len()),
+        ("s2", v.s2.len()),
+    ] {
+        assert_eq!(len, n, "{}: Länge von {name}", path.display());
+    }
+    v
 }
 
 /// Zerlegt `sm` im Format der NIST-API (§3.11.6):

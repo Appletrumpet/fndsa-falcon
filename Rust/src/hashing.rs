@@ -50,18 +50,51 @@ mod tests {
     #[test]
     fn rejected_chunks_are_skipped() {
         assert_eq!(hash_to_point(b"Falcon\r", b"", 2), [11884, 6864]);
-        assert_eq!(hash_to_point(b"Falcon\x04", b"", 4), [1733, 2891, 860, 11018]);
+        assert_eq!(
+            hash_to_point(b"Falcon\x04", b"", 4),
+            [1733, 2891, 860, 11018]
+        );
     }
 
     #[test]
     fn boundary() {
         // 61444 = 5q − 1 wird angenommen, 61445 = 5q verworfen.
-        assert_eq!(hash_to_point(&[0x00, 0x01, 0x1c, 0x0a], b"", 2), [12288, 7737]);
-        assert_eq!(hash_to_point(&[0x00, 0x00, 0x35, 0xaf], b"", 2), [11137, 6189]);
+        assert_eq!(
+            hash_to_point(&[0x00, 0x01, 0x1c, 0x0a], b"", 2),
+            [12288, 7737]
+        );
+        assert_eq!(
+            hash_to_point(&[0x00, 0x00, 0x35, 0xaf], b"", 2),
+            [11137, 6189]
+        );
+    }
+
+    #[test]
+    fn nist_sampler_vectors() {
+        for n in [512, 1024] {
+            let v = crate::kat::load_sampler_vector(n);
+            let c: Vec<u32> = hash_to_point(&v.nonce, &v.data, n)
+                .into_iter()
+                .map(u32::from)
+                .collect();
+            assert_eq!(c, v.hashed, "n = {n}");
+        }
+    }
+
+    #[test]
+    fn length_for_all_degrees() {
+        for logn in 1..=10 {
+            let c = hash_to_point(b"", b"msg", 1 << logn);
+            assert_eq!(c.len(), 1 << logn);
+            assert!(c.iter().all(|&x| (x as u32) < Q));
+        }
     }
 
     #[test]
     fn salt_and_message_are_concatenated() {
-        assert_eq!(hash_to_point(b"Fal", b"con\r", 2), hash_to_point(b"Falcon\r", b"", 2));
+        assert_eq!(
+            hash_to_point(b"Fal", b"con\r", 2),
+            hash_to_point(b"Falcon\r", b"", 2)
+        );
     }
 }
