@@ -1,6 +1,11 @@
 # Plan: FN-DSA (Falcon) in Rust, seitenkanalresistent
 
-Stand: 9. November 2026, Branch `Rust`. Noch kein Code, nur der Plan.
+Stand: 9. November 2026, Branch `Rust`. Phase 0 und 1 sind umgesetzt
+(Crate, `params`, `ct` in Grundform, `modq`, `hashing`, `encoding`, Verify;
+alle 200 KAT-Signaturen werden akzeptiert, pk- und sk-Format byte-genau).
+Noch offen aus Phase 0: CI-Skript. Abweichung: Vollständige Parametersätze
+(σ, β², Signaturlänge) gibt es bisher nur für 512 und 1024; die verkleinerten
+Varianten kommen mit Phase 5.
 
 Grundlage: Falcon Specification v1.2 (Ebene 0 der Dokumentation), die
 Dokumentation „FN-DSA (Falcon)“ (Ebenen 1–4) und die Python-Implementierung
