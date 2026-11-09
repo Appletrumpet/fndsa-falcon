@@ -32,6 +32,29 @@ def _zeta_table(n: int) -> Tuple[complex, ...]:
     return tuple(cmath.exp(1j * (2 * k + 1) * math.pi / n) for k in range(n))
 
 
+def _smith_div(a: complex, b: complex) -> complex:
+    """a / b nach Smith, jede Gleitkommaoperation einzeln gerundet.
+
+    Pythons eigene komplexe Division ist je nach Build nicht reproduzierbar:
+    Wird CPython mit Clang für arm64 übersetzt, fasst der Compiler a·b + c zu
+    einer FMA-Instruktion zusammen (nur eine Rundung). Als einzelne
+    float-Operationen ist das Ergebnis auf allen Plattformen dasselbe und
+    lässt sich in C und Rust bitgleich nachbilden (Ebene 5, Ziel Z1)."""
+    if abs(b.real) >= abs(b.imag):
+        ratio = b.imag / b.real
+        denom = b.real + b.imag * ratio
+        return complex(
+            (a.real + a.imag * ratio) / denom,
+            (a.imag - a.real * ratio) / denom,
+        )
+    ratio = b.real / b.imag
+    denom = b.real * ratio + b.imag
+    return complex(
+        (a.real * ratio + a.imag) / denom,
+        (a.imag * ratio - a.real) / denom,
+    )
+
+
 def fft(a: List[float]) -> List[complex]:
     """Rekursiv: Koeffizienten mit split in gerade/ungerade trennen,
     beide Hälften transformieren, mit merge_fft zusammenführen.
@@ -126,7 +149,7 @@ def split_fft(a_hat: List[complex]) -> Tuple[List[complex], List[complex]]:
         x = a_hat[k]
         y = a_hat[k + h]
         f0[k] = (x + y) / 2
-        f1[k] = (x - y) / (2 * zetas[k])
+        f1[k] = _smith_div(x - y, 2 * zetas[k])
 
     return f0, f1
 

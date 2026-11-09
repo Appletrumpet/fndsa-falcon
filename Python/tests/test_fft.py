@@ -562,6 +562,25 @@ class TestSplitFft:
         assert_close(f1, [(v[k] - v[k + h]) / (2 * zeta(k, n)) for k in range(h)])
 
     @SPLITTABLE
+    def test_division_is_individually_rounded_smith(self, rng, n):
+        # Bitgenau (Ebene 5, Z1): keine FMA-Zusammenfassung wie in manchen
+        # CPython-Builds. Jede Operation unten ist einzeln gerundet.
+        v = rand_complex(rng, n)
+        h = n // 2
+        _, f1 = split_fft(v)
+        for k in range(h):
+            a, b = v[k] - v[k + h], 2 * zeta(k, n)
+            if abs(b.real) >= abs(b.imag):
+                t = b.imag / b.real
+                d = b.real + b.imag * t
+                expected = ((a.real + a.imag * t) / d, (a.imag - a.real * t) / d)
+            else:
+                t = b.real / b.imag
+                d = b.real * t + b.imag
+                expected = ((a.real * t + a.imag) / d, (a.imag * t - a.real) / d)
+            assert (f1[k].real, f1[k].imag) == expected
+
+    @SPLITTABLE
     def test_halves_have_length_n_over_2(self, rng, n):
         f0, f1 = split_fft(rand_complex(rng, n))
         assert len(f0) == len(f1) == n // 2
