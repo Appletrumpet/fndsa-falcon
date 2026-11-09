@@ -59,7 +59,7 @@ Implementations of Falcon“, 2019):
 | L5 | `decompress` | „keine Obergrenze für \|sᵢ\|“ | in Rust braucht es einen festen Typ (`i16`) | **entschieden (9.11.2026):** wie die Referenz, \|sᵢ\| > 2047 ablehnen; im Rahmen der Normschranke kommt das bei echten Signaturen praktisch nie vor |
 | L6 | Keygen und sk-Format | 7.5: keine Prüfung, ob f, g, F ins sk-Format passen | bei Falcon-1024 lässt sich etwa 1 von 10⁴ Schlüsseln nicht speichern | **entschieden (9.11.2026):** wie die Referenz, solche Kandidaten verwerfen (f, g nach FG_BITS, F, G mit 8 Bit) |
 | L7 | BerExp | Alg. 14: Schleife bricht ab, sobald ein Byte entscheidet | Zahl der gezogenen Bytes hängt von z ab | **entschieden (9.11.2026):** nur streng konstant, immer 8 Bytes, siehe 3.4 |
-| L8 | FFT-Darstellung | alle n Werte, Reihenfolge ζₖ | doppelte Arbeit | nur n/2 Werte (der Rest ist konjugiert); Reihenfolge der Doku beibehalten, damit die Python-Werte vergleichbar bleiben |
+| L8 | FFT-Darstellung | alle n Werte, Reihenfolge ζₖ | doppelte Arbeit | nur n/2 Werte (der Rest ist konjugiert); Reihenfolge der Doku beibehalten, damit die Python-Werte vergleichbar bleiben (mit Toleranz, siehe Abschnitt 7) |
 | L9 | Zufall | beliebiges `rng.random_bytes` | SamplerZ braucht pro Signatur Tausende Bytes | Seed aus OS-Zufall → SHAKE256 → ChaCha20-PRNG (Referenz) |
 | L10 | KAT byte-genau | 7.3: nicht reproduzierbar | stimmt nur ohne den RNG-Ablauf der Referenz | **entschieden (9.11.2026):** die **KAT-Schlüssel** werden byte-genau reproduziert, mit dem Keygen-Ablauf der Referenz (Seed → SHAKE256 → Tabellen-Gauss), siehe 3.5 und Phase 7. Die **KAT-Signaturen** nicht: wegen L7 zieht BerExp andere Bytes als die Referenz |
 | L11 | `_SIGMA_EPS` (Python) | nicht dokumentiert | nur wegen gerundetem σmin nötig | in Rust exakte Konstanten, keine Toleranz; die Prüfung σ′ ∈ [σmin, σmax] wird zur Debug-Assertion, weil σ′ geheim ist |
@@ -70,9 +70,10 @@ entschieden.
 **Folge von L5/L6 für die Python-Version:** Rust und Python verhalten sich an
 zwei Stellen unterschiedlich. Python akzeptiert Signaturen mit \|sᵢ\| > 2047
 (sofern die Norm passt) und kann in seltenen Fällen nicht speicherbare
-Schlüssel erzeugen; Rust nicht. Entweder Python angleichen (betrifft die Tests
-`test_rejects_huge_valid_coefficient` und die Designentscheidung in 7.5) oder
-den Unterschied in der Doku festhalten.
+Schlüssel erzeugen; Rust nicht. **Entschieden (9.11.2026):** Python wird
+**nicht** angeglichen. Der Unterschied wird in der Doku festgehalten (Ebene 5:
+Rust); `test_rejects_huge_valid_coefficient` und die Designentscheidung in 7.5
+bleiben für Python bestehen.
 
 **Umfang der Referenznutzung (zu L2):** Die Referenz dient als Quelle für
 *Techniken*: emulierte Gleitkommazahlen, Vergleiche ohne Verzweigung im
@@ -81,6 +82,16 @@ aus der Spezifikation hergeleitet (Ebenen 1–3). Jede Stelle, die einer
 Technik der Referenz folgt, bekommt im Code einen Verweis
 (`// Referenz: <Datei>, <Funktion>`), damit sie in der Doku nachvollziehbar
 bleibt. Code wird nicht wörtlich übernommen, sondern in Rust neu geschrieben.
+
+**Ausnahme Keygen (Folge von L10):** Damit die KAT-Schlüssel byte-genau
+herauskommen, muss der Keygen-Teil Schritt für Schritt wie die Referenz
+arbeiten: f, g ziehen (`keygen.c`), Reihenfolge der Prüfungen und vor allem
+`solve_NTRU` mit `reduce` (dieselben Skalierungen, dieselbe Zahl an
+Durchläufen, dieselben Gleitkommanäherungen). Schon eine andere Rundung in
+`reduce` ergibt ein anderes F. Für diesen Teil ist die Rust-Version deshalb
+eine **Portierung** der Referenz, nicht eine Herleitung aus der Spezifikation.
+So wird es auch in der Doku (Ebene 5) benannt. Für Sign, Verify, Sampler, FFT
+und Formate gilt weiter die Herleitung aus der Spezifikation.
 
 ---
 
@@ -103,6 +114,15 @@ bleibt. Code wird nicht wörtlich übernommen, sondern in Rust neu geschrieben.
 \* Verworfene Kandidaten werden nie verwendet. Die Zahl der Neustarts verrät
 deshalb nichts über den Schlüssel, der am Ende benutzt wird.
 
+**Ausnahme: Neuziehen einzelner Koeffizienten im Keygen (3.5).** Das passiert
+*innerhalb* des Schlüssels, der später benutzt wird. Die Laufzeit verrät, wie
+oft ein Koeffizient ausserhalb von ±`lim` lag und wie oft der letzte
+Koeffizient wegen der Parität neu gezogen wurde. Die verworfenen Werte selbst
+werden nicht verwendet; übrig bleibt höchstens ein sehr kleiner Hinweis auf die
+Parität der Koeffizientensumme, die ohnehin festgelegt (ungerade) ist. Die
+Referenz nimmt das genauso in Kauf, und wegen L10 muss Rust es übernehmen. In
+der Doku als bewusste, begründete Ausnahme festhalten.
+
 **Verify und HashToPoint brauchen also keine konstante Laufzeit.** Das spart
 Aufwand und hält diese Teile einfach. Nur falls die Nachricht selbst geheim
 wäre, bräuchte es die konstante Variante von HashToPoint (§3.7); das ist hier
@@ -120,7 +140,9 @@ nicht nötig.
 5. Keine `f64`-Operationen auf geheimen Daten im Standardmodus (siehe 3.3).
 6. Gegen LLVM-Optimierungen: Masken über `subtle::Choice` bzw.
    `core::hint::black_box` als Barriere; kritische Funktionen im Assembler
-   prüfen (`cargo asm`).
+   prüfen (`cargo asm`). `black_box` ist laut Rust-Doku nur „best effort“,
+   keine Garantie; deshalb ist die Assembler- und Valgrind-Prüfung (Abschnitt 6)
+   Pflicht und nicht nur Ergänzung.
 7. Geheime Puffer in `Zeroizing<…>` bzw. mit `ZeroizeOnDrop`.
 8. Kein `Debug`/`Display`, das geheime Werte ausgibt.
 
@@ -138,8 +160,23 @@ ist das kritisch:
 64-Bit-Ganzzahloperationen (add, sub, mul, div, sqrt, rint, floor, trunc,
 of_i64), jede mit konstanter Laufzeit und korrekt gerundet wie IEEE-754. Das
 ist der Ansatz der Referenz. Da IEEE-754 korrekt rundet, liefert die
-Emulation bitgleich dieselben Ergebnisse wie Hardware-`f64`, wenn die Reihenfolge
-der Operationen gleich ist. So bleiben die Python-Werte vergleichbar.
+Emulation für normale Zahlen bitgleich dieselben Ergebnisse wie Hardware-`f64`,
+wenn die Reihenfolge der Operationen gleich ist.
+
+**Zahlenbereich:** Wie die Referenz unterstützt `fpr` keine subnormalen Zahlen,
+kein ±∞ und kein NaN (beim Umsetzen in `fpr.h` der Referenz nachprüfen).
+Unterlauf ergibt 0. In Falcon kommen diese Fälle nicht vor; sie werden in der
+Doku als bewusste Einschränkung genannt. Die Tests gegen `f64` decken deshalb
+nur Eingaben und Ergebnisse im normalen Bereich ab, plus gezielte Tests für
+das Verhalten bei Unterlauf.
+
+**Kein bitgleicher Vergleich mit Python:** Python wird nicht angepasst (2.2),
+und dort weichen die Rechenwege ab: ζₖ kommt aus `cmath.exp` (nicht korrekt
+gerundet, je nach Plattform verschieden), `split_fft` und `fft_div` teilen
+durch komplexe Zahlen mit CPythons eigenem Divisionsalgorithmus, und die
+ζ-Tabelle wird auf jeder Ebene neu berechnet. Rust rechnet mit exakten
+Konstanten und `conj(ζ)/2` statt Division durch `2ζ`. Gleitkommawerte werden
+deshalb mit Toleranz verglichen (Abschnitt 7).
 
 Optional als Feature `native-fpu`: `f64` direkt, nur für Ziele, auf denen
 add/mul/sqrt nachweislich konstante Laufzeit haben (z. B. x86-64 mit SSE2, ohne
@@ -192,15 +229,25 @@ Division auf geheimen Daten). Standard bleibt die Emulation.
     Damit prüft der KAT-Test genau den Code, der auch produktiv läuft.
   - Tabellen-Gauss: 64-Bit-Zufallswerte aus SHAKE, Vergleich mit allen
     Tabelleneinträgen, bei kleinem n Summe mehrerer Ziehungen (Faktor
-    1024/n). Byte-Reihenfolge der 64-Bit-Werte nachprüfen.
-  - Ablehnung innerhalb des Ziehens: Die Referenz zieht f bzw. g neu, wenn die
-    Summe der Koeffizienten gerade ist (sonst ist die Resultante gerade und
-    NTRUSolve scheitert sicher). Diese Regel muss genau übernommen werden,
-    sonst verschiebt sich der Zufallsstrom.
+    1024/n). Die 64-Bit-Werte werden nach meiner Erinnerung
+    **little-endian** zusammengesetzt (`get_rng_u64`); nachprüfen.
+  - Ablehnung innerhalb des Ziehens: Die Referenz zieht **einzelne
+    Koeffizienten** neu, nicht das ganze f bzw. g (`poly_small_mkgauss`):
+    - Liegt ein Koeffizient ausserhalb von ±`lim` (aus FG_BITS), wird nur
+      dieser Koeffizient neu gezogen. Damit ist L6 für f und g schon beim
+      Ziehen erfüllt, nicht erst durch Verwerfen des Kandidaten.
+    - Beim **letzten** Koeffizienten wird so lange neu gezogen, bis die Summe
+      aller Koeffizienten ungerade ist (sonst ist die Resultante gerade und
+      NTRUSolve scheitert sicher).
+
+    Diese Regeln müssen genau übernommen werden, sonst verschiebt sich der
+    Zufallsstrom.
   - Prüfungen in derselben Reihenfolge und mit denselben Schranken wie die
-    Referenz: sk-Format (L6), ‖(g, −f)‖² gegen 1.17²·q ≈ 16822.41, γ in
-    `fpr`, NTRUSolve, Grösse von F und G, Invertierbarkeit von f. Jede
-    Abweichung bei *welcher* Kandidat angenommen wird, ändert den Schlüssel.
+    Referenz. Nach meiner Erinnerung: (1) ‖(g, −f)‖² gegen 1.17²·q (ganzzahlig),
+    (2) orthogonalisierte Norm γ in `fpr` gegen ≈ 16822.41, (3) Public Key
+    h = g/f, scheitert, wenn f nicht invertierbar ist, (4) NTRUSolve inkl.
+    Prüfung, ob F und G in 8 Bit passen (L6). Jede Abweichung bei *welcher*
+    Kandidat angenommen wird, ändert den Schlüssel.
 - Das Ziel ist: gleicher Seed → gleiche Bytes für f, g, F und damit
   für sk und pk wie in den KAT-Dateien. Weil NTRUSolve wie die Referenz mit
   fester Länge arbeitet, muss dabei auch exakt dasselbe (F, G) herauskommen;
@@ -233,6 +280,9 @@ Division auf geheimen Daten). Standard bleibt die Emulation.
 - Normprüfung: Summe in konstanter Zeit; nur das Ergebnis ja/nein darf
   verzweigen (Neustart).
 - Ab hier ist s₂ öffentlich: Kompression mit normalem Code.
+- Passt das komprimierte s₂ nicht in die feste Signaturlänge (Tab. 3.3), wird
+  neu signiert (neues Salt, neue Zufallswerte). Das Ergebnis ja/nein darf
+  verzweigen.
 - Optional (Fault-Schutz): nach dem Signieren `verify` aufrufen; das kostet
   wenig im Vergleich zum Signieren.
 
@@ -296,9 +346,10 @@ pub struct SigningKey { /* f, g, F, G, Baum; ZeroizeOnDrop */ }
 pub struct VerifyingKey { /* h */ }
 pub struct Signature { salt: [u8; 40], s2_enc: Vec<u8> }
 
-pub fn keygen(logn: u32, rng: &mut impl CryptoRngCore) -> (SigningKey, VerifyingKey);
+pub struct LogN(u32); // nur 1..=10, geprüft in LogN::new(u32) -> Result<LogN, Error>
+pub fn keygen(logn: LogN, rng: &mut impl CryptoRngCore) -> (SigningKey, VerifyingKey);
 // zieht 48 Bytes aus rng und ruft keygen_from_seed auf (L10)
-pub fn keygen_from_seed(logn: u32, seed: &[u8; 48]) -> (SigningKey, VerifyingKey);
+pub fn keygen_from_seed(logn: LogN, seed: &[u8; 48]) -> (SigningKey, VerifyingKey);
 // deterministisch; für KAT und reproduzierbare Tests
 impl SigningKey   { pub fn sign(&self, msg: &[u8], rng: &mut impl CryptoRngCore) -> Signature;
                     pub fn to_bytes(&self) -> Zeroizing<Vec<u8>>; pub fn from_bytes(b: &[u8]) -> Result<Self, Error>; }
@@ -306,8 +357,10 @@ impl VerifyingKey { pub fn verify(&self, msg: &[u8], sig: &Signature) -> bool;
                     pub fn to_bytes(&self) -> Vec<u8>; pub fn from_bytes(b: &[u8]) -> Result<Self, Error>; }
 ```
 
-Die Signaturen folgen den Funktionen aus Ebene 2. `logn` statt eines
-`Params`-Objekts, weil alle Werte daraus folgen. Die Fehlertypen
+Die Signaturen folgen den Funktionen aus Ebene 2. `LogN` statt eines
+`Params`-Objekts, weil alle Werte daraus folgen; als eigener Typ, damit ein
+ungültiges `logn` schon beim Erzeugen als `Err` auffällt und keygen nicht
+abbrechen muss. Die Fehlertypen
 entsprechen den Designentscheidungen aus 7.5 (`decode_*` → `Err`,
 `decompress` ungültig → `verify` liefert `false`).
 
@@ -319,16 +372,21 @@ Jede Phase endet mit grünen Tests. Reihenfolge wie in der Doku (unten nach
 oben); Verify kommt zuerst, weil es öffentlich ist und früh gegen alle
 200 KAT-Signaturen geprüft werden kann.
 
+Phase 5 und 7 hängen eng zusammen: Ein byte-genaues F gelingt nur, wenn
+NTRUSolve von Anfang an wie die Referenz gebaut wird (2.2, Ausnahme Keygen).
+Deshalb wird schon in Phase 5 gegen KAT count 0 geprüft; Phase 7 erweitert das
+nur noch auf alle Seeds.
+
 | Phase | Inhalt | Prüfung am Ende | Aufwand |
 |---|---|---|---|
 | 0 | Crate, `params`, Testdaten aus `Python/data/` einbinden, CI-Skript | Build, Tab. 3.3 | klein |
 | 1 | `modq` (konstant), `hashing`, `encoding`, `verify` | alle 200 KAT-Signaturen gültig, pk/sk-Formate gegen KAT | klein–mittel |
-| 2 | `ct`, `fpr` (emuliert), `fft` | `fpr` bitgleich gegen `f64` für Millionen Zufallswerte inkl. Grenzfälle; FFT gegen Python-Werte | mittel |
+| 2 | `ct`, `fpr` (emuliert), `fft` | `fpr` bitgleich gegen `f64` für Millionen Zufallswerte im normalen Zahlenbereich inkl. Grenzfälle; FFT gegen Python-Werte mit Toleranz | mittel |
 | 3 | `prng`, `sampler` | BaseSampler und ApproxExp gegen alle Schritte der Sampler-Testvektoren; BerExp-Äquivalenztest; statistische Tests für SamplerZ (Abschnitt 7) | mittel |
-| 4 | `tree`, `ffsampling`, `sign` (mit KAT-sk, `load_secret_key` inkl. `recompute_G`) | Falcon-Baum exakt gegen Testvektor; ffSampling exakt mit Test-RNG im Python-Vergleich; KAT-sk → sign → verify | mittel |
-| 5 | `zint`, `ntrugen` (NTRUSolve fester Länge), `keygen` | fG − gF = q, γ-Schranke, sk-Format, keygen → sign → verify für 512/1024, reduzierte n | **gross** |
+| 4 | `tree`, `ffsampling`, `sign` (mit KAT-sk, `load_secret_key` inkl. `recompute_G`) | Falcon-Baum exakt gegen Testvektor; ffSampling mit Test-RNG gegen Python (ganzzahlige Ausgabe gleich, Gleitkomma mit Toleranz); KAT-sk → sign → verify | mittel |
+| 5 | `zint`, `ntrugen` (NTRUSolve fester Länge, Portierung der Referenz), `keygen`; AES-CTR-DRBG für Tests von Anfang an | fG − gF = q, γ-Schranke, sk-Format, keygen → sign → verify für 512/1024, reduzierte n; **KAT count 0 byte-genau** (f, g, dann F) für beide Varianten | **gross** |
 | 6 | Seitenkanal-Prüfung (Abschnitt 6) | dudect ohne Befund, Valgrind ohne Befund auf geheimen Daten | mittel |
-| 7 | KAT-Schlüssel byte-genau (L10): AES-CTR-DRBG nur für Tests, Seed-Weg in Keygen | alle 200 KAT-Seeds ergeben exakt sk und pk der KAT-Dateien (Signaturen wegen L7 nicht) | mittel |
+| 7 | KAT-Schlüssel byte-genau (L10), alle Seeds | alle 200 KAT-Seeds ergeben exakt sk und pk der KAT-Dateien (Signaturen wegen L7 nicht) | klein, wenn count 0 in Phase 5 stimmt |
 | 8 (optional) | Benchmarks gegen Python, `native-fpu` | Zahlen für die Arbeit | klein |
 
 ---
@@ -343,6 +401,22 @@ drei voneinander unabhängige Prüfungen:
    `crabgrind`). Jede Verzweigung oder jeder Speicherzugriff, der davon
    abhängt, meldet Valgrind als Fehler. Läuft für keygen und sign. Am
    aussagekräftigsten der drei Verfahren.
+
+   **Erlaubte Verzweigungen freigeben:** Einige Entscheidungen hängen von
+   geheimen Daten ab, dürfen aber verzweigen (3.1). Valgrind würde sie
+   melden. Ihr Ergebnis (nur das Bit ja/nein) wird deshalb an genau diesen
+   Stellen ausdrücklich als „definiert“ markiert (`MAKE_MEM_DEFINED`, im Code
+   über eine Funktion `ct::declassify` gebündelt):
+
+   | Stelle | freigegebenes Bit |
+   |---|---|
+   | SamplerZ (Alg. 15) | Ablehnung ja/nein pro Runde (isochron, 3.4) |
+   | Sign: Normprüfung | Neustart ja/nein |
+   | Sign: Kompression von s₂ | passt in die feste Länge ja/nein (s₂ ist danach öffentlich) |
+   | Keygen: Koeffizient ausserhalb ±`lim`, Parität des letzten Koeffizienten | neu ziehen ja/nein (3.1, Ausnahme) |
+   | Keygen: Norm, γ, Invertierbarkeit, NTRUSolve, Grösse von F und G | Kandidat verwerfen ja/nein |
+
+   Jede weitere Valgrind-Meldung gilt als Befund. Die Liste gehört in die Doku.
 2. **Statistische Zeitmessung (dudect):** zwei Klassen von Eingaben (z. B.
    fester gegen zufälligen Schlüssel, Sampler mit festem gegen zufälliges μ),
    Welch-t-Test über Millionen Messungen. Ein |t| > 4.5 gilt als Leak.
@@ -365,7 +439,12 @@ Zusätzlich: Durchsicht, dass alle geheimen Puffer gelöscht werden.
   FFT-Eigenschaften, Sampler, ffLDL-Invarianten).
 - **Differenztests gegen Python:** Ein Skript in `Python/scripts/` erzeugt
   JSON-Vektoren (FFT, split/merge, Baum für die KAT-Schlüssel, ffSampling mit
-  festen Zufallsbytes). Rust muss bitgleich liefern; `fpr` macht das möglich.
+  festen Zufallsbytes). Python bleibt unverändert, daher **nicht bitgleich**
+  (Gründe in 3.3): Gleitkommawerte mit relativer Toleranz (Richtwert 2⁻⁴⁰,
+  beim Umsetzen festlegen), ganzzahlige Ergebnisse (z aus ffSampling, s₁, s₂)
+  müssen gleich sein. Bei sehr seltenen Abweichungen durch Rundung an einer
+  Ganzzahlgrenze den Fall einzeln prüfen. Exakte Referenzwerte für Baum und
+  Signaturvektor liefern die Sampler-Testvektoren.
 - **Nicht bitgleich zu erwarten:** (F, G) aus NTRUSolve (3.5) und wegen L7
   alles, was auf die Zufallsfolge nach dem ersten BerExp-Aufruf angewiesen ist
   (SamplerZ-Folgen, exakte Signatur aus dem Testvektor).
@@ -409,8 +488,8 @@ Zusätzlich: Durchsicht, dass alle geheimen Puffer gelöscht werden.
 1. ~~**L2:** Referenzimplementierung für konstante Laufzeit verwenden?~~
    **Ja** (9.11.2026), Umfang siehe Abschnitt 2.2.
 2. ~~**L5/L6:** \|sᵢ\| ≤ 2047 und Verwerfen nicht speicherbarer Schlüssel?~~
-   **Ja, wie Referenz** (9.11.2026). Offen: Python angleichen oder Unterschied
-   dokumentieren (Abschnitt 2.2).
+   **Ja, wie Referenz** (9.11.2026). Python wird nicht angeglichen, der
+   Unterschied wird dokumentiert (Abschnitt 2.2).
 3. ~~**L7:** BerExp wie die Spezifikation oder streng konstant?~~
    **Nur streng konstant** (9.11.2026), siehe 3.4 und 7.
 4. ~~**L10 / Phase 7:** KAT-Schlüssel byte-genau reproduzieren?~~
@@ -418,7 +497,16 @@ Zusätzlich: Durchsicht, dass alle geheimen Puffer gelöscht werden.
    wie die Referenz (3.5).
 5. ~~Zielplattformen?~~ **x86-64 und aarch64** (9.11.2026), siehe Abschnitt 10.
 
-Alle Entscheidungen sind getroffen; der Plan ist bereit zur Umsetzung.
+Alle Designentscheidungen sind getroffen; der Plan ist bereit zur Umsetzung.
+
+Noch offen (blockiert erst Phase 6, nicht den Start):
+
+- aarch64-Hardware für Valgrind und dudect beschaffen bzw. klären
+  (Abschnitt 10).
+- Die Keygen-Details aus 3.5 (Byte-Reihenfolge, Neuziehen, Reihenfolge der
+  Prüfungen) und der Zahlenbereich von `fpr` (3.3) beruhen auf meiner
+  Erinnerung an die Referenz und werden zu Beginn von Phase 2 bzw. 5 im
+  Quelltext der Referenz nachgeprüft.
 
 ---
 
