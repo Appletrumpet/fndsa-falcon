@@ -1501,3 +1501,42 @@ k int 1 72
 random bytes 9 7440a8f478906db1ff
 status ok
 out int 1 2144481555163479126527
+case
+k int 1 0
+random bytes 0 -
+status ok
+out int 1 0
+case
+k int 1 8
+random bytes 1 d1
+status ok
+out int 1 209
+case
+k int 1 16
+random bytes 2 0102
+status ok
+out int 1 258
+case
+k int 1 64
+random bytes 8 ffffffffffffffff
+status ok
+out int 1 18446744073709551615
+case
+k int 1 72
+random bytes 9 0fc5442ff043d66e91
+status ok
+out int 1 290915700138508185233
+case
+k int 1 72
+random bytes 9 ffffffffffffffffff
+status ok
+out int 1 4722366482869645213695
+case
+k int 1 72
+random bytes 9 000000000000000000
+status ok
+out int 1 0
+case
+k int 1 4
+random bytes 0 -
+status error

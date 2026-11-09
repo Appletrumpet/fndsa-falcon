@@ -1,0 +1,4803 @@
+# Erzeugt mit Python/scripts/gen_vectors.py
+# python 3.14.4 arm64
+# falcon-quellen sha256 a623c5ad08d8cec592dbe9404bcb8514f23693de048e9ef4a0421098165f1bb1
+case
+z int 1 1
+z0 int 1 0
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fcf2a81b8746556
+case
+z int 1 1
+z0 int 1 0
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fcf2a81b8746556
+case
+z int 1 6
+z0 int 1 5
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 4013f9acc0540750
+case
+z int 1 3
+z0 int 1 2
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3ff9680c0ec1141f
+case
+z int 1 2
+z0 int 1 1
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fea569ec8137666
+case
+z int 1 3
+z0 int 1 2
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3ff9680c0ec1141f
+case
+z int 1 1
+z0 int 1 0
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fcf2a81b8746556
+case
+z int 1 0
+z0 int 1 0
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 0000000000000000
+case
+z int 1 1
+z0 int 1 0
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fcf2a81b8746556
+case
+z int 1 0
+z0 int 1 0
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 0000000000000000
+case
+z int 1 7
+z0 int 1 6
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 4019ff9968be07f2
+case
+z int 1 2
+z0 int 1 1
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fea569ec8137666
+case
+z int 1 -1
+z0 int 1 1
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fb7b5ebede15328
+case
+z int 1 -1
+z0 int 1 1
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fb7b5ebede15328
+case
+z int 1 0
+z0 int 1 0
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 0000000000000000
+case
+z int 1 0
+z0 int 1 0
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 0000000000000000
+case
+z int 1 0
+z0 int 1 0
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 0000000000000000
+case
+z int 1 -1
+z0 int 1 1
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fb7b5ebede15328
+case
+z int 1 0
+z0 int 1 0
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 0000000000000000
+case
+z int 1 3
+z0 int 1 2
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3ff9680c0ec1141f
+case
+z int 1 2
+z0 int 1 1
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fea569ec8137666
+case
+z int 1 -1
+z0 int 1 1
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fb7b5ebede15328
+case
+z int 1 -1
+z0 int 1 1
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fb7b5ebede15328
+case
+z int 1 0
+z0 int 1 0
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 0000000000000000
+case
+z int 1 -4
+z0 int 1 4
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3ff7b5ebede15328
+case
+z int 1 3
+z0 int 1 2
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3ff9680c0ec1141f
+case
+z int 1 -1
+z0 int 1 1
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fb7b5ebede15328
+case
+z int 1 2
+z0 int 1 1
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fea569ec8137666
+case
+z int 1 0
+z0 int 1 0
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 0000000000000000
+case
+z int 1 -1
+z0 int 1 1
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fb7b5ebede15328
+case
+z int 1 3
+z0 int 1 2
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3ff9680c0ec1141f
+case
+z int 1 1
+z0 int 1 0
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fcf2a81b8746556
+case
+z int 1 -2
+z0 int 1 2
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fd7b5ebede15328
+case
+z int 1 1
+z0 int 1 0
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fcf2a81b8746556
+case
+z int 1 -1
+z0 int 1 1
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fb7b5ebede15328
+case
+z int 1 1
+z0 int 1 0
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fcf2a81b8746556
+case
+z int 1 1
+z0 int 1 0
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fcf2a81b8746556
+case
+z int 1 0
+z0 int 1 0
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 0000000000000000
+case
+z int 1 -1
+z0 int 1 1
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fb7b5ebede15328
+case
+z int 1 0
+z0 int 1 0
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 0000000000000000
+case
+z int 1 0
+z0 int 1 0
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 0000000000000000
+case
+z int 1 0
+z0 int 1 0
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 0000000000000000
+case
+z int 1 2
+z0 int 1 1
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fea569ec8137666
+case
+z int 1 -1
+z0 int 1 1
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fb7b5ebede15328
+case
+z int 1 2
+z0 int 1 1
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fea569ec8137666
+case
+z int 1 3
+z0 int 1 2
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3ff9680c0ec1141f
+case
+z int 1 -1
+z0 int 1 1
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fb7b5ebede15328
+case
+z int 1 0
+z0 int 1 0
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 0000000000000000
+case
+z int 1 -3
+z0 int 1 3
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3feaaca96b9d7d8c
+case
+z int 1 0
+z0 int 1 0
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 0000000000000000
+case
+z int 1 -2
+z0 int 1 2
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fd7b5ebede15328
+case
+z int 1 3
+z0 int 1 2
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3ff9680c0ec1141f
+case
+z int 1 2
+z0 int 1 1
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fea569ec8137666
+case
+z int 1 -2
+z0 int 1 2
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fd7b5ebede15328
+case
+z int 1 1
+z0 int 1 0
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fcf2a81b8746556
+case
+z int 1 -4
+z0 int 1 4
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3ff7b5ebede15328
+case
+z int 1 5
+z0 int 1 4
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 400d62deeeb22294
+case
+z int 1 -4
+z0 int 1 4
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3ff7b5ebede15328
+case
+z int 1 1
+z0 int 1 0
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fcf2a81b8746556
+case
+z int 1 2
+z0 int 1 1
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fea569ec8137666
+case
+z int 1 2
+z0 int 1 1
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fea569ec8137666
+case
+z int 1 1
+z0 int 1 0
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fcf2a81b8746556
+case
+z int 1 3
+z0 int 1 2
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3ff9680c0ec1141f
+case
+z int 1 2
+z0 int 1 1
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fea569ec8137666
+case
+z int 1 0
+z0 int 1 0
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 0000000000000000
+case
+z int 1 -1
+z0 int 1 1
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fb7b5ebede15328
+case
+z int 1 1
+z0 int 1 0
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fcf2a81b8746556
+case
+z int 1 0
+z0 int 1 0
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 0000000000000000
+case
+z int 1 -2
+z0 int 1 2
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fd7b5ebede15328
+case
+z int 1 5
+z0 int 1 4
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 400d62deeeb22294
+case
+z int 1 1
+z0 int 1 0
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fcf2a81b8746556
+case
+z int 1 0
+z0 int 1 0
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 0000000000000000
+case
+z int 1 0
+z0 int 1 0
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 0000000000000000
+case
+z int 1 0
+z0 int 1 0
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 0000000000000000
+case
+z int 1 -5
+z0 int 1 5
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 4002862051d808f7
+case
+z int 1 0
+z0 int 1 0
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 0000000000000000
+case
+z int 1 0
+z0 int 1 0
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 0000000000000000
+case
+z int 1 0
+z0 int 1 0
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 0000000000000000
+case
+z int 1 1
+z0 int 1 0
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fcf2a81b8746556
+case
+z int 1 1
+z0 int 1 0
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fcf2a81b8746556
+case
+z int 1 1
+z0 int 1 0
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fcf2a81b8746556
+case
+z int 1 -2
+z0 int 1 2
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fd7b5ebede15328
+case
+z int 1 -1
+z0 int 1 1
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fb7b5ebede15328
+case
+z int 1 2
+z0 int 1 1
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fea569ec8137666
+case
+z int 1 3
+z0 int 1 2
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3ff9680c0ec1141f
+case
+z int 1 0
+z0 int 1 0
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 0000000000000000
+case
+z int 1 -2
+z0 int 1 2
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fd7b5ebede15328
+case
+z int 1 4
+z0 int 1 3
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 40044dc31b9a4bb9
+case
+z int 1 -2
+z0 int 1 2
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fd7b5ebede15328
+case
+z int 1 3
+z0 int 1 2
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3ff9680c0ec1141f
+case
+z int 1 0
+z0 int 1 0
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 0000000000000000
+case
+z int 1 5
+z0 int 1 4
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 400d62deeeb22294
+case
+z int 1 2
+z0 int 1 1
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fea569ec8137666
+case
+z int 1 0
+z0 int 1 0
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 0000000000000000
+case
+z int 1 0
+z0 int 1 0
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 0000000000000000
+case
+z int 1 -2
+z0 int 1 2
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fd7b5ebede15328
+case
+z int 1 0
+z0 int 1 0
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 0000000000000000
+case
+z int 1 -3
+z0 int 1 3
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3feaaca96b9d7d8c
+case
+z int 1 -4
+z0 int 1 4
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3ff7b5ebede15328
+case
+z int 1 2
+z0 int 1 1
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fea569ec8137666
+case
+z int 1 -2
+z0 int 1 2
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fd7b5ebede15328
+case
+z int 1 2
+z0 int 1 1
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fea569ec8137666
+case
+z int 1 0
+z0 int 1 0
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 0000000000000000
+case
+z int 1 2
+z0 int 1 1
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fea569ec8137666
+case
+z int 1 -3
+z0 int 1 3
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3feaaca96b9d7d8c
+case
+z int 1 -1
+z0 int 1 1
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fb7b5ebede15328
+case
+z int 1 -1
+z0 int 1 1
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fb7b5ebede15328
+case
+z int 1 -2
+z0 int 1 2
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fd7b5ebede15328
+case
+z int 1 4
+z0 int 1 3
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 40044dc31b9a4bb9
+case
+z int 1 1
+z0 int 1 0
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fcf2a81b8746556
+case
+z int 1 -3
+z0 int 1 3
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3feaaca96b9d7d8c
+case
+z int 1 2
+z0 int 1 1
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fea569ec8137666
+case
+z int 1 -4
+z0 int 1 4
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3ff7b5ebede15328
+case
+z int 1 1
+z0 int 1 0
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fcf2a81b8746556
+case
+z int 1 -2
+z0 int 1 2
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fd7b5ebede15328
+case
+z int 1 0
+z0 int 1 0
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 0000000000000000
+case
+z int 1 -2
+z0 int 1 2
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fd7b5ebede15328
+case
+z int 1 -1
+z0 int 1 1
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fb7b5ebede15328
+case
+z int 1 1
+z0 int 1 0
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fcf2a81b8746556
+case
+z int 1 2
+z0 int 1 1
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fea569ec8137666
+case
+z int 1 -2
+z0 int 1 2
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fd7b5ebede15328
+case
+z int 1 3
+z0 int 1 2
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3ff9680c0ec1141f
+case
+z int 1 5
+z0 int 1 4
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 400d62deeeb22294
+case
+z int 1 2
+z0 int 1 1
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fea569ec8137666
+case
+z int 1 3
+z0 int 1 2
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3ff9680c0ec1141f
+case
+z int 1 2
+z0 int 1 1
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fea569ec8137666
+case
+z int 1 -1
+z0 int 1 1
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fb7b5ebede15328
+case
+z int 1 -2
+z0 int 1 2
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fd7b5ebede15328
+case
+z int 1 1
+z0 int 1 0
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fcf2a81b8746556
+case
+z int 1 3
+z0 int 1 2
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3ff9680c0ec1141f
+case
+z int 1 1
+z0 int 1 0
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fcf2a81b8746556
+case
+z int 1 2
+z0 int 1 1
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fea569ec8137666
+case
+z int 1 1
+z0 int 1 0
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fcf2a81b8746556
+case
+z int 1 0
+z0 int 1 0
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 0000000000000000
+case
+z int 1 3
+z0 int 1 2
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3ff9680c0ec1141f
+case
+z int 1 0
+z0 int 1 0
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 0000000000000000
+case
+z int 1 2
+z0 int 1 1
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fea569ec8137666
+case
+z int 1 0
+z0 int 1 0
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 0000000000000000
+case
+z int 1 1
+z0 int 1 0
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fcf2a81b8746556
+case
+z int 1 3
+z0 int 1 2
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3ff9680c0ec1141f
+case
+z int 1 2
+z0 int 1 1
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fea569ec8137666
+case
+z int 1 2
+z0 int 1 1
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fea569ec8137666
+case
+z int 1 2
+z0 int 1 1
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fea569ec8137666
+case
+z int 1 3
+z0 int 1 2
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3ff9680c0ec1141f
+case
+z int 1 1
+z0 int 1 0
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fcf2a81b8746556
+case
+z int 1 2
+z0 int 1 1
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fea569ec8137666
+case
+z int 1 5
+z0 int 1 4
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 400d62deeeb22294
+case
+z int 1 4
+z0 int 1 3
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 40044dc31b9a4bb9
+case
+z int 1 2
+z0 int 1 1
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fea569ec8137666
+case
+z int 1 1
+z0 int 1 0
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fcf2a81b8746556
+case
+z int 1 1
+z0 int 1 0
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fcf2a81b8746556
+case
+z int 1 -1
+z0 int 1 1
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fb7b5ebede15328
+case
+z int 1 2
+z0 int 1 1
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fea569ec8137666
+case
+z int 1 -2
+z0 int 1 2
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fd7b5ebede15328
+case
+z int 1 1
+z0 int 1 0
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fcf2a81b8746556
+case
+z int 1 3
+z0 int 1 2
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3ff9680c0ec1141f
+case
+z int 1 1
+z0 int 1 0
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fcf2a81b8746556
+case
+z int 1 3
+z0 int 1 2
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3ff9680c0ec1141f
+case
+z int 1 -1
+z0 int 1 1
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fb7b5ebede15328
+case
+z int 1 1
+z0 int 1 0
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fcf2a81b8746556
+case
+z int 1 0
+z0 int 1 0
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 0000000000000000
+case
+z int 1 -2
+z0 int 1 2
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fd7b5ebede15328
+case
+z int 1 3
+z0 int 1 2
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3ff9680c0ec1141f
+case
+z int 1 0
+z0 int 1 0
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 0000000000000000
+case
+z int 1 -2
+z0 int 1 2
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fd7b5ebede15328
+case
+z int 1 3
+z0 int 1 2
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3ff9680c0ec1141f
+case
+z int 1 1
+z0 int 1 0
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fcf2a81b8746556
+case
+z int 1 -1
+z0 int 1 1
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fb7b5ebede15328
+case
+z int 1 3
+z0 int 1 2
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3ff9680c0ec1141f
+case
+z int 1 0
+z0 int 1 0
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 0000000000000000
+case
+z int 1 -1
+z0 int 1 1
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fb7b5ebede15328
+case
+z int 1 -1
+z0 int 1 1
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fb7b5ebede15328
+case
+z int 1 -4
+z0 int 1 4
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3ff7b5ebede15328
+case
+z int 1 -2
+z0 int 1 2
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fd7b5ebede15328
+case
+z int 1 4
+z0 int 1 3
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 40044dc31b9a4bb9
+case
+z int 1 0
+z0 int 1 0
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 0000000000000000
+case
+z int 1 3
+z0 int 1 2
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3ff9680c0ec1141f
+case
+z int 1 -1
+z0 int 1 1
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fb7b5ebede15328
+case
+z int 1 0
+z0 int 1 0
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 0000000000000000
+case
+z int 1 3
+z0 int 1 2
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3ff9680c0ec1141f
+case
+z int 1 0
+z0 int 1 0
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 0000000000000000
+case
+z int 1 -1
+z0 int 1 1
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fb7b5ebede15328
+case
+z int 1 1
+z0 int 1 0
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fcf2a81b8746556
+case
+z int 1 0
+z0 int 1 0
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 0000000000000000
+case
+z int 1 -2
+z0 int 1 2
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fd7b5ebede15328
+case
+z int 1 0
+z0 int 1 0
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 0000000000000000
+case
+z int 1 4
+z0 int 1 3
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 40044dc31b9a4bb9
+case
+z int 1 1
+z0 int 1 0
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fcf2a81b8746556
+case
+z int 1 -1
+z0 int 1 1
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fb7b5ebede15328
+case
+z int 1 -2
+z0 int 1 2
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fd7b5ebede15328
+case
+z int 1 -2
+z0 int 1 2
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fd7b5ebede15328
+case
+z int 1 0
+z0 int 1 0
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 0000000000000000
+case
+z int 1 2
+z0 int 1 1
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fea569ec8137666
+case
+z int 1 4
+z0 int 1 3
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 40044dc31b9a4bb9
+case
+z int 1 -1
+z0 int 1 1
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fb7b5ebede15328
+case
+z int 1 -3
+z0 int 1 3
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3feaaca96b9d7d8c
+case
+z int 1 -2
+z0 int 1 2
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fd7b5ebede15328
+case
+z int 1 -1
+z0 int 1 1
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fb7b5ebede15328
+case
+z int 1 0
+z0 int 1 0
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 0000000000000000
+case
+z int 1 -2
+z0 int 1 2
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fd7b5ebede15328
+case
+z int 1 3
+z0 int 1 2
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3ff9680c0ec1141f
+case
+z int 1 -4
+z0 int 1 4
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3ff7b5ebede15328
+case
+z int 1 3
+z0 int 1 2
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3ff9680c0ec1141f
+case
+z int 1 1
+z0 int 1 0
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fcf2a81b8746556
+case
+z int 1 -1
+z0 int 1 1
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fb7b5ebede15328
+case
+z int 1 -1
+z0 int 1 1
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fb7b5ebede15328
+case
+z int 1 0
+z0 int 1 0
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 0000000000000000
+case
+z int 1 -2
+z0 int 1 2
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fd7b5ebede15328
+case
+z int 1 1
+z0 int 1 0
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fcf2a81b8746556
+case
+z int 1 1
+z0 int 1 0
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fcf2a81b8746556
+case
+z int 1 1
+z0 int 1 0
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fcf2a81b8746556
+case
+z int 1 1
+z0 int 1 0
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fcf2a81b8746556
+case
+z int 1 2
+z0 int 1 1
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fea569ec8137666
+case
+z int 1 0
+z0 int 1 0
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 0000000000000000
+case
+z int 1 -1
+z0 int 1 1
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fb7b5ebede15328
+case
+z int 1 -2
+z0 int 1 2
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fd7b5ebede15328
+case
+z int 1 0
+z0 int 1 0
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 0000000000000000
+case
+z int 1 1
+z0 int 1 0
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fcf2a81b8746556
+case
+z int 1 3
+z0 int 1 2
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3ff9680c0ec1141f
+case
+z int 1 -1
+z0 int 1 1
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fb7b5ebede15328
+case
+z int 1 1
+z0 int 1 0
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fcf2a81b8746556
+case
+z int 1 -1
+z0 int 1 1
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fb7b5ebede15328
+case
+z int 1 -4
+z0 int 1 4
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3ff7b5ebede15328
+case
+z int 1 -2
+z0 int 1 2
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fd7b5ebede15328
+case
+z int 1 1
+z0 int 1 0
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fcf2a81b8746556
+case
+z int 1 -1
+z0 int 1 1
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fb7b5ebede15328
+case
+z int 1 1
+z0 int 1 0
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fcf2a81b8746556
+case
+z int 1 -3
+z0 int 1 3
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3feaaca96b9d7d8c
+case
+z int 1 -1
+z0 int 1 1
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fb7b5ebede15328
+case
+z int 1 2
+z0 int 1 1
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fea569ec8137666
+case
+z int 1 -2
+z0 int 1 2
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fd7b5ebede15328
+case
+z int 1 1
+z0 int 1 0
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fcf2a81b8746556
+case
+z int 1 0
+z0 int 1 0
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 0000000000000000
+case
+z int 1 2
+z0 int 1 1
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fea569ec8137666
+case
+z int 1 4
+z0 int 1 3
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 40044dc31b9a4bb9
+case
+z int 1 1
+z0 int 1 0
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fcf2a81b8746556
+case
+z int 1 -2
+z0 int 1 2
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fd7b5ebede15328
+case
+z int 1 1
+z0 int 1 0
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fcf2a81b8746556
+case
+z int 1 -3
+z0 int 1 3
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3feaaca96b9d7d8c
+case
+z int 1 -2
+z0 int 1 2
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fd7b5ebede15328
+case
+z int 1 -2
+z0 int 1 2
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fd7b5ebede15328
+case
+z int 1 -2
+z0 int 1 2
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fd7b5ebede15328
+case
+z int 1 2
+z0 int 1 1
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fea569ec8137666
+case
+z int 1 0
+z0 int 1 0
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 0000000000000000
+case
+z int 1 1
+z0 int 1 0
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fcf2a81b8746556
+case
+z int 1 2
+z0 int 1 1
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fea569ec8137666
+case
+z int 1 3
+z0 int 1 2
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3ff9680c0ec1141f
+case
+z int 1 2
+z0 int 1 1
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fea569ec8137666
+case
+z int 1 0
+z0 int 1 0
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 0000000000000000
+case
+z int 1 1
+z0 int 1 0
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fcf2a81b8746556
+case
+z int 1 -3
+z0 int 1 3
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3feaaca96b9d7d8c
+case
+z int 1 1
+z0 int 1 0
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fcf2a81b8746556
+case
+z int 1 2
+z0 int 1 1
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fea569ec8137666
+case
+z int 1 0
+z0 int 1 0
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 0000000000000000
+case
+z int 1 1
+z0 int 1 0
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fcf2a81b8746556
+case
+z int 1 0
+z0 int 1 0
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 0000000000000000
+case
+z int 1 1
+z0 int 1 0
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fcf2a81b8746556
+case
+z int 1 1
+z0 int 1 0
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fcf2a81b8746556
+case
+z int 1 -1
+z0 int 1 1
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fb7b5ebede15328
+case
+z int 1 0
+z0 int 1 0
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 0000000000000000
+case
+z int 1 -2
+z0 int 1 2
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fd7b5ebede15328
+case
+z int 1 2
+z0 int 1 1
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fea569ec8137666
+case
+z int 1 2
+z0 int 1 1
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fea569ec8137666
+case
+z int 1 -1
+z0 int 1 1
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fb7b5ebede15328
+case
+z int 1 -1
+z0 int 1 1
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fb7b5ebede15328
+case
+z int 1 -2
+z0 int 1 2
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fd7b5ebede15328
+case
+z int 1 -1
+z0 int 1 1
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fb7b5ebede15328
+case
+z int 1 2
+z0 int 1 1
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fea569ec8137666
+case
+z int 1 1
+z0 int 1 0
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fcf2a81b8746556
+case
+z int 1 -2
+z0 int 1 2
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fd7b5ebede15328
+case
+z int 1 5
+z0 int 1 4
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 400d62deeeb22294
+case
+z int 1 -3
+z0 int 1 3
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3feaaca96b9d7d8c
+case
+z int 1 -3
+z0 int 1 3
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3feaaca96b9d7d8c
+case
+z int 1 2
+z0 int 1 1
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fea569ec8137666
+case
+z int 1 0
+z0 int 1 0
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 0000000000000000
+case
+z int 1 4
+z0 int 1 3
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 40044dc31b9a4bb9
+case
+z int 1 3
+z0 int 1 2
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3ff9680c0ec1141f
+case
+z int 1 2
+z0 int 1 1
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fea569ec8137666
+case
+z int 1 -1
+z0 int 1 1
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fb7b5ebede15328
+case
+z int 1 -4
+z0 int 1 4
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3ff7b5ebede15328
+case
+z int 1 3
+z0 int 1 2
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3ff9680c0ec1141f
+case
+z int 1 -3
+z0 int 1 3
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3feaaca96b9d7d8c
+case
+z int 1 0
+z0 int 1 0
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 0000000000000000
+case
+z int 1 -1
+z0 int 1 1
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fb7b5ebede15328
+case
+z int 1 0
+z0 int 1 0
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 0000000000000000
+case
+z int 1 2
+z0 int 1 1
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fea569ec8137666
+case
+z int 1 -1
+z0 int 1 1
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fb7b5ebede15328
+case
+z int 1 0
+z0 int 1 0
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 0000000000000000
+case
+z int 1 4
+z0 int 1 3
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 40044dc31b9a4bb9
+case
+z int 1 3
+z0 int 1 2
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3ff9680c0ec1141f
+case
+z int 1 2
+z0 int 1 1
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fea569ec8137666
+case
+z int 1 -1
+z0 int 1 1
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fb7b5ebede15328
+case
+z int 1 1
+z0 int 1 0
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fcf2a81b8746556
+case
+z int 1 -1
+z0 int 1 1
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fb7b5ebede15328
+case
+z int 1 1
+z0 int 1 0
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fcf2a81b8746556
+case
+z int 1 2
+z0 int 1 1
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fea569ec8137666
+case
+z int 1 0
+z0 int 1 0
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 0000000000000000
+case
+z int 1 3
+z0 int 1 2
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3ff9680c0ec1141f
+case
+z int 1 1
+z0 int 1 0
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fcf2a81b8746556
+case
+z int 1 2
+z0 int 1 1
+r float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+status ok
+out float 1 3fea569ec8137666
+case
+z int 1 -1
+z0 int 1 1
+r float 1 3fe1eef5b036fe80
+sigma float 1 3ffb7dc2cf79f6ed
+params ints 2 512 666
+status ok
+out float 1 3fd0bcc20859d4b4
+case
+z int 1 1
+z0 int 1 0
+r float 1 3fe1eef5b036fe80
+sigma float 1 3ffb7dc2cf79f6ed
+params ints 2 512 666
+status ok
+out float 1 3fa0c1808156ac0a
+case
+z int 1 -2
+z0 int 1 2
+r float 1 3fe1eef5b036fe80
+sigma float 1 3ffb7dc2cf79f6ed
+params ints 2 512 666
+status ok
+out float 1 3fe03817c1a2d938
+case
+z int 1 -1
+z0 int 1 1
+r float 1 3fe1eef5b036fe80
+sigma float 1 3ffb7dc2cf79f6ed
+params ints 2 512 666
+status ok
+out float 1 3fd0bcc20859d4b4
+case
+z int 1 1
+z0 int 1 0
+r float 1 3fd45ce8bb26c596
+sigma float 1 3ffb7dc2cf79f6ed
+params ints 2 512 666
+status ok
+out float 1 3fb428074986acc3
+case
+z int 1 -2
+z0 int 1 2
+r float 1 3fd0297e935b9600
+sigma float 1 3ffb788a3f3b8106
+params ints 2 512 666
+status ok
+out float 1 3fd0752ef63557fa
+case
+z int 1 -3
+z0 int 1 3
+r float 1 3fb9ef93f54ff100
+sigma float 1 3ffb788a3f3b8106
+params ints 2 512 666
+status ok
+out float 1 3fd182a6422c1cec
+case
+z int 1 -2
+z0 int 1 2
+r float 1 3fb9ef93f54ff100
+sigma float 1 3ffb788a3f3b8106
+params ints 2 512 666
+status ok
+out float 1 3fc29f0dc4ba39dc
+case
+z int 1 1
+z0 int 1 0
+r float 1 3f8a418ac407c000
+sigma float 1 3ffb7bfdc3be8a67
+params ints 2 512 666
+status ok
+out float 1 3fc5230d2b436193
+case
+z int 1 -2
+z0 int 1 2
+r float 1 3fedf2a9380c1020
+sigma float 1 3ffb7bfdc3be8a67
+params ints 2 512 666
+status ok
+out float 1 3feb6d32aebb575c
+case
+z int 1 0
+z0 int 1 0
+r float 1 3fedf2a9380c1020
+sigma float 1 3ffb7bfdc3be8a67
+params ints 2 512 666
+status ok
+out float 1 3fc2ff32800986d9
+case
+z int 1 -2
+z0 int 1 2
+r float 1 3fe7a363c40fdc00
+sigma float 1 3ffb76a1350f7d80
+params ints 2 512 666
+status ok
+out float 1 3fe56beb4990e238
+case
+z int 1 0
+z0 int 1 0
+r float 1 3fe7a363c40fdc00
+sigma float 1 3ffb76a1350f7d80
+params ints 2 512 666
+status ok
+out float 1 3fb7b4ecaec34add
+case
+z int 1 2
+z0 int 1 1
+r float 1 3fe7a363c40fdc00
+sigma float 1 3ffb76a1350f7d80
+params ints 2 512 666
+status ok
+out float 1 3fbe7eba461dde54
+case
+z int 1 0
+z0 int 1 0
+r float 1 3fef20d7b4f05c80
+sigma float 1 3ffb76a1350f7d80
+params ints 2 512 666
+status ok
+out float 1 3fc48e2296d6654a
+case
+z int 1 1
+z0 int 1 0
+r float 1 3fef20d7b4f05c80
+sigma float 1 3ffb76a1350f7d80
+params ints 2 512 666
+status ok
+out float 1 3f2081a7a4506c43
+case
+z int 1 3
+z0 int 1 2
+r float 1 3fef20d7b4f05c80
+sigma float 1 3ffb76a1350f7d80
+params ints 2 512 666
+status ok
+out float 1 3fb80f9ea731c960
+case
+z int 1 -2
+z0 int 1 2
+r float 1 3fd0cda724d55200
+sigma float 1 3ffb5cd9bfd9dcbb
+params ints 2 512 666
+status ok
+out float 1 3fd1639734e5e848
+case
+z int 1 0
+z0 int 1 0
+r float 1 3fd44ca0f1fdb0e0
+sigma float 1 3ffb5cd9bfd9dcbb
+params ints 2 512 666
+status ok
+out float 1 3f919c89474d331d
+case
+z int 1 -1
+z0 int 1 1
+r float 1 3fe58035c1587d80
+sigma float 1 3ffb57bc9004fff1
+params ints 2 512 666
+status ok
+out float 1 3fd4f92740e37cfd
+case
+z int 1 -2
+z0 int 1 2
+r float 1 3feb842e72217e80
+sigma float 1 3ffb57bc9004fff1
+params ints 2 512 666
+status ok
+out float 1 3fe97fc85f7a882e
+case
+z int 1 0
+z0 int 1 0
+r float 1 3fe496370d75b300
+sigma float 1 3ffb5bd08ffe6c63
+params ints 2 512 666
+status ok
+out float 1 3fb21e7f5941bc3c
+case
+z int 1 1
+z0 int 1 0
+r float 1 3fefc249ea1d42c0
+sigma float 1 3ffb5bd08ffe6c63
+params ints 2 512 666
+status ok
+out float 1 3ee45a05b4e6ca67
+case
+z int 1 2
+z0 int 1 1
+r float 1 3fee4735bfb13280
+sigma float 1 3ffb569e6f6d90ae
+params ints 2 512 666
+status ok
+out float 1 3fa4226670de0268
+case
+z int 1 2
+z0 int 1 1
+r float 1 3fee4735bfb13280
+sigma float 1 3ffb569e6f6d90ae
+params ints 2 512 666
+status ok
+out float 1 3fa4226670de0268
+case
+z int 1 3
+z0 int 1 2
+r float 1 3fecc860942b7400
+sigma float 1 3ffb569e6f6d90ae
+params ints 2 512 666
+status ok
+out float 1 3fc37b51de6a32a4
+case
+z int 1 2
+z0 int 1 1
+r float 1 3fecc860942b7400
+sigma float 1 3ffb569e6f6d90ae
+params ints 2 512 666
+status ok
+out float 1 3facf6686b655774
+case
+z int 1 2
+z0 int 1 1
+r float 1 3fecc860942b7400
+sigma float 1 3ffb569e6f6d90ae
+params ints 2 512 666
+status ok
+out float 1 3facf6686b655774
+case
+z int 1 -1
+z0 int 1 1
+r float 1 3fde976cd6fb8000
+sigma float 1 3ffb503750b90787
+params ints 2 512 666
+status ok
+out float 1 3fccaa0a6578c4aa
+case
+z int 1 1
+z0 int 1 0
+r float 1 3fe9814c2ede0700
+sigma float 1 3ffb503750b90787
+params ints 2 512 666
+status ok
+out float 1 3f7cf38de9e365c3
+case
+z int 1 0
+z0 int 1 0
+r float 1 3fc0e2400fc83600
+sigma float 1 3ffb47964d0cbf9c
+params ints 2 512 666
+status ok
+out float 1 3f6883feec541ce2
+case
+z int 1 -2
+z0 int 1 2
+r float 1 3fd965e8634e7d00
+sigma float 1 3ffb47964d0cbf9c
+params ints 2 512 666
+status ok
+out float 1 3fd89e60a39d1fea
+case
+z int 1 1
+z0 int 1 0
+r float 1 3fd9a619afa32700
+sigma float 1 3ffb4e038cb06e4e
+params ints 2 512 666
+status ok
+out float 1 3faf908d6be2fa9d
+case
+z int 1 0
+z0 int 1 0
+r float 1 3fea73f17a817a40
+sigma float 1 3ffb4e038cb06e4e
+params ints 2 512 666
+status ok
+out float 1 3fbe08d58a067b2c
+case
+z int 1 2
+z0 int 1 1
+r float 1 3fc457f1c6e6e200
+sigma float 1 3ffb4527fc88999a
+params ints 2 512 666
+status ok
+out float 1 3fdbaed19ecfe117
+case
+z int 1 -3
+z0 int 1 3
+r float 1 3fc457f1c6e6e200
+sigma float 1 3ffb4527fc88999a
+params ints 2 512 666
+status ok
+out float 1 3fd706d3cee81e28
+case
+z int 1 7
+z0 int 1 6
+r float 1 3fc457f1c6e6e200
+sigma float 1 3ffb4527fc88999a
+params ints 2 512 666
+status ok
+out float 1 4004fe50e3f56928
+case
+z int 1 3
+z0 int 1 2
+r float 1 3fc457f1c6e6e200
+sigma float 1 3ffb4527fc88999a
+params ints 2 512 666
+status ok
+out float 1 3fe925a5e610d132
+case
+z int 1 -2
+z0 int 1 2
+r float 1 3fc457f1c6e6e200
+sigma float 1 3ffb4527fc88999a
+params ints 2 512 666
+status ok
+out float 1 3fc97231d729a5c4
+case
+z int 1 1
+z0 int 1 0
+r float 1 3fc457f1c6e6e200
+sigma float 1 3ffb4527fc88999a
+params ints 2 512 666
+status ok
+out float 1 3fbf2b7ed2132633
+case
+z int 1 -2
+z0 int 1 2
+r float 1 3fc457f1c6e6e200
+sigma float 1 3ffb4527fc88999a
+params ints 2 512 666
+status ok
+out float 1 3fc97231d729a5c4
+case
+z int 1 1
+z0 int 1 0
+r float 1 3fc457f1c6e6e200
+sigma float 1 3ffb4527fc88999a
+params ints 2 512 666
+status ok
+out float 1 3fbf2b7ed2132633
+case
+z int 1 -2
+z0 int 1 2
+r float 1 3fe91d33edd64200
+sigma float 1 3ffb4527fc88999a
+params ints 2 512 666
+status ok
+out float 1 3fe7676db0e6392c
+case
+z int 1 0
+z0 int 1 0
+r float 1 3fe91d33edd64200
+sigma float 1 3ffb4527fc88999a
+params ints 2 512 666
+status ok
+out float 1 3fbb23d5bc809dc3
+case
+z int 1 0
+z0 int 1 0
+r float 1 3fec05b3e56fd380
+sigma float 1 3ffb2aba2c2b36e4
+params ints 2 512 666
+status ok
+out float 1 3fc105fe1f9f00b9
+case
+z int 1 2
+z0 int 1 1
+r float 1 3fefef51798f4800
+sigma float 1 3ffb2aba2c2b36e4
+params ints 2 512 666
+status ok
+out float 1 3f97d5308aee2da8
+case
+z int 1 0
+z0 int 1 0
+r float 1 3fefef51798f4800
+sigma float 1 3ffb2aba2c2b36e4
+params ints 2 512 666
+status ok
+out float 1 3fc61be77ac53ebc
+case
+z int 1 1
+z0 int 1 0
+r float 1 3fefef51798f4800
+sigma float 1 3ffb2aba2c2b36e4
+params ints 2 512 666
+status ok
+out float 1 3ea821a2c79a5f4d
+case
+z int 1 0
+z0 int 1 0
+r float 1 3fefef51798f4800
+sigma float 1 3ffb2aba2c2b36e4
+params ints 2 512 666
+status ok
+out float 1 3fc61be77ac53ebc
+case
+z int 1 3
+z0 int 1 2
+r float 1 3fe8e8fa494f6200
+sigma float 1 3ffb21e954c1934c
+params ints 2 512 666
+status ok
+out float 1 3fd04c557b75baf6
+case
+z int 1 0
+z0 int 1 0
+r float 1 3fe7c28f6af91980
+sigma float 1 3ffb21e954c1934c
+params ints 2 512 666
+status ok
+out float 1 3fb88a178f56421c
+case
+z int 1 -1
+z0 int 1 1
+r float 1 3fe7c28f6af91980
+sigma float 1 3ffb21e954c1934c
+params ints 2 512 666
+status ok
+out float 1 3fd821d8672e2d5b
+case
+z int 1 -3
+z0 int 1 3
+r float 1 3fe25fdec2cb4c00
+sigma float 1 3ffb29a7e0ac39e9
+params ints 2 512 666
+status ok
+out float 1 3feb78acb809ea04
+case
+z int 1 -2
+z0 int 1 2
+r float 1 3fe25fdec2cb4c00
+sigma float 1 3ffb29a7e0ac39e9
+params ints 2 512 666
+status ok
+out float 1 3fe17a070fc6ac54
+case
+z int 1 2
+z0 int 1 1
+r float 1 3fe25fdec2cb4c00
+sigma float 1 3ffb29a7e0ac39e9
+params ints 2 512 666
+status ok
+out float 1 3fc9d505e2881264
+case
+z int 1 3
+z0 int 1 2
+r float 1 3fe25fdec2cb4c00
+sigma float 1 3ffb29a7e0ac39e9
+params ints 2 512 666
+status ok
+out float 1 3fdab6eb9b06cbc4
+case
+z int 1 -1
+z0 int 1 1
+r float 1 3fe5746f4d76dd00
+sigma float 1 3ffb29a7e0ac39e9
+params ints 2 512 666
+status ok
+out float 1 3fd553c35c02c847
+case
+z int 1 -1
+z0 int 1 1
+r float 1 3fe5746f4d76dd00
+sigma float 1 3ffb29a7e0ac39e9
+params ints 2 512 666
+status ok
+out float 1 3fd553c35c02c847
+case
+z int 1 0
+z0 int 1 0
+r float 1 3faa7efa33b0a400
+sigma float 1 3ffb20baa92cc019
+params ints 2 512 666
+status ok
+out float 1 3f3e86d6ddd938b3
+case
+z int 1 -1
+z0 int 1 1
+r float 1 3faa7efa33b0a400
+sigma float 1 3ffb20baa92cc019
+params ints 2 512 666
+status ok
+out float 1 3fa54406aa1503f0
+case
+z int 1 -1
+z0 int 1 1
+r float 1 3faa7efa33b0a400
+sigma float 1 3ffb20baa92cc019
+params ints 2 512 666
+status ok
+out float 1 3fa54406aa1503f0
+case
+z int 1 -1
+z0 int 1 1
+r float 1 3fe4c1faf6ede500
+sigma float 1 3ffb20baa92cc019
+params ints 2 512 666
+status ok
+out float 1 3fd49a1f01548403
+case
+z int 1 -1
+z0 int 1 1
+r float 1 3fea4b9084cb3d40
+sigma float 1 3ffb2e4ba8ba1574
+params ints 2 512 666
+status ok
+out float 1 3fdb24a088f31513
+case
+z int 1 2
+z0 int 1 1
+r float 1 3fea4b9084cb3d40
+sigma float 1 3ffb2e4ba8ba1574
+params ints 2 512 666
+status ok
+out float 1 3fb6f49a571199d8
+case
+z int 1 2
+z0 int 1 1
+r float 1 3fea4b9084cb3d40
+sigma float 1 3ffb2e4ba8ba1574
+params ints 2 512 666
+status ok
+out float 1 3fb6f49a571199d8
+case
+z int 1 4
+z0 int 1 3
+r float 1 3fe9c40747b928d0
+sigma float 1 3ffb2e4ba8ba1574
+params ints 2 512 666
+status ok
+out float 1 3fda4748fc695038
+case
+z int 1 0
+z0 int 1 0
+r float 1 3fe817833a93bdc0
+sigma float 1 3ffb285366a548dd
+params ints 2 512 666
+status ok
+out float 1 3fb92ee21da931e7
+case
+z int 1 1
+z0 int 1 0
+r float 1 3fc30792c5856b00
+sigma float 1 3ffb285366a548dd
+params ints 2 512 666
+status ok
+out float 1 3fc019b47117f1d5
+case
+z int 1 0
+z0 int 1 0
+r float 1 3fde78cf521e8a00
+sigma float 1 3ffb29c92463f1bd
+params ints 2 512 666
+status ok
+out float 1 3fa4229eeee1eacf
+case
+z int 1 -2
+z0 int 1 2
+r float 1 3fde78cf521e8a00
+sigma float 1 3ffb29c92463f1bd
+params ints 2 512 666
+status ok
+out float 1 3fdd737a22eadccc
+case
+z int 1 -1
+z0 int 1 1
+r float 1 3fde78cf521e8a00
+sigma float 1 3ffb29c92463f1bd
+params ints 2 512 666
+status ok
+out float 1 3fcd12c9256ebefe
+case
+z int 1 0
+z0 int 1 0
+r float 1 3fe00010d4465ec0
+sigma float 1 3ffb29c92463f1bd
+params ints 2 512 666
+status ok
+out float 1 3fa634bf534a2cdb
+case
+z int 1 -1
+z0 int 1 1
+r float 1 3fefe71fb0e1de80
+sigma float 1 3ffb236f34c2b362
+params ints 2 512 666
+status ok
+out float 1 3fe159cbdaeee54c
+case
+z int 1 -1
+z0 int 1 1
+r float 1 3fefe71fb0e1de80
+sigma float 1 3ffb236f34c2b362
+params ints 2 512 666
+status ok
+out float 1 3fe159cbdaeee54c
+case
+z int 1 -1
+z0 int 1 1
+r float 1 3fefe71fb0e1de80
+sigma float 1 3ffb236f34c2b362
+params ints 2 512 666
+status ok
+out float 1 3fe159cbdaeee54c
+case
+z int 1 2
+z0 int 1 1
+r float 1 3fdf3825a9d19e80
+sigma float 1 3ffb236f34c2b362
+params ints 2 512 666
+status ok
+out float 1 3fcf8f5f0230df9e
+case
+z int 1 -1
+z0 int 1 1
+r float 1 3fd5d433c1c91200
+sigma float 1 3ffb0e018a00cecd
+params ints 2 512 666
+status ok
+out float 1 3fc4f23f2b0a0f96
+case
+z int 1 3
+z0 int 1 2
+r float 1 3fdcd71d8eae4000
+sigma float 1 3ffb0e018a00cecd
+params ints 2 512 666
+status ok
+out float 1 3fe10f1a9771f1b4
+case
+z int 1 4
+z0 int 1 3
+r float 1 3feec4711b8b0280
+sigma float 1 3ffb081d6d088014
+params ints 2 512 666
+status ok
+out float 1 3fd09bb3be3a2e5c
+case
+z int 1 -2
+z0 int 1 2
+r float 1 3feec4711b8b0280
+sigma float 1 3ffb081d6d088014
+params ints 2 512 666
+status ok
+out float 1 3fedd9f64e452d9c
+case
+z int 1 -1
+z0 int 1 1
+r float 1 3feec4711b8b0280
+sigma float 1 3ffb081d6d088014
+params ints 2 512 666
+status ok
+out float 1 3fe0bd27392c2f82
+case
+z int 1 2
+z0 int 1 1
+r float 1 3feec4711b8b0280
+sigma float 1 3ffb081d6d088014
+params ints 2 512 666
+status ok
+out float 1 3fa37ccfced57774
+case
+z int 1 1
+z0 int 1 0
+r float 1 3feec4711b8b0280
+sigma float 1 3ffb081d6d088014
+params ints 2 512 666
+status ok
+out float 1 3f3108c27e67c322
+case
+z int 1 2
+z0 int 1 1
+r float 1 3fd5f7dead15ff80
+sigma float 1 3ffb081d6d088014
+params ints 2 512 666
+status ok
+out float 1 3fd51dd9a84b569a
+case
+z int 1 -1
+z0 int 1 1
+r float 1 3fd5f7dead15ff80
+sigma float 1 3ffb081d6d088014
+params ints 2 512 666
+status ok
+out float 1 3fc525580bbc7e00
+case
+z int 1 3
+z0 int 1 2
+r float 1 3fd5f7dead15ff80
+sigma float 1 3ffb081d6d088014
+params ints 2 512 666
+status ok
+out float 1 3fe44125703be550
+case
+z int 1 -1
+z0 int 1 1
+r float 1 3fdd8b893482fa60
+sigma float 1 3ffb0ad9c208d9cf
+params ints 2 512 666
+status ok
+out float 1 3fcc8db733ac8214
+case
+z int 1 -1
+z0 int 1 1
+r float 1 3fed5a570317fe00
+sigma float 1 3ffb0ad9c208d9cf
+params ints 2 512 666
+status ok
+out float 1 3fdf85e95b398837
+case
+z int 1 2
+z0 int 1 1
+r float 1 3fbef64e45052500
+sigma float 1 3ffb04b3d18910f1
+params ints 2 512 666
+status ok
+out float 1 3fddf7c8a0547f5b
+case
+z int 1 2
+z0 int 1 1
+r float 1 3fe6a7f764c0b3c0
+sigma float 1 3ffb04b3d18910f1
+params ints 2 512 666
+status ok
+out float 1 3fc22775eb4e8840
+case
+z int 1 1
+z0 int 1 0
+r float 1 3fd7516d01e54a00
+sigma float 1 3ffaee97df9b8f08
+params ints 2 512 666
+status ok
+out float 1 3fb240ffbe727da1
+case
+z int 1 0
+z0 int 1 0
+r float 1 3feb89e18227dc80
+sigma float 1 3ffaee97df9b8f08
+params ints 2 512 666
+status ok
+out float 1 3fc0ba964db70f22
+case
+z int 1 2
+z0 int 1 1
+r float 1 3fd2167458e2ba00
+sigma float 1 3ffae275c6304b3c
+params ints 2 512 666
+status ok
+out float 1 3fd7c5e2db5d9b53
+case
+z int 1 3
+z0 int 1 2
+r float 1 3fc967d4e671d580
+sigma float 1 3ffae275c6304b3c
+params ints 2 512 666
+status ok
+out float 1 3fe92aac4ade855a
+case
+z int 1 -1
+z0 int 1 1
+r float 1 3fc967d4e671d580
+sigma float 1 3ffae275c6304b3c
+params ints 2 512 666
+status ok
+out float 1 3fba7f43a519bf34
+case
+z int 1 2
+z0 int 1 1
+r float 1 3fe9c92f9a7c7e80
+sigma float 1 3ffae750bd3f75fa
+params ints 2 512 666
+status ok
+out float 1 3fb9f0ce21f0dd88
+case
+z int 1 0
+z0 int 1 0
+r float 1 3f52baf0c28bc000
+sigma float 1 3ffae750bd3f75fa
+params ints 2 512 666
+status ok
+out float 1 3e8f05349dfc154c
+case
+z int 1 -2
+z0 int 1 2
+r float 1 3fb829f21d528000
+sigma float 1 3ffada4845921dd4
+params ints 2 512 666
+status ok
+out float 1 3fc66d171e3b8dd8
+case
+z int 1 -2
+z0 int 1 2
+r float 1 3fb829f21d528000
+sigma float 1 3ffada4845921dd4
+params ints 2 512 666
+status ok
+out float 1 3fc66d171e3b8dd8
+case
+z int 1 1
+z0 int 1 0
+r float 1 3fb829f21d528000
+sigma float 1 3ffada4845921dd4
+params ints 2 512 666
+status ok
+out float 1 3fc2a28a1616da54
+case
+z int 1 2
+z0 int 1 1
+r float 1 3fe2f14926ea3ec0
+sigma float 1 3ffada4845921dd4
+params ints 2 512 666
+status ok
+out float 1 3fc9bcd53add35a0
+case
+z int 1 0
+z0 int 1 0
+r float 1 3fe3ea77bc99d180
+sigma float 1 3ffac6422475e350
+params ints 2 512 666
+status ok
+out float 1 3fb1b49c2720bde9
+case
+z int 1 -3
+z0 int 1 3
+r float 1 3fe65be7f2753d40
+sigma float 1 3ffac6422475e350
+params ints 2 512 666
+status ok
+out float 1 3ff15bd83ace69b2
+case
+z int 1 1
+z0 int 1 0
+r float 1 3fe5e5a4b1085b80
+sigma float 1 3ffab950d7ad564c
+params ints 2 512 666
+status ok
+out float 1 3f924b406a7fc8a5
+case
+z int 1 2
+z0 int 1 1
+r float 1 3fe5e5a4b1085b80
+sigma float 1 3ffab950d7ad564c
+params ints 2 512 666
+status ok
+out float 1 3fc4674a000e6d3e
+case
+z int 1 1
+z0 int 1 0
+r float 1 3fc95a5c295ddc00
+sigma float 1 3ffab950d7ad564c
+params ints 2 512 666
+status ok
+out float 1 3fbd81c38a95e8f7
+case
+z int 1 -1
+z0 int 1 1
+r float 1 3fda3a4fb80dc300
+sigma float 1 3ffac12a275cb596
+params ints 2 512 666
+status ok
+out float 1 3fca2eae0c626784
+case
+z int 1 1
+z0 int 1 0
+r float 1 3fefc411fb06dbb0
+sigma float 1 3ffac12a275cb596
+params ints 2 512 666
+status ok
+out float 1 3ee411f2f907310f
+case
+z int 1 -1
+z0 int 1 1
+r float 1 3fc5e956f8c2dc00
+sigma float 1 3ffab396a21f1043
+params ints 2 512 666
+status ok
+out float 1 3fb86b955f6d387a
+case
+z int 1 -1
+z0 int 1 1
+r float 1 3fdbbc5e9b782c00
+sigma float 1 3ffab396a21f1043
+params ints 2 512 666
+status ok
+out float 1 3fcbe71abc3e7642
+case
+z int 1 1
+z0 int 1 0
+r float 1 3fcf5b9219dbb200
+sigma float 1 3ffac3ce16f3a49d
+params ints 2 512 666
+status ok
+out float 1 3fba135b205f33db
+case
+z int 1 -1
+z0 int 1 1
+r float 1 3fcf5b9219dbb200
+sigma float 1 3ffac3ce16f3a49d
+params ints 2 512 666
+status ok
+out float 1 3fc023a655a48d6c
+case
+z int 1 1
+z0 int 1 0
+r float 1 3feea04683b84680
+sigma float 1 3ffac3ce16f3a49d
+params ints 2 512 666
+status ok
+out float 1 3f35962eed4e315b
+case
+z int 1 -1
+z0 int 1 1
+r float 1 3fc8b8f3f1849e00
+sigma float 1 3ffac082920268da
+params ints 2 512 666
+status ok
+out float 1 3fba8f5821228b08
+case
+z int 1 4
+z0 int 1 3
+r float 1 3fea5abdce6a0c00
+sigma float 1 3ffac082920268da
+params ints 2 512 666
+status ok
+out float 1 3fdc982a2a6622d0
+case
+z int 1 0
+z0 int 1 0
+r float 1 3fea5abdce6a0c00
+sigma float 1 3ffac082920268da
+params ints 2 512 666
+status ok
+out float 1 3fbf0e57e2ad077f
+case
+z int 1 4
+z0 int 1 3
+r float 1 3fea148040ed5c00
+sigma float 1 3ffac3c076c52509
+params ints 2 512 666
+status ok
+out float 1 3fdd1be076b50324
+case
+z int 1 -2
+z0 int 1 2
+r float 1 3fea148040ed5c00
+sigma float 1 3ffac3c076c52509
+params ints 2 512 666
+status ok
+out float 1 3fe9ffd17d4c945a
+case
+z int 1 2
+z0 int 1 1
+r float 1 3fea148040ed5c00
+sigma float 1 3ffac3c076c52509
+params ints 2 512 666
+status ok
+out float 1 3fb99cadbc31df60
+case
+z int 1 3
+z0 int 1 2
+r float 1 3fe9c27c84ff4500
+sigma float 1 3ffac3c076c52509
+params ints 2 512 666
+status ok
+out float 1 3fd07a1b42bdec26
+case
+z int 1 4
+z0 int 1 3
+r float 1 3fda952a7caafa00
+sigma float 1 3ffac074be90dfaf
+params ints 2 512 666
+status ok
+out float 1 3fee18464f61e88c
+case
+z int 1 0
+z0 int 1 0
+r float 1 3fda952a7caafa00
+sigma float 1 3ffac074be90dfaf
+params ints 2 512 666
+status ok
+out float 1 3f9f98c30059777e
+case
+z int 1 -1
+z0 int 1 1
+r float 1 3fda952a7caafa00
+sigma float 1 3ffac074be90dfaf
+params ints 2 512 666
+status ok
+out float 1 3fca8ce852e77494
+case
+z int 1 2
+z0 int 1 1
+r float 1 3fe66725afbf1400
+sigma float 1 3ffac074be90dfaf
+params ints 2 512 666
+status ok
+out float 1 3fc35fc2e2858d58
+case
+z int 1 2
+z0 int 1 1
+r float 1 3fe3fbeba8590a00
+sigma float 1 3ffaaf56cce3d199
+params ints 2 512 666
+status ok
+out float 1 3fc838a1fce1cdb4
+case
+z int 1 1
+z0 int 1 0
+r float 1 3fdcadaf69e6d900
+sigma float 1 3ffaaf56cce3d199
+params ints 2 512 666
+status ok
+out float 1 3fac086a16560a33
+case
+z int 1 -1
+z0 int 1 1
+r float 1 3fdcadaf69e6d900
+sigma float 1 3ffaaf56cce3d199
+params ints 2 512 666
+status ok
+out float 1 3fccf020a604a2c6
+case
+z int 1 2
+z0 int 1 1
+r float 1 3fec360600324b00
+sigma float 1 3ffaabebca1c0298
+params ints 2 512 666
+status ok
+out float 1 3fb2fee2598faaee
+case
+z int 1 -2
+z0 int 1 2
+r float 1 3fec360600324b00
+sigma float 1 3ffaabebca1c0298
+params ints 2 512 666
+status ok
+out float 1 3fec801812c594f2
+case
+z int 1 0
+z0 int 1 0
+r float 1 3fd62f16c74c9780
+sigma float 1 3ffaabebca1c0298
+params ints 2 512 666
+status ok
+out float 1 3f9623391b989f66
+case
+z int 1 -1
+z0 int 1 1
+r float 1 3fb4297b6d4a0c00
+sigma float 1 3ffaaf48efad88aa
+params ints 2 512 666
+status ok
+out float 1 3faddc46cbb0cbc4
+case
+z int 1 -2
+z0 int 1 2
+r float 1 3fb4297b6d4a0c00
+sigma float 1 3ffaaf48efad88aa
+params ints 2 512 666
+status ok
+out float 1 3fc62f0bb413d36c
+case
+z int 1 1
+z0 int 1 0
+r float 1 3fedda8588aaffc0
+sigma float 1 3ffaaf48efad88aa
+params ints 2 512 666
+status ok
+out float 1 3f4a8029fde462e5
+case
+z int 1 2
+z0 int 1 1
+r float 1 3fd56a0c745fbb00
+sigma float 1 3ffaabdec2548c49
+params ints 2 512 666
+status ok
+out float 1 3fd648eb59dae6ff
+case
+z int 1 -1
+z0 int 1 1
+r float 1 3fef120340e11800
+sigma float 1 3ffaabdec2548c49
+params ints 2 512 666
+status ok
+out float 1 3fe18a3a610491b4
+case
+z int 1 -1
+z0 int 1 1
+r float 1 3fef120340e11800
+sigma float 1 3ffaabdec2548c49
+params ints 2 512 666
+status ok
+out float 1 3fe18a3a610491b4
+case
+z int 1 3
+z0 int 1 2
+r float 1 3fecfa2906942f48
+sigma float 1 3ffa8fdcdff93c79
+params ints 2 512 666
+status ok
+out float 1 3fc8a073a521e48c
+case
+z int 1 -3
+z0 int 1 3
+r float 1 3fbec82f9727e800
+sigma float 1 3ffa8fdcdff93c79
+params ints 2 512 666
+status ok
+out float 1 3fda253782e757f0
+case
+z int 1 0
+z0 int 1 0
+r float 1 3fbec82f9727e800
+sigma float 1 3ffa8fdcdff93c79
+params ints 2 512 666
+status ok
+out float 1 3f657ce296c00cab
+case
+z int 1 0
+z0 int 1 0
+r float 1 3fdef870939b3300
+sigma float 1 3ffa899a76b2560a
+params ints 2 512 666
+status ok
+out float 1 3fa5cab9dbe3c2c4
+case
+z int 1 -1
+z0 int 1 1
+r float 1 3fb133dc3155b800
+sigma float 1 3ffa899a76b2560a
+params ints 2 512 666
+status ok
+out float 1 3facbe45b84669c0
+case
+z int 1 2
+z0 int 1 1
+r float 1 3fdff1964aee8e00
+sigma float 1 3ffa8fae8022c2bb
+params ints 2 512 666
+status ok
+out float 1 3fd0805da49d6ed6
+case
+z int 1 -3
+z0 int 1 3
+r float 1 3fc11f0c8d3a0600
+sigma float 1 3ffa8fae8022c2bb
+params ints 2 512 666
+status ok
+out float 1 3fdb2210608a23e0
+case
+z int 1 3
+z0 int 1 2
+r float 1 3fc11f0c8d3a0600
+sigma float 1 3ffa8fae8022c2bb
+params ints 2 512 666
+status ok
+out float 1 3fec62cb6d3f6998
+case
+z int 1 -1
+z0 int 1 1
+r float 1 3fc11f0c8d3a0600
+sigma float 1 3ffa8fae8022c2bb
+params ints 2 512 666
+status ok
+out float 1 3fb514d5e2d36e86
+case
+z int 1 2
+z0 int 1 1
+r float 1 3fc0e903902ab300
+sigma float 1 3ffa8969541d6357
+params ints 2 512 666
+status ok
+out float 1 3fdeeeb8233c1771
+case
+z int 1 2
+z0 int 1 1
+r float 1 3fc4216043458800
+sigma float 1 3ffa8969541d6357
+params ints 2 512 666
+status ok
+out float 1 3fddd8b782d0516d
+case
+z int 1 1
+z0 int 1 0
+r float 1 3fc4216043458800
+sigma float 1 3ffa8969541d6357
+params ints 2 512 666
+status ok
+out float 1 3fc086050f40c38f
+case
+z int 1 3
+z0 int 1 2
+r float 1 3faf5842b60a5800
+sigma float 1 3ffa7768f640f070
+params ints 2 512 666
+status ok
+out float 1 3fef30cb3c5cb400
+case
+z int 1 2
+z0 int 1 1
+r float 1 3fe1b6398a90f180
+sigma float 1 3ffa7768f640f070
+params ints 2 512 666
+status ok
+out float 1 3fcda13d9a574644
+case
+z int 1 3
+z0 int 1 2
+r float 1 3fd743b08635ee00
+sigma float 1 3ffa70abd1051660
+params ints 2 512 666
+status ok
+out float 1 3fe56aa9d87d535e
+case
+z int 1 -1
+z0 int 1 1
+r float 1 3fd743b08635ee00
+sigma float 1 3ffa70abd1051660
+params ints 2 512 666
+status ok
+out float 1 3fc842e264c360b8
+case
+z int 1 0
+z0 int 1 0
+r float 1 3fe96be2cf52e280
+sigma float 1 3ffa70abd1051660
+params ints 2 512 666
+status ok
+out float 1 3fbd94e9cc46d0fe
+case
+z int 1 0
+z0 int 1 0
+r float 1 3fecb8f2fd231700
+sigma float 1 3ffa77543e2f92a5
+params ints 2 512 666
+status ok
+out float 1 3fc2d82aa02ac075
+case
+z int 1 -1
+z0 int 1 1
+r float 1 3fdfee309b9e55c0
+sigma float 1 3ffa77543e2f92a5
+params ints 2 512 666
+status ok
+out float 1 3fd09eec9c1fd6d1
+case
+z int 1 3
+z0 int 1 2
+r float 1 3fdfee309b9e55c0
+sigma float 1 3ffa77543e2f92a5
+params ints 2 512 666
+status ok
+out float 1 3fe144c880d32238
+case
+z int 1 3
+z0 int 1 2
+r float 1 3fdfee309b9e55c0
+sigma float 1 3ffa77543e2f92a5
+params ints 2 512 666
+status ok
+out float 1 3fe144c880d32238
+case
+z int 1 -1
+z0 int 1 1
+r float 1 3fea19ac68cd5fc0
+sigma float 1 3ffa7098d811d573
+params ints 2 512 666
+status ok
+out float 1 3fdcf99bb647a247
+case
+z int 1 1
+z0 int 1 0
+r float 1 3fea19ac68cd5fc0
+sigma float 1 3ffa7098d811d573
+params ints 2 512 666
+status ok
+out float 1 3f797e1bd67d1181
+case
+z int 1 -3
+z0 int 1 3
+r float 1 3fe0ce2c99308080
+sigma float 1 3ffa7098d811d573
+params ints 2 512 666
+status ok
+out float 1 3fed5cdbb6927498
+case
+z int 1 1
+z0 int 1 0
+r float 1 3fe0ce2c99308080
+sigma float 1 3ffa7098d811d573
+params ints 2 512 666
+status ok
+out float 1 3fa523112eff37b2
+case
+z int 1 -2
+z0 int 1 2
+r float 1 3fc263ab8cae5400
+sigma float 1 3ffa66cf551dadd1
+params ints 2 512 666
+status ok
+out float 1 3fcec502b1abb014
+case
+z int 1 2
+z0 int 1 1
+r float 1 3fc263ab8cae5400
+sigma float 1 3ffa66cf551dadd1
+params ints 2 512 666
+status ok
+out float 1 3fded7e66b99c3e5
+case
+z int 1 1
+z0 int 1 0
+r float 1 3fb0a3955c115d00
+sigma float 1 3ffa66cf551dadd1
+params ints 2 512 666
+status ok
+out float 1 3fc48c7d8a448c7d
+case
+z int 1 2
+z0 int 1 1
+r float 1 3fc153695ec71e00
+sigma float 1 3ffa62bb64549dd3
+params ints 2 512 666
+status ok
+out float 1 3fdf418ce21be801
+case
+z int 1 1
+z0 int 1 0
+r float 1 3fecf08ccb86b780
+sigma float 1 3ffa62bb64549dd3
+params ints 2 512 666
+status ok
+out float 1 3f5b8d09e4d87c97
+case
+z int 1 1
+z0 int 1 0
+r float 1 3fbd552fd84f1600
+sigma float 1 3ffa6580c865d27e
+params ints 2 512 666
+status ok
+out float 1 3fc26f298a6a4f36
+case
+z int 1 1
+z0 int 1 0
+r float 1 3fe0772274599a20
+sigma float 1 3ffa6580c865d27e
+params ints 2 512 666
+status ok
+out float 1 3fa62a856ed3c97b
+case
+z int 1 -1
+z0 int 1 1
+r float 1 3fe92a131638c680
+sigma float 1 3ffa61661816beb9
+params ints 2 512 666
+status ok
+out float 1 3fdbe8b277d9304d
+case
+z int 1 -1
+z0 int 1 1
+r float 1 3fe92a131638c680
+sigma float 1 3ffa61661816beb9
+params ints 2 512 666
+status ok
+out float 1 3fdbe8b277d9304d
+case
+z int 1 1
+z0 int 1 0
+r float 1 3fd766603e328000
+sigma float 1 3ffa61661816beb9
+params ints 2 512 666
+status ok
+out float 1 3fb2f2dd60cd6cd2
+case
+z int 1 1
+z0 int 1 0
+r float 1 3fd766603e328000
+sigma float 1 3ffa61661816beb9
+params ints 2 512 666
+status ok
+out float 1 3fb2f2dd60cd6cd2
+case
+z int 1 1
+z0 int 1 0
+r float 1 3fda91682989db00
+sigma float 1 3ffa54b11fadd6ec
+params ints 2 512 666
+status ok
+out float 1 3fb02aebacc78727
+case
+z int 1 -1
+z0 int 1 1
+r float 1 3fda91682989db00
+sigma float 1 3ffa54b11fadd6ec
+params ints 2 512 666
+status ok
+out float 1 3fcc035f06cf4468
+case
+z int 1 -4
+z0 int 1 4
+r float 1 3fda91682989db00
+sigma float 1 3ffa54b11fadd6ec
+params ints 2 512 666
+status ok
+out float 1 3ff2f5e7fec61520
+case
+z int 1 -3
+z0 int 1 3
+r float 1 3fd6032e5c8be600
+sigma float 1 3ffa54b11fadd6ec
+params ints 2 512 666
+status ok
+out float 1 3fe69cc9470ec840
+case
+z int 1 2
+z0 int 1 1
+r float 1 3fc23af6de198000
+sigma float 1 3ffa509c7c7761d0
+params ints 2 512 666
+status ok
+out float 1 3fdf2a4ff7db0907
+case
+z int 1 1
+z0 int 1 0
+r float 1 3fc23af6de198000
+sigma float 1 3ffa509c7c7761d0
+params ints 2 512 666
+status ok
+out float 1 3fc1668708d56f95
+case
+z int 1 -1
+z0 int 1 1
+r float 1 3fb58b59b59a7000
+sigma float 1 3ffa509c7c7761d0
+params ints 2 512 666
+status ok
+out float 1 3fb0ffa6d4db87fa
+case
+z int 1 3
+z0 int 1 2
+r float 1 3f7c93e3131b4000
+sigma float 1 3ffa539e6bc78af5
+params ints 2 512 666
+status ok
+out float 1 3ff0d0a18fc81347
+case
+z int 1 -1
+z0 int 1 1
+r float 1 3f7c93e3131b4000
+sigma float 1 3ffa539e6bc78af5
+params ints 2 512 666
+status ok
+out float 1 3fa2a31c33732c68
+case
+z int 1 3
+z0 int 1 2
+r float 1 3fa47f99cdd39500
+sigma float 1 3ffa539e6bc78af5
+params ints 2 512 666
+status ok
+out float 1 3ff03bc3163d6451
+case
+z int 1 0
+z0 int 1 0
+r float 1 3fd6eb0f7071ab00
+sigma float 1 3ffa4f8b4b7188b7
+params ints 2 512 666
+status ok
+out float 1 3f9847a333258396
+case
+z int 1 3
+z0 int 1 2
+r float 1 3fdf9720f32d9580
+sigma float 1 3ffa4f8b4b7188b7
+params ints 2 512 666
+status ok
+out float 1 3fe1dc0a316538cc
+case
+z int 1 1
+z0 int 1 0
+r float 1 3fdf9720f32d9580
+sigma float 1 3ffa4f8b4b7188b7
+params ints 2 512 666
+status ok
+out float 1 3fa84707e09e37e5
+case
+z int 1 -3
+z0 int 1 3
+r float 1 3fdf9720f32d9580
+sigma float 1 3ffa4f8b4b7188b7
+params ints 2 512 666
+status ok
+out float 1 3fecc4a019f7f6e8
+case
+z int 1 4
+z0 int 1 3
+r float 1 3fdf9720f32d9580
+sigma float 1 3ffa4f8b4b7188b7
+params ints 2 512 666
+status ok
+out float 1 3fed4c5cd912aa24
+case
+z int 1 -2
+z0 int 1 2
+r float 1 3fdf9720f32d9580
+sigma float 1 3ffa4f8b4b7188b7
+params ints 2 512 666
+status ok
+out float 1 3fe17b15a8e46fa2
+case
+z int 1 3
+z0 int 1 2
+r float 1 3fe00f2a9040c480
+sigma float 1 3ffa1ca136a73685
+params ints 2 512 666
+status ok
+out float 1 3fe22e086773f6d0
+case
+z int 1 3
+z0 int 1 2
+r float 1 3fe00f2a9040c480
+sigma float 1 3ffa1ca136a73685
+params ints 2 512 666
+status ok
+out float 1 3fe22e086773f6d0
+case
+z int 1 2
+z0 int 1 1
+r float 1 3fe00f2a9040c480
+sigma float 1 3ffa1ca136a73685
+params ints 2 512 666
+status ok
+out float 1 3fd14fa842fe0e5d
+case
+z int 1 0
+z0 int 1 0
+r float 1 3fe00f2a9040c480
+sigma float 1 3ffa1ca136a73685
+params ints 2 512 666
+status ok
+out float 1 3fa8353273a84ab8
+case
+z int 1 0
+z0 int 1 0
+r float 1 3feedc537e3618e0
+sigma float 1 3ffa1ca136a73685
+params ints 2 512 666
+status ok
+out float 1 3fc6594eab50c5f2
+case
+z int 1 5
+z0 int 1 4
+r float 1 3fe0e4a71112e300
+sigma float 1 3ffa1273c862eb4b
+params ints 2 512 666
+status ok
+out float 1 3ff5a2692b3471a8
+case
+z int 1 1
+z0 int 1 0
+r float 1 3fe0e4a71112e300
+sigma float 1 3ffa1273c862eb4b
+params ints 2 512 666
+status ok
+out float 1 3fa57ca9c0bc5d5c
+case
+z int 1 0
+z0 int 1 0
+r float 1 3fe4a4d4a4f03300
+sigma float 1 3ffa1273c862eb4b
+params ints 2 512 666
+status ok
+out float 1 3fb40ff35314da07
+case
+z int 1 -2
+z0 int 1 2
+r float 1 3fe4f00b51b83880
+sigma float 1 3ffa1954213dc291
+params ints 2 512 666
+status ok
+out float 1 3fe70e167b49d0ac
+case
+z int 1 2
+z0 int 1 1
+r float 1 3fe8eae16b262380
+sigma float 1 3ffa1954213dc291
+params ints 2 512 666
+status ok
+out float 1 3fc091727e26ecd0
+case
+z int 1 0
+z0 int 1 0
+r float 1 3fc37f183f85c000
+sigma float 1 3ffa0ee0b2cc3c27
+params ints 2 512 666
+status ok
+out float 1 3f71e9ce245227c7
+case
+z int 1 0
+z0 int 1 0
+r float 1 3fdab5bc9abb2a00
+sigma float 1 3ffa0ee0b2cc3c27
+params ints 2 512 666
+status ok
+out float 1 3fa0cf78371e3c95
+case
+z int 1 1
+z0 int 1 0
+r float 1 3f9464ef3d73e000
+sigma float 1 3ffa0250513a76b9
+params ints 2 512 666
+status ok
+out float 1 3fc743c44104cfde
+case
+z int 1 3
+z0 int 1 2
+r float 1 3f9464ef3d73e000
+sigma float 1 3ffa0250513a76b9
+params ints 2 512 666
+status ok
+out float 1 3ff13b3c2333fb0a
+case
+z int 1 1
+z0 int 1 0
+r float 1 3f9464ef3d73e000
+sigma float 1 3ffa0250513a76b9
+params ints 2 512 666
+status ok
+out float 1 3fc743c44104cfde
+case
+z int 1 -2
+z0 int 1 2
+r float 1 3f9464ef3d73e000
+sigma float 1 3ffa0250513a76b9
+params ints 2 512 666
+status ok
+out float 1 3fc59357da822474
+case
+z int 1 -2
+z0 int 1 2
+r float 1 3f9ad3f1fb643400
+sigma float 1 3ffa0250513a76b9
+params ints 2 512 666
+status ok
+out float 1 3fc630f6166f2aa0
+case
+z int 1 3
+z0 int 1 2
+r float 1 3fed350c2b57a300
+sigma float 1 3ff9f7229fff8ad2
+params ints 2 512 666
+status ok
+out float 1 3fcca199a8f78468
+case
+z int 1 -1
+z0 int 1 1
+r float 1 3fb5322bf2e94000
+sigma float 1 3ff9f7229fff8ad2
+params ints 2 512 666
+status ok
+out float 1 3fb25cdfb5dec6a0
+case
+z int 1 3
+z0 int 1 2
+r float 1 3fdd8c6384d44c40
+sigma float 1 3ff9ffb148e936e7
+params ints 2 512 666
+status ok
+out float 1 3fe3bb6c1a1b57a8
+case
+z int 1 -1
+z0 int 1 1
+r float 1 3fb22cf0d8520400
+sigma float 1 3ff9ffb148e936e7
+params ints 2 512 666
+status ok
+out float 1 3fb0fc04cf62a906
+case
+z int 1 -2
+z0 int 1 2
+r float 1 3fe775eb61205f00
+sigma float 1 3ff9f456e145b370
+params ints 2 512 666
+status ok
+out float 1 3fea1c5b7218ba8a
+case
+z int 1 3
+z0 int 1 2
+r float 1 3fe775eb61205f00
+sigma float 1 3ff9f456e145b370
+params ints 2 512 666
+status ok
+out float 1 3fd7de796963c058
+case
+z int 1 3
+z0 int 1 2
+r float 1 3fe775eb61205f00
+sigma float 1 3ff9f456e145b370
+params ints 2 512 666
+status ok
+out float 1 3fd7de796963c058
+case
+z int 1 1
+z0 int 1 0
+r float 1 3fe775eb61205f00
+sigma float 1 3ff9f456e145b370
+params ints 2 512 666
+status ok
+out float 1 3f8bb648fba0a8bb
+case
+z int 1 0
+z0 int 1 0
+r float 1 3fed4c5fafc31800
+sigma float 1 3ff9f456e145b370
+params ints 2 512 666
+status ok
+out float 1 3fc4636b37ff9f43
+case
+z int 1 -2
+z0 int 1 2
+r float 1 3feae3c42f0a0d00
+sigma float 1 3ff9b44a048f6d81
+params ints 2 512 666
+status ok
+out float 1 3feeb3adf27c3e9e
+case
+z int 1 2
+z0 int 1 1
+r float 1 3fe3996db9338f10
+sigma float 1 3ff9b44a048f6d81
+params ints 2 512 666
+status ok
+out float 1 3fcc6e144f1449e0
+case
+z int 1 4
+z0 int 1 3
+r float 1 3fe2fb08c33d44c0
+sigma float 1 3ff9ae6dae6749a3
+params ints 2 512 666
+status ok
+out float 1 3feca2360330a52c
+case
+z int 1 2
+z0 int 1 1
+r float 1 3fe2fb08c33d44c0
+sigma float 1 3ff9ae6dae6749a3
+params ints 2 512 666
+status ok
+out float 1 3fcddb7ba74f0d4a
+case
+z int 1 3
+z0 int 1 2
+r float 1 3fd1cc50ff915800
+sigma float 1 3ff9ae6dae6749a3
+params ints 2 512 666
+status ok
+out float 1 3feab37c8006e500
+case
+z int 1 1
+z0 int 1 0
+r float 1 3fd1cc50ff915800
+sigma float 1 3ff9ae6dae6749a3
+params ints 2 512 666
+status ok
+out float 1 3fb9e478823e2844
+case
+z int 1 1
+z0 int 1 0
+r float 1 3fea80322f364100
+sigma float 1 3ff9af487d47b61f
+params ints 2 512 666
+status ok
+out float 1 3f77787d8e09cb99
+case
+z int 1 2
+z0 int 1 1
+r float 1 3fd7f3bfd2291b00
+sigma float 1 3ff9af487d47b61f
+params ints 2 512 666
+status ok
+out float 1 3fd72a50a937a897
+case
+z int 1 -1
+z0 int 1 1
+r float 1 3fe3a57ad49a1f00
+sigma float 1 3ff9a93a468162b6
+params ints 2 512 666
+status ok
+out float 1 3fd6c01683555cc5
+case
+z int 1 1
+z0 int 1 0
+r float 1 3fe3a57ad49a1f00
+sigma float 1 3ff9a93a468162b6
+params ints 2 512 666
+status ok
+out float 1 3f9daa4d9833407d
+case
+z int 1 0
+z0 int 1 0
+r float 1 3fe3a57ad49a1f00
+sigma float 1 3ff9a93a468162b6
+params ints 2 512 666
+status ok
+out float 1 3fb2c1d66608e4af
+case
+z int 1 1
+z0 int 1 0
+r float 1 3fe3a57ad49a1f00
+sigma float 1 3ff9a93a468162b6
+params ints 2 512 666
+status ok
+out float 1 3f9daa4d9833407d
+case
+z int 1 0
+z0 int 1 0
+r float 1 3fe3a57ad49a1f00
+sigma float 1 3ff9a93a468162b6
+params ints 2 512 666
+status ok
+out float 1 3fb2c1d66608e4af
+case
+z int 1 3
+z0 int 1 2
+r float 1 3fe3a57ad49a1f00
+sigma float 1 3ff9a93a468162b6
+params ints 2 512 666
+status ok
+out float 1 3fe01a56fb1fd3a0
+case
+z int 1 2
+z0 int 1 1
+r float 1 3fe3a57ad49a1f00
+sigma float 1 3ff9a93a468162b6
+params ints 2 512 666
+status ok
+out float 1 3fcc7d4886b09ab4
+case
+z int 1 3
+z0 int 1 2
+r float 1 3fe7a5d041d2f0a0
+sigma float 1 3ff9a93a468162b6
+params ints 2 512 666
+status ok
+out float 1 3fd8fa16282ae57e
+case
+z int 1 4
+z0 int 1 3
+r float 1 3fe3d6ce779dcd80
+sigma float 1 3ff990a03dcc8a25
+params ints 2 512 666
+status ok
+out float 1 3fec2688b2a95c84
+case
+z int 1 -5
+z0 int 1 5
+r float 1 3fe3d6ce779dcd80
+sigma float 1 3ff990a03dcc8a25
+params ints 2 512 666
+status ok
+out float 1 40035003078de617
+case
+z int 1 -3
+z0 int 1 3
+r float 1 3fe3d6ce779dcd80
+sigma float 1 3ff990a03dcc8a25
+params ints 2 512 666
+status ok
+out float 1 3ff356a29e7c9c10
+case
+z int 1 2
+z0 int 1 1
+r float 1 3fcb4ddb65618b80
+sigma float 1 3ff990a03dcc8a25
+params ints 2 512 666
+status ok
+out float 1 3fde5b74c93a0e85
+case
+z int 1 2
+z0 int 1 1
+r float 1 3fe4f6387c0c8d00
+sigma float 1 3ff989f910dc14f5
+params ints 2 512 666
+status ok
+out float 1 3fca20a769225ec0
+case
+z int 1 2
+z0 int 1 1
+r float 1 3fee3016fef93200
+sigma float 1 3ff989f910dc14f5
+params ints 2 512 666
+status ok
+out float 1 3fb17812c5f66510
+case
+z int 1 0
+z0 int 1 0
+r float 1 3fea7426ad437b80
+sigma float 1 3ff98d34047c6bbb
+params ints 2 512 666
+status ok
+out float 1 3fc126567f08add2
+case
+z int 1 -1
+z0 int 1 1
+r float 1 3fefd93c21836000
+sigma float 1 3ff98d34047c6bbb
+params ints 2 512 666
+status ok
+out float 1 3fe42607dd8e6458
+case
+z int 1 -2
+z0 int 1 2
+r float 1 3fefd93c21836000
+sigma float 1 3ff98d34047c6bbb
+params ints 2 512 666
+status ok
+out float 1 3ff27cc2efd4f7e0
+case
+z int 1 0
+z0 int 1 0
+r float 1 3fefd93c21836000
+sigma float 1 3ff98d34047c6bbb
+params ints 2 512 666
+status ok
+out float 1 3fc8db9ffcbdeea3
+case
+z int 1 4
+z0 int 1 3
+r float 1 3fefd93c21836000
+sigma float 1 3ff98d34047c6bbb
+params ints 2 512 666
+status ok
+out float 1 3fda6294fb717940
+case
+z int 1 1
+z0 int 1 0
+r float 1 3fefd93c21836000
+sigma float 1 3ff98d34047c6bbb
+params ints 2 512 666
+status ok
+out float 1 3ed269dc493f2f9c
+case
+z int 1 1
+z0 int 1 0
+r float 1 3fefd93c21836000
+sigma float 1 3ff98d34047c6bbb
+params ints 2 512 666
+status ok
+out float 1 3ed269dc493f2f9c
+case
+z int 1 2
+z0 int 1 1
+r float 1 3fe2cbb9a6769fc0
+sigma float 1 3ff986813b5d0b7d
+params ints 2 512 666
+status ok
+out float 1 3fcede939c86f586
+case
+z int 1 2
+z0 int 1 1
+r float 1 3fe2cbb9a6769fc0
+sigma float 1 3ff986813b5d0b7d
+params ints 2 512 666
+status ok
+out float 1 3fcede939c86f586
+case
+z int 1 2
+z0 int 1 1
+r float 1 3fe34d9232082b90
+sigma float 1 3ff986813b5d0b7d
+params ints 2 512 666
+status ok
+out float 1 3fcdbfea79685d48
+case
+z int 1 2
+z0 int 1 1
+r float 1 3fdc1db18b354200
+sigma float 1 3ff98eac94a9a643
+params ints 2 512 666
+status ok
+out float 1 3fd4e4ab06b40690
+case
+z int 1 3
+z0 int 1 2
+r float 1 3fdc1db18b354200
+sigma float 1 3ff98eac94a9a643
+params ints 2 512 666
+status ok
+out float 1 3fe5ceead23ecd3c
+case
+z int 1 3
+z0 int 1 2
+r float 1 3fdc1db18b354200
+sigma float 1 3ff98eac94a9a643
+params ints 2 512 666
+status ok
+out float 1 3fe5ceead23ecd3c
+case
+z int 1 5
+z0 int 1 4
+r float 1 3fee7ea0b5fd8540
+sigma float 1 3ff98eac94a9a643
+params ints 2 512 666
+status ok
+out float 1 3fe977191658e5c8
+case
+z int 1 2
+z0 int 1 1
+r float 1 3fe98d6bfca3f300
+sigma float 1 3ff985d299d2a3f2
+params ints 2 512 666
+status ok
+out float 1 3fc0ff5141b39d10
+case
+z int 1 2
+z0 int 1 1
+r float 1 3fe98d6bfca3f300
+sigma float 1 3ff985d299d2a3f2
+params ints 2 512 666
+status ok
+out float 1 3fc0ff5141b39d10
+case
+z int 1 -1
+z0 int 1 1
+r float 1 3fe98d6bfca3f300
+sigma float 1 3ff985d299d2a3f2
+params ints 2 512 666
+status ok
+out float 1 3fdf05ddac56d791
+case
+z int 1 3
+z0 int 1 2
+r float 1 3fcef275e8680c00
+sigma float 1 3ff985d299d2a3f2
+params ints 2 512 666
+status ok
+out float 1 3fec86c00d7b2172
+case
+z int 1 2
+z0 int 1 1
+r float 1 3fcef275e8680c00
+sigma float 1 3ff985d299d2a3f2
+params ints 2 512 666
+status ok
+out float 1 3fdd388c6d214011
+case
+z int 1 1
+z0 int 1 0
+r float 1 3fcef275e8680c00
+sigma float 1 3ff985d299d2a3f2
+params ints 2 512 666
+status ok
+out float 1 3fbceb6a6b9e4b7d
+case
+z int 1 0
+z0 int 1 0
+r float 1 3fc98e28953e0800
+sigma float 1 3ff987360a202647
+params ints 2 512 666
+status ok
+out float 1 3f8008b69eb44610
+case
+z int 1 -4
+z0 int 1 4
+r float 1 3fe0afe8b31eb300
+sigma float 1 3ff987360a202647
+params ints 2 512 666
+status ok
+out float 1 3ff9a00dd003bb44
+case
+z int 1 0
+z0 int 1 0
+r float 1 3fe0afe8b31eb300
+sigma float 1 3ff987360a202647
+params ints 2 512 666
+status ok
+out float 1 3fab58c07662beba
+case
+z int 1 -3
+z0 int 1 3
+r float 1 3fe0afe8b31eb300
+sigma float 1 3ff987360a202647
+params ints 2 512 666
+status ok
+out float 1 3ff13f09c8ec903a
+case
+z int 1 1
+z0 int 1 0
+r float 1 3fe0afe8b31eb300
+sigma float 1 3ff987360a202647
+params ints 2 512 666
+status ok
+out float 1 3fa7071fefe233fb
+case
+z int 1 3
+z0 int 1 2
+r float 1 3fe0afe8b31eb300
+sigma float 1 3ff987360a202647
+params ints 2 512 666
+status ok
+out float 1 3fe34ccc1efbf6a2
+case
+z int 1 0
+z0 int 1 0
+r float 1 3fecf93b307b7200
+sigma float 1 3ff97ddbe7d611c7
+params ints 2 512 666
+status ok
+out float 1 3fc4ab5ef6d43da6
+case
+z int 1 2
+z0 int 1 1
+r float 1 3fe0d0a777ff1680
+sigma float 1 3ff97ddbe7d611c7
+params ints 2 512 666
+status ok
+out float 1 3fd1c1107b9cc1f6
+case
+z int 1 -1
+z0 int 1 1
+r float 1 3fe0d0a777ff1680
+sigma float 1 3ff97ddbe7d611c7
+params ints 2 512 666
+status ok
+out float 1 3fd3ae439ebc3dd1
+case
+z int 1 0
+z0 int 1 0
+r float 1 3fe0d0a777ff1680
+sigma float 1 3ff97ddbe7d611c7
+params ints 2 512 666
+status ok
+out float 1 3fabd8e06c66e2bf
+case
+z int 1 3
+z0 int 1 2
+r float 1 3fee6e9909442f80
+sigma float 1 3ff969405d0f53a7
+params ints 2 512 666
+status ok
+out float 1 3fcd487400bf53d4
+case
+z int 1 1
+z0 int 1 0
+r float 1 3fee6e9909442f80
+sigma float 1 3ff969405d0f53a7
+params ints 2 512 666
+status ok
+out float 1 3f3f30bf9a30d139
+case
+z int 1 3
+z0 int 1 2
+r float 1 3febe43cc48841a0
+sigma float 1 3ff969405d0f53a7
+params ints 2 512 666
+status ok
+out float 1 3fd2d9503401fd1e
+case
+z int 1 2
+z0 int 1 1
+r float 1 3fecbb8cffdc8a80
+sigma float 1 3ff95f3263ab8f31
+params ints 2 512 666
+status ok
+out float 1 3fb7351ca07606f0
+case
+z int 1 -2
+z0 int 1 2
+r float 1 3fecbb8cffdc8a80
+sigma float 1 3ff95f3263ab8f31
+params ints 2 512 666
+status ok
+out float 1 3ff10fd22dbe3d70
+case
+z int 1 0
+z0 int 1 0
+r float 1 3fb6234fa0812800
+sigma float 1 3ff95f3263ab8f31
+params ints 2 512 666
+status ok
+out float 1 3f585cc3f168a647
+case
+z int 1 2
+z0 int 1 1
+r float 1 3fefac2186b6e380
+sigma float 1 3ff964315f45f502
+params ints 2 512 666
+status ok
+out float 1 3faa7fc6216c36ac
+case
+z int 1 3
+z0 int 1 2
+r float 1 3fb4a97be30500c0
+sigma float 1 3ff964315f45f502
+params ints 2 512 666
+status ok
+out float 1 3ff16a84c6e595ef
+case
+z int 1 3
+z0 int 1 2
+r float 1 3fb4a97be30500c0
+sigma float 1 3ff964315f45f502
+params ints 2 512 666
+status ok
+out float 1 3ff16a84c6e595ef
+case
+z int 1 1
+z0 int 1 0
+r float 1 3fb4a97be30500c0
+sigma float 1 3ff964315f45f502
+params ints 2 512 666
+status ok
+out float 1 3fc579d4aadbcd9d
+case
+z int 1 2
+z0 int 1 1
+r float 1 3fb4a97be30500c0
+sigma float 1 3ff964315f45f502
+params ints 2 512 666
+status ok
+out float 1 3fe2933be7c9844e
+case
+z int 1 0
+z0 int 1 0
+r float 1 3fb4a97be30500c0
+sigma float 1 3ff964315f45f502
+params ints 2 512 666
+status ok
+out float 1 3f55308de8d03afb
+case
+z int 1 0
+z0 int 1 0
+r float 1 3fd9832cd9b5a800
+sigma float 1 3ff959e70685db18
+params ints 2 512 666
+status ok
+out float 1 3fa034435134b5df
+case
+z int 1 -3
+z0 int 1 3
+r float 1 3fe487f7ded1e380
+sigma float 1 3ff959e70685db18
+params ints 2 512 666
+status ok
+out float 1 3ff488c57edceb36
+case
+z int 1 4
+z0 int 1 3
+r float 1 3fe487f7ded1e380
+sigma float 1 3ff959e70685db18
+params ints 2 512 666
+status ok
+out float 1 3fec6f3016399a40
+case
+z int 1 -2
+z0 int 1 2
+r float 1 3fecdb6a367fe040
+sigma float 1 3ff95e6e6b1bfef2
+params ints 2 512 666
+status ok
+out float 1 3ff123cf95405795
+case
+z int 1 0
+z0 int 1 0
+r float 1 3fecdb6a367fe040
+sigma float 1 3ff95e6e6b1bfef2
+params ints 2 512 666
+status ok
+out float 1 3fc4b3d6c52bcc0f
+case
+z int 1 3
+z0 int 1 2
+r float 1 3febc12a9e005340
+sigma float 1 3ff95e6e6b1bfef2
+params ints 2 512 666
+status ok
+out float 1 3fd345d21d2cc234
+case
+z int 1 2
+z0 int 1 1
+r float 1 3fee3073d79e6100
+sigma float 1 3ff95a49ae7f36cf
+params ints 2 512 666
+status ok
+out float 1 3fb24aa00df7f352
+case
+z int 1 4
+z0 int 1 3
+r float 1 3fe3e3fa9c2cd180
+sigma float 1 3ff95a49ae7f36cf
+params ints 2 512 666
+status ok
+out float 1 3fed4901f204e4fc
+case
+z int 1 -1
+z0 int 1 1
+r float 1 3fe3e3fa9c2cd180
+sigma float 1 3ff95a49ae7f36cf
+params ints 2 512 666
+status ok
+out float 1 3fd7dba801afc639
+case
+z int 1 0
+z0 int 1 0
+r float 1 3fe3e3fa9c2cd180
+sigma float 1 3ff95a49ae7f36cf
+params ints 2 512 666
+status ok
+out float 1 3fb3b2604328a327
+case
+z int 1 1
+z0 int 1 0
+r float 1 3fd324bb92d96e00
+sigma float 1 3ff9569e41d12523
+params ints 2 512 666
+status ok
+out float 1 3fb9125cbfea44c2
+case
+z int 1 2
+z0 int 1 1
+r float 1 3fd14c5660260000
+sigma float 1 3ff9569e41d12523
+params ints 2 512 666
+status ok
+out float 1 3fdc851bd42c1277
+case
+z int 1 1
+z0 int 1 0
+r float 1 3fed21408ea75c80
+sigma float 1 3ff9523a51b2b3e3
+params ints 2 512 666
+status ok
+out float 1 3f5a4fefa024065f
+case
+z int 1 -2
+z0 int 1 2
+r float 1 3feb131429f8f300
+sigma float 1 3ff9523a51b2b3e3
+params ints 2 512 666
+status ok
+out float 1 3ff037d7da77e12e
+case
+z int 1 -5
+z0 int 1 5
+r float 1 3feb131429f8f300
+sigma float 1 3ff9523a51b2b3e3
+params ints 2 512 666
+status ok
+out float 1 4008690ff58aaca5
+case
+z int 1 0
+z0 int 1 0
+r float 1 3feb131429f8f300
+sigma float 1 3ff9523a51b2b3e3
+params ints 2 512 666
+status ok
+out float 1 3fc24ae14d6ac6fd
+case
+z int 1 0
+z0 int 1 0
+r float 1 3fe58f3b697a3480
+sigma float 1 3ff93f993a21ac12
+params ints 2 512 666
+status ok
+out float 1 3fb75515191ec40d
+case
+z int 1 -2
+z0 int 1 2
+r float 1 3fe1f2e4e303d180
+sigma float 1 3ff93f993a21ac12
+params ints 2 512 666
+status ok
+out float 1 3fe6d3d8236c380c
+case
+z int 1 0
+z0 int 1 0
+r float 1 3fe1f2e4e303d180
+sigma float 1 3ff93f993a21ac12
+params ints 2 512 666
+status ok
+out float 1 3fb02bec259cf5fc
+case
+z int 1 4
+z0 int 1 3
+r float 1 3fe1f2e4e303d180
+sigma float 1 3ff93f993a21ac12
+params ints 2 512 666
+status ok
+out float 1 3ff045c6289b42d8
+case
+z int 1 -2
+z0 int 1 2
+r float 1 3fee9afb32366400
+sigma float 1 3ff93a702b56515b
+params ints 2 512 666
+status ok
+out float 1 3ff278217be0094e
+case
+z int 1 -4
+z0 int 1 4
+r float 1 3fee9afb32366400
+sigma float 1 3ff93a702b56515b
+params ints 2 512 666
+status ok
+out float 1 40043698c48eb408

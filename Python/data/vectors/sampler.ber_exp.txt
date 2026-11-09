@@ -1801,3 +1801,435 @@ ccs float 1 3fec88ea07a8c50d
 random bytes 1 46
 status ok
 out bool 1 1
+case
+x float 1 0000000000000000
+ccs float 1 3ff0000000000000
+random bytes 1 fe
+status ok
+out bool 1 1
+case
+x float 1 0000000000000000
+ccs float 1 3ff0000000000000
+random bytes 2 ff00
+status ok
+out bool 1 1
+case
+x float 1 0000000000000000
+ccs float 1 3ff0000000000000
+random bytes 8 ffffffffffffffff
+status ok
+out bool 1 0
+case
+x float 1 4049000000000000
+ccs float 1 3ff0000000000000
+random bytes 1 01
+status ok
+out bool 1 0
+case
+x float 1 408f400000000000
+ccs float 1 3ff0000000000000
+random bytes 1 01
+status ok
+out bool 1 0
+case
+x float 1 412e848000000000
+ccs float 1 3ff0000000000000
+random bytes 1 01
+status ok
+out bool 1 0
+case
+x float 1 bfd0000000000000
+ccs float 1 3fe999999999999a
+random bytes 1 01
+status ok
+out bool 1 1
+case
+x float 1 3fe0000000000000
+ccs float 1 0000000000000000
+random bytes 8 0000000000000000
+status ok
+out bool 1 0
+case
+x float 1 3fe0000000000000
+ccs float 1 0000000000000000
+random bytes 1 01
+status ok
+out bool 1 0
+case
+x float 1 4045f33333333333
+ccs float 1 3ff0000000000000
+random bytes 8 0000000000000000
+status ok
+out bool 1 1
+case
+x float 1 4045f33333333333
+ccs float 1 3ff0000000000000
+random bytes 8 0000000000000001
+status ok
+out bool 1 0
+case
+x float 1 4045f33333333333
+ccs float 1 3ff0000000000000
+random bytes 8 0000000000000002
+status ok
+out bool 1 0
+case
+x float 1 4046400000000000
+ccs float 1 3ff0000000000000
+random bytes 8 0000000000000000
+status ok
+out bool 1 1
+case
+x float 1 4046400000000000
+ccs float 1 3ff0000000000000
+random bytes 8 0000000000000001
+status ok
+out bool 1 0
+case
+x float 1 4046400000000000
+ccs float 1 3ff0000000000000
+random bytes 8 0000000000000002
+status ok
+out bool 1 0
+case
+x float 1 4049000000000000
+ccs float 1 3ff0000000000000
+random bytes 8 0000000000000000
+status ok
+out bool 1 1
+case
+x float 1 4049000000000000
+ccs float 1 3ff0000000000000
+random bytes 8 0000000000000001
+status ok
+out bool 1 0
+case
+x float 1 4049000000000000
+ccs float 1 3ff0000000000000
+random bytes 8 0000000000000002
+status ok
+out bool 1 0
+case
+x float 1 408f400000000000
+ccs float 1 3ff0000000000000
+random bytes 8 0000000000000000
+status ok
+out bool 1 1
+case
+x float 1 408f400000000000
+ccs float 1 3ff0000000000000
+random bytes 8 0000000000000001
+status ok
+out bool 1 0
+case
+x float 1 408f400000000000
+ccs float 1 3ff0000000000000
+random bytes 8 0000000000000002
+status ok
+out bool 1 0
+case
+x float 1 412e848000000000
+ccs float 1 3ff0000000000000
+random bytes 8 0000000000000000
+status ok
+out bool 1 1
+case
+x float 1 412e848000000000
+ccs float 1 3ff0000000000000
+random bytes 8 0000000000000001
+status ok
+out bool 1 0
+case
+x float 1 412e848000000000
+ccs float 1 3ff0000000000000
+random bytes 8 0000000000000002
+status ok
+out bool 1 0
+case
+x float 1 0000000000000000
+ccs float 1 3fe8000000000000
+random bytes 1 7f
+status ok
+out bool 1 1
+case
+x float 1 0000000000000000
+ccs float 1 3fe8000000000000
+random bytes 1 2f
+status ok
+out bool 1 1
+case
+x float 1 0000000000000000
+ccs float 1 3fe8000000000000
+random bytes 1 e1
+status ok
+out bool 1 0
+case
+x float 1 0000000000000000
+ccs float 1 3fe8000000000000
+random bytes 1 61
+status ok
+out bool 1 1
+case
+x float 1 0000000000000000
+ccs float 1 3fe8000000000000
+random bytes 1 1d
+status ok
+out bool 1 1
+case
+x float 1 0000000000000000
+ccs float 1 3fe8000000000000
+random bytes 1 0d
+status ok
+out bool 1 1
+case
+x float 1 0000000000000000
+ccs float 1 3fe8000000000000
+random bytes 1 21
+status ok
+out bool 1 1
+case
+x float 1 0000000000000000
+ccs float 1 3fe8000000000000
+random bytes 1 94
+status ok
+out bool 1 1
+case
+x float 1 3fe0000000000000
+ccs float 1 3fe999999999999a
+random bytes 1 d7
+status ok
+out bool 1 0
+case
+x float 1 3fe0000000000000
+ccs float 1 3fe999999999999a
+random bytes 1 84
+status ok
+out bool 1 0
+case
+x float 1 3fe0000000000000
+ccs float 1 3fe999999999999a
+random bytes 1 54
+status ok
+out bool 1 1
+case
+x float 1 3fe0000000000000
+ccs float 1 3fe999999999999a
+random bytes 1 23
+status ok
+out bool 1 1
+case
+x float 1 3fe0000000000000
+ccs float 1 3fe999999999999a
+random bytes 1 14
+status ok
+out bool 1 1
+case
+x float 1 3fe0000000000000
+ccs float 1 3fe999999999999a
+random bytes 1 56
+status ok
+out bool 1 1
+case
+x float 1 3fe0000000000000
+ccs float 1 3fe999999999999a
+random bytes 1 d9
+status ok
+out bool 1 0
+case
+x float 1 3fe0000000000000
+ccs float 1 3fe999999999999a
+random bytes 1 35
+status ok
+out bool 1 1
+case
+x float 1 4000000000000000
+ccs float 1 3ff0000000000000
+random bytes 1 e7
+status ok
+out bool 1 0
+case
+x float 1 4000000000000000
+ccs float 1 3ff0000000000000
+random bytes 1 7b
+status ok
+out bool 1 0
+case
+x float 1 4000000000000000
+ccs float 1 3ff0000000000000
+random bytes 1 fe
+status ok
+out bool 1 0
+case
+x float 1 4000000000000000
+ccs float 1 3ff0000000000000
+random bytes 1 57
+status ok
+out bool 1 0
+case
+x float 1 4000000000000000
+ccs float 1 3ff0000000000000
+random bytes 1 0e
+status ok
+out bool 1 1
+case
+x float 1 4000000000000000
+ccs float 1 3ff0000000000000
+random bytes 2 22da
+status ok
+out bool 1 0
+case
+x float 1 4000000000000000
+ccs float 1 3ff0000000000000
+random bytes 1 24
+status ok
+out bool 1 0
+case
+x float 1 4000000000000000
+ccs float 1 3ff0000000000000
+random bytes 1 95
+status ok
+out bool 1 0
+case
+x float 1 4014000000000000
+ccs float 1 3fe6666666666666
+random bytes 1 b8
+status ok
+out bool 1 0
+case
+x float 1 4014000000000000
+ccs float 1 3fe6666666666666
+random bytes 1 bb
+status ok
+out bool 1 0
+case
+x float 1 4014000000000000
+ccs float 1 3fe6666666666666
+random bytes 1 a9
+status ok
+out bool 1 0
+case
+x float 1 4014000000000000
+ccs float 1 3fe6666666666666
+random bytes 1 cb
+status ok
+out bool 1 0
+case
+x float 1 4014000000000000
+ccs float 1 3fe6666666666666
+random bytes 1 c5
+status ok
+out bool 1 0
+case
+x float 1 4014000000000000
+ccs float 1 3fe6666666666666
+random bytes 1 2c
+status ok
+out bool 1 0
+case
+x float 1 4014000000000000
+ccs float 1 3fe6666666666666
+random bytes 1 db
+status ok
+out bool 1 0
+case
+x float 1 4014000000000000
+ccs float 1 3fe6666666666666
+random bytes 1 db
+status ok
+out bool 1 0
+case
+x float 1 4045f33333333333
+ccs float 1 3ff0000000000000
+random bytes 1 96
+status ok
+out bool 1 0
+case
+x float 1 4045f33333333333
+ccs float 1 3ff0000000000000
+random bytes 1 cc
+status ok
+out bool 1 0
+case
+x float 1 4045f33333333333
+ccs float 1 3ff0000000000000
+random bytes 1 44
+status ok
+out bool 1 0
+case
+x float 1 4045f33333333333
+ccs float 1 3ff0000000000000
+random bytes 1 66
+status ok
+out bool 1 0
+case
+x float 1 4045f33333333333
+ccs float 1 3ff0000000000000
+random bytes 1 3e
+status ok
+out bool 1 0
+case
+x float 1 4045f33333333333
+ccs float 1 3ff0000000000000
+random bytes 1 0b
+status ok
+out bool 1 0
+case
+x float 1 4045f33333333333
+ccs float 1 3ff0000000000000
+random bytes 1 7c
+status ok
+out bool 1 0
+case
+x float 1 4045f33333333333
+ccs float 1 3ff0000000000000
+random bytes 1 4c
+status ok
+out bool 1 0
+case
+x float 1 4046400000000000
+ccs float 1 3feccccccccccccd
+random bytes 1 53
+status ok
+out bool 1 0
+case
+x float 1 4046400000000000
+ccs float 1 3feccccccccccccd
+random bytes 1 e6
+status ok
+out bool 1 0
+case
+x float 1 4046400000000000
+ccs float 1 3feccccccccccccd
+random bytes 1 a5
+status ok
+out bool 1 0
+case
+x float 1 4046400000000000
+ccs float 1 3feccccccccccccd
+random bytes 1 a2
+status ok
+out bool 1 0
+case
+x float 1 4046400000000000
+ccs float 1 3feccccccccccccd
+random bytes 1 0f
+status ok
+out bool 1 0
+case
+x float 1 4046400000000000
+ccs float 1 3feccccccccccccd
+random bytes 1 07
+status ok
+out bool 1 0
+case
+x float 1 4046400000000000
+ccs float 1 3feccccccccccccd
+random bytes 1 7d
+status ok
+out bool 1 0
+case
+x float 1 4046400000000000
+ccs float 1 3feccccccccccccd
+random bytes 1 89
+status ok
+out bool 1 0

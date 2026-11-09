@@ -35,7 +35,7 @@ from falcon import encoding, falcon as top, ffsampling, fft, hashing  # noqa: E4
 from falcon import modq, ntrugen, poly, sampler, tree  # noqa: E402
 from falcon.datatypes import Signature  # noqa: E402
 from falcon.params import FALCON_512, FALCON_1024  # noqa: E402
-from support import ShakeRNG, load_kat  # noqa: E402
+from support import FixedRNG, ShakeRNG, load_kat  # noqa: E402
 import dataclasses  # noqa: E402
 
 OUT = ROOT / "data" / "vectors"
@@ -156,15 +156,16 @@ class RecordingRNG:
 
 records = {}        # Dateiname → Liste von Fällen (je Fall: Liste von Zeilen)
 counts = {}
-recording = {"on": True}
+recording = {"on": True, "depth": 0}
+trace = {"calls": [], "z0": 0, "pos": 0, "r": 0.0, "sigma": 0.0, "params": None, "x_cases": {}, "z_cases": {}}
 
 
 def add_case(file, lines):
     records.setdefault(file, []).append(lines)
 
 
-def record(file, argspec, outspec, args, status, result, rng_bytes):
-    lines = ["case"]
+def record(file, argspec, outspec, args, status, result, rng_bytes, extra=()):
+    lines = ["case"] + list(extra)
     for (name, kind), value in zip(argspec, args):
         if kind != "skip" and kind != "rng":
             lines += emit(name, kind, value)
@@ -189,22 +190,33 @@ def wrap(module, name, argspec, outspec, cap, by_size=True):
 
     def wrapper(*args):
         key = (file, size_of(args) if by_size else 0)
-        take = recording["on"] and counts.get(key, 0) < cap
+        # Bei Randfällen nur den äussersten Aufruf; Rekursionen sind schon abgedeckt.
+        outermost = not isinstance(counts, _Unlimited) or recording["depth"] == 0
+        take = recording["on"] and outermost and counts.get(key, 0) < cap
         rng = next((a for a in args if isinstance(a, RecordingRNG)), None)
         start = len(rng.log) if rng is not None else 0
+        recording["depth"] += 1
+        trace_start = len(trace["calls"])
         try:
             result = original(*args)
         except Exception:
+            recording["depth"] -= 1
             if take:
                 counts[key] = counts.get(key, 0) + 1
                 record(file, argspec, outspec, args, "error", None,
                        None if rng is None else bytes(rng.log[start:]))
             raise
+        recording["depth"] -= 1
         if take:
             counts[key] = counts.get(key, 0) + 1
             status = "none" if result is None else "ok"
+            extra = ()
+            if file == "ffsampling.ff_sampling":
+                made = trace["calls"][trace_start:]
+                extra = emit("mus", "floats", [m for m, _ in made]) + emit(
+                    "sigmas", "floats", [v for _, v in made])
             record(file, argspec, outspec, args, status, result,
-                   None if rng is None else bytes(rng.log[start:]))
+                   None if rng is None else bytes(rng.log[start:]), extra)
         return result
 
     for m in MODULES:
@@ -306,6 +318,64 @@ def wrap_ldl():
     tree.ldl = wrapper
 
 
+def replace_everywhere(original, wrapper):
+    for m in MODULES:
+        for name in dir(m):
+            if getattr(m, name) is original:
+                setattr(m, name, wrapper)
+
+
+def wrap_sampler_trace():
+    """Zwischenwerte des Samplers, die in dessen Ausgabe nicht sichtbar sind: x aus Alg. 15 Z. 7
+    und z aus Alg. 14 Z. 4. Winzige Rundungsfehler dort kippen nur selten eine Entscheidung."""
+    gaussian, base, approx, ber = (sampler.sample_integer_gaussian, sampler.base_sampler,
+                                   sampler.approx_exp, sampler.ber_exp)
+
+    def traced_gaussian(mu, sigma_p, params, rng):
+        trace["calls"].append((mu, sigma_p))
+        trace.update(r=mu - math.floor(mu), sigma=sigma_p, params=params)
+        try:
+            return gaussian(mu, sigma_p, params, rng)
+        finally:
+            trace["params"] = None      # direkte Aufrufe von ber_exp gehören zu keinem SamplerZ
+
+    def traced_base(rng):
+        z0 = base(rng)
+        trace.update(z0=z0, pos=len(rng.log) if isinstance(rng, RecordingRNG) else None)
+        return z0
+
+    def traced_approx(x, ccs):
+        y = approx(x, ccs)
+        trace["y"] = y
+        return y
+
+    def traced_ber(x, ccs, rng):
+        start = len(rng.log) if isinstance(rng, RecordingRNG) else None
+        result = ber(x, ccs, rng)
+        phase = trace["r"] != 0.0        # keygen hat immer mu = 0, sign nicht
+        if recording["on"] and trace["z_cases"].get(phase, 0) < MANY:
+            clamped = max(x, 0.0)
+            s_value = min(int(math.floor(clamped / sampler.LOG2)), 63)
+            z = max((2 * trace["y"] - 1) >> s_value, 0)
+            trace["z_cases"][phase] = trace["z_cases"].get(phase, 0) + 1
+            add_case("sampler.ber_exp_z", ["case"] + emit("x", "float", x) + emit("ccs", "float", ccs)
+                     + ["status ok"] + emit("out", "int", z))
+        if recording["on"] and trace["pos"] is not None and start is not None and trace["x_cases"].get(phase, 0) < MANY \
+                and trace["params"] is not None and start > trace["pos"]:
+            b = rng.log[trace["pos"]] & 1
+            z = b + (2 * b - 1) * trace["z0"]
+            trace["x_cases"][phase] = trace["x_cases"].get(phase, 0) + 1
+            add_case("sampler.samplerz_x", ["case"] + emit("z", "int", z) + emit("z0", "int", trace["z0"])
+                     + emit("r", "float", trace["r"]) + emit("sigma", "float", trace["sigma"])
+                     + emit("params", "params", trace["params"]) + ["status ok"] + emit("out", "float", x))
+        return result
+
+    replace_everywhere(gaussian, traced_gaussian)
+    replace_everywhere(base, traced_base)
+    replace_everywhere(approx, traced_approx)
+    replace_everywhere(ber, traced_ber)
+
+
 # ---------------------------------------------------------------------------
 # Abläufe und Randfälle
 # ---------------------------------------------------------------------------
@@ -340,6 +410,44 @@ def flows() -> None:
             add_case("flow.verify", ["case"] + emit("n", "int", n) + emit("h", "ints", pk.h)
                      + emit("msg", "bytes", bytes(bad)) + emit("sig", "bytes", sig_bytes)
                      + ["status ok"] + emit("out", "bool", rejected))
+
+
+def restart_flows() -> None:
+    """sign mit knappen Grenzen: Neustarts in Alg. 10 (Z. 4–8 und Z. 10–11) erzwingen."""
+    calls = {"short": 0, "compress": 0}
+    is_short_fft, compress = top.is_short_fft, top.compress
+
+    def counting_short(s, params):
+        calls["short"] += 1
+        return is_short_fft(s, params)
+
+    def counting_compress(s2, params):
+        calls["compress"] += 1
+        return compress(s2, params)
+
+    top.is_short_fft, top.compress = counting_short, counting_compress
+    recording["on"] = False
+    for base, bound, bytelen, seed_text in ((FALCON_512, 28_000_000, 655, b"restart-512"),
+                                            (FALCON_1024, 58_000_000, 1272, b"restart-1024")):
+        params = dataclasses.replace(base, sig_bound=bound, sig_bytelen=bytelen)
+        sk, _ = top.keygen(base, ShakeRNG(seed_text))
+        sk_bytes = encoding.encode_sk(sk.f, sk.g, sk.F)
+        restarts = 0
+        for i in range(6):
+            seed = seed_text + b"-sign-%d" % i
+            calls.update(short=0, compress=0)
+            msg = f"restart {i}".encode()
+            sig = top.sign(sk, msg, params, ShakeRNG(seed))
+            restarts += calls["short"] + calls["compress"] > 2
+            add_case("flow.sign_restart", ["case"] + emit("seed", "bytes", seed)
+                     + emit("n", "int", base.n) + emit("sig_bound", "int", bound)
+                     + emit("sig_bytelen", "int", bytelen) + emit("sk", "bytes", sk_bytes)
+                     + emit("msg", "bytes", msg)
+                     + emit("sig", "bytes", encoding.encode_sig(sig, params)) + ["status ok"])
+        if restarts == 0:
+            sys.exit("Abbruch: keine Neustarts erzwungen, Grenzen anpassen")
+    recording["on"] = True
+    top.is_short_fft, top.compress = is_short_fft, compress
 
 
 def attempt(function, *args):
@@ -512,6 +620,112 @@ def edge_cases() -> None:
         top.is_short([-x for x in squares(params.sig_bound)], [0] * params.n, params)
 
 
+def edge_cases_sign() -> None:
+    r = random.Random(0x516E)
+
+    # --- sampler -------------------------------------------------------------
+    def fixed(data):
+        return RecordingRNG(FixedRNG(data))
+
+    for k, data in ((0, b""), (8, b"\xd1"), (16, b"\x01\x02"), (64, b"\xff" * 8),
+                    (72, bytes.fromhex("0fc5442ff043d66e91")), (72, b"\xff" * 9), (72, bytes(9))):
+        sampler.uniform_bits(k, fixed(data))
+    attempt(sampler.uniform_bits, 4, fixed(b"\x00"))
+    for u in [0, 1, 2 ** 72 - 1, 2 ** 72 - 2] + [x + d for x in sampler.RCDT[:18] for d in (-1, 0, 1) if x + d >= 0]:
+        sampler.base_sampler(fixed(u.to_bytes(9, "big")))
+    ln2 = math.log(2.0)
+    for ccs in (1.0, 0.75, 0.5, 1.277833697 / 1.8205, 0.0):
+        for j in range(21):
+            sampler.approx_exp(ln2 * j / 20, ccs)
+    for x, ccs, data in ((0.0, 1.0, b"\xfe"), (0.0, 1.0, b"\xff\x00"), (0.0, 1.0, b"\xff" * 8),
+                         (50.0, 1.0, b"\x01"), (1000.0, 1.0, b"\x01"), (1e6, 1.0, b"\x01"),
+                         (-0.25, 0.8, b"\x01"), (0.5, 0.0, b"\x00" * 8), (0.5, 0.0, b"\x01")):
+        sampler.ber_exp(x, ccs, fixed(data))
+    for x in (43.9, 44.5, 50.0, 1000.0, 1e6):
+        for data in (bytes(8), bytes(7) + b"\x01", bytes(7) + b"\x02"):
+            sampler.ber_exp(x, 1.0, fixed(data))
+    rng = RecordingRNG(ShakeRNG(b"edge-sampler"))
+    for x, ccs in ((0.0, 0.75), (0.5, 0.8), (2.0, 1.0), (5.0, 0.7), (43.9, 1.0), (44.5, 0.9)):
+        for _ in range(8):
+            sampler.ber_exp(x, ccs, rng)
+    for params in (FALCON_512, FALCON_1024):
+        smin, smax = params.sigma_min, params.sigma_max
+        for mu in (0.0, -0.0, 0.25, -91.90471153063714, 1000.25, 7.0, -7.0, 0.999999):
+            for sigma in (smin, smax, (smin + smax) / 2, smin - 5e-11, smax + 5e-11):
+                sampler.sample_integer_gaussian(mu, sigma, params, rng)
+        for _ in range(60):
+            sampler.sample_integer_gaussian(r.uniform(-300, 300), r.uniform(smin, smax), params, rng)
+    for sigma in (1.0, 1.277833696, 1.8206, 2.5, 0.0, -1.5, math.inf, math.nan):
+        attempt(sampler.sample_integer_gaussian, 0.0, sigma, FALCON_512, fixed(b""))
+
+    # --- fft -----------------------------------------------------------------
+    def rand_c(n):
+        return [complex(r.uniform(-1e4, 1e4), r.uniform(-1e4, 1e4)) for _ in range(n)]
+
+    for logn in range(0, 11):
+        n = 1 << logn
+        a = [r.uniform(-1e4, 1e4) for _ in range(n)]
+        spectrum = fft.fft(a)
+        fft.ifft(spectrum)
+        x, y = rand_c(n), rand_c(n)
+        fft.ifft(x)
+        fft.fft_add(x, y)
+        fft.fft_sub(x, y)
+        fft.fft_mul(x, y)
+        fft.fft_adj(x)
+        fft.fft_norm_sq(x)
+        fft.fft_div(x, [complex(r.uniform(1, 1e4), 0.0) for _ in range(n)])
+        if n >= 2:
+            fft.split_fft(x)
+            fft.merge_fft(x[:n // 2], y[:n // 2])
+    for n in (0, 3, 6, 12):
+        attempt(fft.fft, [1.0] * n)
+        attempt(fft.ifft, [1 + 0j] * n)
+    for n in (0, 1, 3, 6):
+        attempt(fft.split_fft, [1j] * n)
+    for h in (0, 3):
+        attempt(fft.merge_fft, [1j] * h, [1j] * h)
+    attempt(fft.fft_norm_sq, [])
+    attempt(fft.fft_div, [1 + 0j, 1 + 0j], [1 + 0j, 0j])
+    # Nenner mit |Re| = |Im|: Fallgrenze der Division; bei Zähler Re = Im unterscheidet nur das Vorzeichen der Null
+    fft.fft_div([1 + 1j, 3 - 3j, 2 + 5j], [1 - 1j, 2 + 2j, -4 + 4j])
+
+    # --- tree ------------------------------------------------------------------
+    tree.gram_matrix((([1 + 1j], [2 + 0j]), ([3 + 0j], [-1j])))
+    # Nullen: ganzzahlig negiert bleiben sie +0.0
+    tree.build_basis_fft([0, 0], [1, 0], [0, 0], [1, 0])
+    tree.build_basis_fft([0] * 4, [0, 1, 0, 0], [0] * 4, [1, 0, 0, 0])
+    tree.ldl((([4 + 0j], [2 - 2j]), ([2 + 2j], [6 + 0j])))
+    tree.normalize_leaves(([0.5 + 0.5j, 0.5 - 0.5j], 4.0, 9.0), 6.0)
+    for n in (2, 4, 8, 16, 64):
+        key = [[r.randint(-5, 5) for _ in range(n)] for _ in range(4)]
+        basis = tree.build_basis_fft(*key)
+        gram = tree.gram_matrix(basis)
+        tree.ldl(gram)
+        normalized = tree.ff_ldl(gram)
+        tree.normalize_leaves(normalized, 165.0)
+        tree.build_falcon_tree(basis, with_n(n))
+
+    # --- falcon: Rundung und Grenzen -------------------------------------------
+    top.to_coefficients(([2.5 + 0j], [3.5 + 0j]))
+    top.to_coefficients(([-2.5 + 0j], [-3.5 + 0j]))
+    top.to_coefficients(([0.5 + 0j], [-0.5 + 0j]))
+    top.to_coefficients((fft.fft([3.2, -0.8, 0.0, 6.7]), fft.fft([-4.6, 2.3, 1.9, -0.1])))
+    for params in (FALCON_512, FALCON_1024):
+        n = params.n
+        for target in (params.sig_bound - 1, params.sig_bound + 1):
+            values, rest = [], target
+            while rest:
+                root = math.isqrt(rest)
+                values.append(root)
+                rest -= root * root
+            values += [0] * (n - len(values))
+            top.is_short_fft((fft.fft(values), fft.fft([0] * n)), params)
+
+    # --- recompute_G ------------------------------------------------------------
+    ntrugen.recompute_G([111], [4], [8])
+
+
 def shake_vectors() -> None:
     """SHAKE-256 aus hashlib, Längen rund um die Blockgrösse von 136 Bytes."""
     r = random.Random(202)
@@ -540,8 +754,10 @@ def main() -> None:
     for module, name, argspec, outspec, cap in SCALAR_WRAPS:
         wrap(module, name, argspec, outspec, cap, by_size=False)
     wrap_ldl()
+    wrap_sampler_trace()
 
     flows()
+    restart_flows()
 
     edge_cases_unlimited()
     shake_vectors()
@@ -575,6 +791,7 @@ def edge_cases_unlimited() -> None:
     saved = counts
     counts = _Unlimited()
     edge_cases()
+    edge_cases_sign()
     counts = saved
 
 

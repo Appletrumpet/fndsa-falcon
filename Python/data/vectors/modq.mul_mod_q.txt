@@ -210,28 +210,3 @@ case
 a ints 2 1 2
 b ints 4 1 2 3 4
 status error
-case
-a ints 2 0 0
-b ints 2 7 9
-status ok
-out ints 2 0 0
-case
-a ints 2 1 0
-b ints 2 3 0
-status ok
-out ints 2 3 0
-case
-a ints 2 0 1
-b ints 2 0 1
-status ok
-out ints 2 12288 0
-case
-a ints 2 0 0
-b ints 2 0 0
-status ok
-out ints 2 0 0
-case
-a ints 2 -1 0
-b ints 2 3 0
-status ok
-out ints 2 12286 0

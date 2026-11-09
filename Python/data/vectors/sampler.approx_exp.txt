@@ -1501,3 +1501,528 @@ x float 1 3fc0a16f2464f1dc
 ccs float 1 3fec88ea07a8c50d
 status ok
 out int 1 7222515870749447589
+case
+x float 1 0000000000000000
+ccs float 1 3ff0000000000000
+status ok
+out int 1 9223372036854775808
+case
+x float 1 3fa1be9bff2e94bf
+ccs float 1 3ff0000000000000
+status ok
+out int 1 8909190125587579149
+case
+x float 1 3fb1be9bff2e94bf
+ccs float 1 3ff0000000000000
+status ok
+out int 1 8605710403603551366
+case
+x float 1 3fba9de9fec5df1e
+ccs float 1 3ff0000000000000
+status ok
+out int 1 8312568315047165986
+case
+x float 1 3fc1be9bff2e94bf
+ccs float 1 3ff0000000000000
+status ok
+out int 1 8029411722173647837
+case
+x float 1 3fc62e42fefa39ef
+ccs float 1 3ff0000000000000
+status ok
+out int 1 7755900482342533676
+case
+x float 1 3fca9de9fec5df1e
+ccs float 1 3ff0000000000000
+status ok
+out int 1 7491706039420384131
+case
+x float 1 3fcf0d90fe91844e
+ccs float 1 3ff0000000000000
+status ok
+out int 1 7236511029101818582
+case
+x float 1 3fd1be9bff2e94bf
+ccs float 1 3ff0000000000000
+status ok
+out int 1 6990008897674766362
+case
+x float 1 3fd3f66f7f146757
+ccs float 1 3ff0000000000000
+status ok
+out int 1 6751903533771970980
+case
+x float 1 3fd62e42fefa39ef
+ccs float 1 3ff0000000000000
+status ok
+out int 1 6521908912666391202
+case
+x float 1 3fd866167ee00c87
+ccs float 1 3ff0000000000000
+status ok
+out int 1 6299748752683206627
+case
+x float 1 3fda9de9fec5df1e
+ccs float 1 3ff0000000000000
+status ok
+out int 1 6085156183315692308
+case
+x float 1 3fdcd5bd7eabb1b6
+ccs float 1 3ff0000000000000
+status ok
+out int 1 5877873424646283506
+case
+x float 1 3fdf0d90fe91844e
+ccs float 1 3ff0000000000000
+status ok
+out int 1 5677651477687739107
+case
+x float 1 3fe0a2b23f3bab73
+ccs float 1 3ff0000000000000
+status ok
+out int 1 5484249825272417934
+case
+x float 1 3fe1be9bff2e94bf
+ccs float 1 3ff0000000000000
+status ok
+out int 1 5297436143130365315
+case
+x float 1 3fe2da85bf217e0b
+ccs float 1 3ff0000000000000
+status ok
+out int 1 5116986020809139698
+case
+x float 1 3fe3f66f7f146757
+ccs float 1 3ff0000000000000
+status ok
+out int 1 4942682692100134909
+case
+x float 1 3fe512593f0750a3
+ccs float 1 3ff0000000000000
+status ok
+out int 1 4774316774647574680
+case
+x float 1 3fe62e42fefa39ef
+ccs float 1 3ff0000000000000
+status ok
+out int 1 4611686018427389640
+case
+x float 1 0000000000000000
+ccs float 1 3fe8000000000000
+status ok
+out int 1 6917529027641081856
+case
+x float 1 3fa1be9bff2e94bf
+ccs float 1 3fe8000000000000
+status ok
+out int 1 6681892594190684361
+case
+x float 1 3fb1be9bff2e94bf
+ccs float 1 3fe8000000000000
+status ok
+out int 1 6454282802702663524
+case
+x float 1 3fba9de9fec5df1e
+ccs float 1 3fe8000000000000
+status ok
+out int 1 6234426236285374489
+case
+x float 1 3fc1be9bff2e94bf
+ccs float 1 3fe8000000000000
+status ok
+out int 1 6022058791630235877
+case
+x float 1 3fc62e42fefa39ef
+ccs float 1 3fe8000000000000
+status ok
+out int 1 5816925361756900257
+case
+x float 1 3fca9de9fec5df1e
+ccs float 1 3fe8000000000000
+status ok
+out int 1 5618779529565288098
+case
+x float 1 3fcf0d90fe91844e
+ccs float 1 3fe8000000000000
+status ok
+out int 1 5427383271826363936
+case
+x float 1 3fd1be9bff2e94bf
+ccs float 1 3fe8000000000000
+status ok
+out int 1 5242506673256074771
+case
+x float 1 3fd3f66f7f146757
+ccs float 1 3fe8000000000000
+status ok
+out int 1 5063927650328978235
+case
+x float 1 3fd62e42fefa39ef
+ccs float 1 3fe8000000000000
+status ok
+out int 1 4891431684499793401
+case
+x float 1 3fd866167ee00c87
+ccs float 1 3fe8000000000000
+status ok
+out int 1 4724811564512404970
+case
+x float 1 3fda9de9fec5df1e
+ccs float 1 3fe8000000000000
+status ok
+out int 1 4563867137486769231
+case
+x float 1 3fdcd5bd7eabb1b6
+ccs float 1 3fe8000000000000
+status ok
+out int 1 4408405068484712629
+case
+x float 1 3fdf0d90fe91844e
+ccs float 1 3fe8000000000000
+status ok
+out int 1 4258238608265804330
+case
+x float 1 3fe0a2b23f3bab73
+ccs float 1 3fe8000000000000
+status ok
+out int 1 4113187368954313450
+case
+x float 1 3fe1be9bff2e94bf
+ccs float 1 3fe8000000000000
+status ok
+out int 1 3973077107347773986
+case
+x float 1 3fe2da85bf217e0b
+ccs float 1 3fe8000000000000
+status ok
+out int 1 3837739515606854773
+case
+x float 1 3fe3f66f7f146757
+ccs float 1 3fe8000000000000
+status ok
+out int 1 3707012019075101181
+case
+x float 1 3fe512593f0750a3
+ccs float 1 3fe8000000000000
+status ok
+out int 1 3580737580985681010
+case
+x float 1 3fe62e42fefa39ef
+ccs float 1 3fe8000000000000
+status ok
+out int 1 3458764513820542230
+case
+x float 1 0000000000000000
+ccs float 1 3fe0000000000000
+status ok
+out int 1 4611686018427387904
+case
+x float 1 3fa1be9bff2e94bf
+ccs float 1 3fe0000000000000
+status ok
+out int 1 4454595062793789574
+case
+x float 1 3fb1be9bff2e94bf
+ccs float 1 3fe0000000000000
+status ok
+out int 1 4302855201801775683
+case
+x float 1 3fba9de9fec5df1e
+ccs float 1 3fe0000000000000
+status ok
+out int 1 4156284157523582993
+case
+x float 1 3fc1be9bff2e94bf
+ccs float 1 3fe0000000000000
+status ok
+out int 1 4014705861086823918
+case
+x float 1 3fc62e42fefa39ef
+ccs float 1 3fe0000000000000
+status ok
+out int 1 3877950241171266838
+case
+x float 1 3fca9de9fec5df1e
+ccs float 1 3fe0000000000000
+status ok
+out int 1 3745853019710192065
+case
+x float 1 3fcf0d90fe91844e
+ccs float 1 3fe0000000000000
+status ok
+out int 1 3618255514550909291
+case
+x float 1 3fd1be9bff2e94bf
+ccs float 1 3fe0000000000000
+status ok
+out int 1 3495004448837383181
+case
+x float 1 3fd3f66f7f146757
+ccs float 1 3fe0000000000000
+status ok
+out int 1 3375951766885985490
+case
+x float 1 3fd62e42fefa39ef
+ccs float 1 3fe0000000000000
+status ok
+out int 1 3260954456333195601
+case
+x float 1 3fd866167ee00c87
+ccs float 1 3fe0000000000000
+status ok
+out int 1 3149874376341603313
+case
+x float 1 3fda9de9fec5df1e
+ccs float 1 3fe0000000000000
+status ok
+out int 1 3042578091657846154
+case
+x float 1 3fdcd5bd7eabb1b6
+ccs float 1 3fe0000000000000
+status ok
+out int 1 2938936712323141753
+case
+x float 1 3fdf0d90fe91844e
+ccs float 1 3fe0000000000000
+status ok
+out int 1 2838825738843869553
+case
+x float 1 3fe0a2b23f3bab73
+ccs float 1 3fe0000000000000
+status ok
+out int 1 2742124912636208967
+case
+x float 1 3fe1be9bff2e94bf
+ccs float 1 3fe0000000000000
+status ok
+out int 1 2648718071565182657
+case
+x float 1 3fe2da85bf217e0b
+ccs float 1 3fe0000000000000
+status ok
+out int 1 2558493010404569849
+case
+x float 1 3fe3f66f7f146757
+ccs float 1 3fe0000000000000
+status ok
+out int 1 2471341346050067454
+case
+x float 1 3fe512593f0750a3
+ccs float 1 3fe0000000000000
+status ok
+out int 1 2387158387323787340
+case
+x float 1 3fe62e42fefa39ef
+ccs float 1 3fe0000000000000
+status ok
+out int 1 2305843009213694820
+case
+x float 1 0000000000000000
+ccs float 1 3fe676137f18ebc9
+status ok
+out int 1 6474010210744607744
+case
+x float 1 3fa1be9bff2e94bf
+ccs float 1 3fe676137f18ebc9
+status ok
+out int 1 6253481656388613313
+case
+x float 1 3fb1be9bff2e94bf
+ccs float 1 3fe676137f18ebc9
+status ok
+out int 1 6040465114170880604
+case
+x float 1 3fba9de9fec5df1e
+ccs float 1 3fe676137f18ebc9
+status ok
+out int 1 5834704697380818906
+case
+x float 1 3fc1be9bff2e94bf
+ccs float 1 3fe676137f18ebc9
+status ok
+out int 1 5635953235748579659
+case
+x float 1 3fc62e42fefa39ef
+ccs float 1 3fe676137f18ebc9
+status ok
+out int 1 5443971978531086518
+case
+x float 1 3fca9de9fec5df1e
+ccs float 1 3fe676137f18ebc9
+status ok
+out int 1 5258530307712044587
+case
+x float 1 3fcf0d90fe91844e
+ccs float 1 3fe676137f18ebc9
+status ok
+out int 1 5079405460971409727
+case
+x float 1 3fd1be9bff2e94bf
+ccs float 1 3fe676137f18ebc9
+status ok
+out int 1 4906382264091536053
+case
+x float 1 3fd3f66f7f146757
+ccs float 1 3fe676137f18ebc9
+status ok
+out int 1 4739252872478550955
+case
+x float 1 3fd62e42fefa39ef
+ccs float 1 3fe676137f18ebc9
+status ok
+out int 1 4577816521488461839
+case
+x float 1 3fd866167ee00c87
+ccs float 1 3fe676137f18ebc9
+status ok
+out int 1 4421879285258072275
+case
+x float 1 3fda9de9fec5df1e
+ccs float 1 3fe676137f18ebc9
+status ok
+out int 1 4271253843751002913
+case
+x float 1 3fdcd5bd7eabb1b6
+ccs float 1 3fe676137f18ebc9
+status ok
+out int 1 4125759257738979046
+case
+x float 1 3fdf0d90fe91844e
+ccs float 1 3fe676137f18ebc9
+status ok
+out int 1 3985220751448083855
+case
+x float 1 3fe0a2b23f3bab73
+ccs float 1 3fe676137f18ebc9
+status ok
+out int 1 3849469502608875488
+case
+x float 1 3fe1be9bff2e94bf
+ccs float 1 3fe676137f18ebc9
+status ok
+out int 1 3718342439658168552
+case
+x float 1 3fe2da85bf217e0b
+ccs float 1 3fe676137f18ebc9
+status ok
+out int 1 3591682045848866738
+case
+x float 1 3fe3f66f7f146757
+ccs float 1 3fe676137f18ebc9
+status ok
+out int 1 3469336170032533958
+case
+x float 1 3fe512593f0750a3
+ccs float 1 3fe676137f18ebc9
+status ok
+out int 1 3351157843887407971
+case
+x float 1 3fe62e42fefa39ef
+ccs float 1 3fe676137f18ebc9
+status ok
+out int 1 3237005105372305090
+case
+x float 1 0000000000000000
+ccs float 1 0000000000000000
+status ok
+out int 1 0
+case
+x float 1 3fa1be9bff2e94bf
+ccs float 1 0000000000000000
+status ok
+out int 1 0
+case
+x float 1 3fb1be9bff2e94bf
+ccs float 1 0000000000000000
+status ok
+out int 1 0
+case
+x float 1 3fba9de9fec5df1e
+ccs float 1 0000000000000000
+status ok
+out int 1 0
+case
+x float 1 3fc1be9bff2e94bf
+ccs float 1 0000000000000000
+status ok
+out int 1 0
+case
+x float 1 3fc62e42fefa39ef
+ccs float 1 0000000000000000
+status ok
+out int 1 0
+case
+x float 1 3fca9de9fec5df1e
+ccs float 1 0000000000000000
+status ok
+out int 1 0
+case
+x float 1 3fcf0d90fe91844e
+ccs float 1 0000000000000000
+status ok
+out int 1 0
+case
+x float 1 3fd1be9bff2e94bf
+ccs float 1 0000000000000000
+status ok
+out int 1 0
+case
+x float 1 3fd3f66f7f146757
+ccs float 1 0000000000000000
+status ok
+out int 1 0
+case
+x float 1 3fd62e42fefa39ef
+ccs float 1 0000000000000000
+status ok
+out int 1 0
+case
+x float 1 3fd866167ee00c87
+ccs float 1 0000000000000000
+status ok
+out int 1 0
+case
+x float 1 3fda9de9fec5df1e
+ccs float 1 0000000000000000
+status ok
+out int 1 0
+case
+x float 1 3fdcd5bd7eabb1b6
+ccs float 1 0000000000000000
+status ok
+out int 1 0
+case
+x float 1 3fdf0d90fe91844e
+ccs float 1 0000000000000000
+status ok
+out int 1 0
+case
+x float 1 3fe0a2b23f3bab73
+ccs float 1 0000000000000000
+status ok
+out int 1 0
+case
+x float 1 3fe1be9bff2e94bf
+ccs float 1 0000000000000000
+status ok
+out int 1 0
+case
+x float 1 3fe2da85bf217e0b
+ccs float 1 0000000000000000
+status ok
+out int 1 0
+case
+x float 1 3fe3f66f7f146757
+ccs float 1 0000000000000000
+status ok
+out int 1 0
+case
+x float 1 3fe512593f0750a3
+ccs float 1 0000000000000000
+status ok
+out int 1 0
+case
+x float 1 3fe62e42fefa39ef
+ccs float 1 0000000000000000
+status ok
+out int 1 0

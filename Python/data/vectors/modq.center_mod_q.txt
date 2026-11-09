@@ -169,23 +169,3 @@ case
 a ints 11 0 1 6144 6145 12288 12289 -1 -6144 -6145 36872 -36872
 status ok
 out ints 11 0 1 6144 -6144 -1 0 -1 -6144 6144 5 -5
-case
-a ints 2 5 12288
-status ok
-out ints 2 5 -1
-case
-a ints 2 12286 0
-status ok
-out ints 2 -3 0
-case
-a ints 2 11 20
-status ok
-out ints 2 11 20
-case
-a ints 2 6144 6145
-status ok
-out ints 2 6144 -6144
-case
-a ints 2 3 0
-status ok
-out ints 2 3 0
