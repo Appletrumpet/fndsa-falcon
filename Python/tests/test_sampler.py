@@ -26,7 +26,7 @@ from falcon.sampler import (
     RNG, SystemRNG, SYSTEM_RNG, uniform_bits,
     base_sampler, approx_exp, ber_exp, sample_integer_gaussian,
 )
-from support import FixedRNG, SeededRNG, load_sampler_vectors
+from support import FixedRNG, SeededRNG, ShakeRNG, load_sampler_vectors
 
 
 # ---------------------------------------------------------------------------
@@ -480,3 +480,17 @@ class TestSampleIntegerGaussian:
     def test_rejects_sigma_outside_bounds(self, sigma):
         with pytest.raises(ValueError):
             sample_integer_gaussian(0.0, sigma, FALCON_512, SeededRNG(12))
+
+
+class TestShakeRNG:
+    """ShakeRNG – gemeinsame Testquelle von Python, C und Rust."""
+
+    def test_matches_shake_256(self):
+        import hashlib
+        assert ShakeRNG(b"seed").random_bytes(100) == hashlib.shake_256(b"seed").digest(100)
+
+    def test_chunking_does_not_matter(self):
+        whole = ShakeRNG(b"seed").random_bytes(10000)
+        rng = ShakeRNG(b"seed")
+        parts = b"".join(rng.random_bytes(k) for k in [1, 9, 72, 4000, 5918])
+        assert parts == whole

@@ -4,6 +4,7 @@ Doku §6.9: „für Tests liest eine Quelle Bytes aus einer festen Zeichenkette
 (Tab. 3.2)“.
 """
 
+import hashlib
 import re
 from dataclasses import dataclass, field
 from functools import lru_cache
@@ -61,6 +62,26 @@ class SeededRNG:
 
     def random_bytes(self, k: int) -> bytes:
         return self._r.randbytes(k)
+
+
+class ShakeRNG:
+    """Fortlaufend ausgelesene Ausgabe von SHAKE-256 über einem Startwert.
+
+    Gemeinsame Testquelle von Python, C und Rust (Ebene 5). Die Aufteilung in
+    einzelne Aufrufe von random_bytes beeinflusst die Bytefolge nicht."""
+
+    def __init__(self, seed: bytes):
+        self._shake = hashlib.shake_256(seed)
+        self._buf = b""
+        self._pos = 0
+
+    def random_bytes(self, k: int) -> bytes:
+        end = self._pos + k
+        if end > len(self._buf):
+            self._buf = self._shake.digest(max(end, 2 * len(self._buf), 4096))
+        out = self._buf[self._pos:end]
+        self._pos = end
+        return out
 
 
 def nmul(a: List[int], b: List[int]) -> List[int]:
