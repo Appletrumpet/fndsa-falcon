@@ -11,24 +11,9 @@ q ≡ 1 (mod 2n).
 from functools import lru_cache
 from typing import List
 
+from .params import _is_prime
+
 Q = 12289
-
-
-def _is_prime(x: int) -> bool:
-    if x < 2:
-        return False
-    if x % 2 == 0:
-        return x == 2
-    if x % 3 == 0:
-        return x == 3
-    i = 5
-    w = 2
-    while i * i <= x:
-        if x % i == 0:
-            return False
-        i += w
-        w = 6 - w
-    return True
 
 
 def _check_length(n: int, q: int) -> None:

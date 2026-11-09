@@ -21,7 +21,7 @@ def main():
     print("2. Signatur erzeugen (sign)...")
     sig = sign(sk, message, FALCON_512)
     print(f"   Salt        : {sig.salt.hex()[:32]}...")
-    print(f"   s₂ encoded  : {len(sig.s2_encoded)} Bytes")
+    print(f"   s2 kodiert  : {len(sig.s2_encoded)} Bytes")
     print()
 
     print("3. Signatur verifizieren (verify)...")
@@ -30,7 +30,7 @@ def main():
     assert ok, "Signatur sollte gültig sein!"
 
     print()
-    print("✓ Demo erfolgreich.")
+    print("Demo erfolgreich.")
 
 
 if __name__ == "__main__":

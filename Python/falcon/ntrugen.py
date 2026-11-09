@@ -34,18 +34,23 @@ class KeygenError(RuntimeError):
 
 
 def generate_ntru_keys(
-    params: Params, rng: RNG, max_attempts: int = 5000
+    params: Params, rng: RNG, max_attempts: Optional[int] = None
 ) -> Tuple[List[int], List[int], List[int], List[int]]:
     """f, g, F, G ziehen, prüfen, lösen; bei Misserfolg Neustart. Alg. 5.
 
-    Nach max_attempts Fehlversuchen wird KeygenError geworfen mit einer
-    Zusammenfassung der Ablehnungsgründe.
+    Standard (max_attempts=None): unbegrenzt neu starten wie in Alg. 5.
+    Bei Falcon-512 sind im Mittel rund 25 Versuche nötig, meist wegen der
+    γ-Prüfung. Mit einer Zahl für max_attempts wird nach so vielen
+    Fehlversuchen KeygenError mit den Ablehnungsgründen geworfen
+    (zur Fehlersuche).
     """
     gs_bound = 1.17 * math.sqrt(params.q)
 
     reasons = {"not_invertible": 0, "gamma_too_large": 0, "solve_failed": 0}
 
-    for attempt in range(max_attempts):
+    attempt = 0
+    while max_attempts is None or attempt < max_attempts:
+        attempt += 1
         f = sample_short_poly(params, rng)
         g = sample_short_poly(params, rng)
 
@@ -162,7 +167,10 @@ def solve_ntru(
     F = poly_mul(lift(Fp), galois_conjugate(g))
     G = poly_mul(lift(Gp), galois_conjugate(f))
 
-    F, G = reduce(f, g, F, G)
+    try:
+        F, G = reduce(f, g, F, G)
+    except ArithmeticError:
+        return None
 
     # Prüfung der NTRU-Gleichung nach der Reduktion.
     lhs = _ntru_lhs(f, g, F, G)
@@ -296,6 +304,9 @@ def _round_scaled_float(x: float, exp: int) -> int:
     return sign * q
 
 
+_REDUCE_MAX_STALL = 32
+
+
 def reduce(
     f: List[int], g: List[int], F: List[int], G: List[int]
 ) -> Tuple[List[int], List[int]]:
@@ -308,6 +319,14 @@ def reduce(
     übersteigen den Wertebereich von Gleitkommazahlen; daher skalieren,
     k in Gleitkomma berechnen und runden, k·f und k·g exakt ganzzahlig
     abziehen, wiederholen solange k != 0.
+
+    Skalierung: f, g werden auf höchstens 350 Bit, F, G auf höchstens
+    500 Bit verschoben. Damit bleiben FFT-Werte, Produkte und Quotienten im
+    Double-Bereich (< 2^1024); die Genauigkeit liefern die oberen 53 Bit.
+
+    Wirft ArithmeticError, wenn die Rechnung numerisch scheitert oder sich
+    die Bitgrösse von (F, G) über _REDUCE_MAX_STALL Runden nicht verkleinert;
+    solve_ntru liefert dann None und Alg. 5 startet neu.
     Alg. 7, §4.4.3.
     """
     n = len(f)
@@ -327,20 +346,35 @@ def reduce(
     f_hat = fft([_scaled_float(c, scale_f) for c in f])
     g_hat = fft([_scaled_float(c, scale_f) for c in g])
 
-    # Denominator |f̂|² + |ĝ|² für jede FFT-Komponente
+    # Denominator |f̂|² + |ĝ|² für jede FFT-Komponente. Nach der Skalierung
+    # auf höchstens 2^350 liegt er sicher im Double-Bereich; ein Wert
+    # ausserhalb deutet auf ein numerisches Problem hin und wird gemeldet,
+    # nicht verdeckt.
     denom = []
     for fh, gh in zip(f_hat, g_hat):
         d = (fh * fh.conjugate() + gh * gh.conjugate()).real
-        if math.isinf(d):
-            d = 1e308
-        elif not math.isfinite(d) or d <= 0.0:
-            d = 1e-300
+        if not math.isfinite(d) or d <= 0.0:
+            raise ArithmeticError("reduce: |f̂|² + |ĝ|² ist nicht endlich positiv")
         denom.append(d)
+
+    # Schutz gegen Endlosschleifen: Alg. 7 läuft bis k = 0. Verkleinert sich
+    # die Bitgrösse von (F, G) über _REDUCE_MAX_STALL Runden nicht, reicht
+    # die Gleitkomma-Genauigkeit nicht aus; dann wird abgebrochen.
+    best_bits = None
+    stall = 0
 
     while True:
         max_fg = _max_bit((F, G))
         if max_fg == 0:
             break
+
+        if best_bits is None or max_fg < best_bits:
+            best_bits = max_fg
+            stall = 0
+        else:
+            stall += 1
+            if stall > _REDUCE_MAX_STALL:
+                raise ArithmeticError("reduce: kein Fortschritt, Genauigkeit reicht nicht")
 
         # F und G skalieren: genug führende Bits behalten für Präzision
         scale_F = max(0, max_fg - 500)
