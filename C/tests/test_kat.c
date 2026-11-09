@@ -27,7 +27,9 @@ static size_t parse_hex(const char *p, uint8_t *dst, size_t cap)
 
 static void run(const char *file, const falcon_params *p)
 {
-    static uint8_t pk_bytes[4096], sm[32768], expected_msg[8192], tampered[8192];
+    static uint8_t pk_bytes[4096], sk_bytes[4096], sm[32768], expected_msg[8192], tampered[8192];
+    static falcon_secret_key sk;
+    static falcon_signature fresh;
     static falcon_public_key pk;
     static falcon_signature sig;
     char path[512];
@@ -59,6 +61,16 @@ static void run(const char *file, const falcon_params *p)
         memcpy(tampered, msg, mlen);
         tampered[0] ^= 1;
         CHECK(falcon_verify(&pk, tampered, mlen, &sig, p) == 0, "%s count %zu: Gegenprobe", file, count);
+
+        /* Mit dem KAT-sk signieren, mit dem KAT-pk verifizieren (Dokumentation 7.3). */
+        const char *sk_line = strstr(cur, "\nsk = ");
+        size_t sklen = parse_hex(sk_line + 6, sk_bytes, sizeof sk_bytes);
+        uint8_t seed[8] = {(uint8_t)count, (uint8_t)p->n, (uint8_t)(p->n >> 8)};
+        falcon_shake256_ctx ctx;
+        falcon_rng rng = shake_rng(&ctx, seed, sizeof seed);
+        CHECK(falcon_load_secret_key(&sk, sk_bytes, sklen, p) == FALCON_OK, "%s count %zu: sk", file, count);
+        CHECK(falcon_sign(&fresh, &sk, expected_msg, emlen, p, &rng) == FALCON_OK, "%s count %zu: sign", file, count);
+        CHECK(falcon_verify(&pk, expected_msg, emlen, &fresh, p) == 1, "%s count %zu: eigene Signatur", file, count);
 
         records++;
         cur = sm_line;
