@@ -1,0 +1,2103 @@
+# Erzeugt mit Python/scripts/gen_vectors.py
+# python 3.14.4 arm64
+# falcon-quellen sha256 a623c5ad08d8cec592dbe9404bcb8514f23693de048e9ef4a0421098165f1bb1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 22 a70cc0d10902cd305ca3f2b9a2f86c44d92d78aba904
+status ok
+out int 1 1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 55 022bfb31626021fd291d944a776f670e09e232c5d55e744d75ebfc663b8d4771ab4a19328f513db5b717d7c6b0269eaece009f9ee1b376
+status ok
+out int 1 1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 d086ae73515091eb889844
+status ok
+out int 1 0
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 22 f7ae99b09defea0a4807b7ff6e99388e40ecd728c430
+status ok
+out int 1 0
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 22 006bd041c222efa773d92b8dea83a4ec62c82b296159
+status ok
+out int 1 2
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 a381707faa3c719792f86a
+status ok
+out int 1 -1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 942e09982e640a88ecc08c
+status ok
+out int 1 -1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 cb2146c8a8fbe9b8d73c78
+status ok
+out int 1 0
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 d9c97e8039a393fc9c6087
+status ok
+out int 1 0
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 a4f70915262835c94936d9
+status ok
+out int 1 0
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 9fcd0a379bc8e0229e9e1f
+status ok
+out int 1 -1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 b8e8f46474a69fb4082c2a
+status ok
+out int 1 0
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 33 2e0be50a5e9c7ff89f6762a3bbe7b70da8915934e3f374997e883d2292c576d047
+status ok
+out int 1 -1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 8f31f5ac4a726924c6c417
+status ok
+out int 1 -1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 f576feba91d055b398f413
+status ok
+out int 1 0
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 22 0819a29783974b226c54cb54b171bc12467216979f13
+status ok
+out int 1 3
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 6b36b36297a22c493aa248
+status ok
+out int 1 -1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 33 7fb25d216bc60a7c3c0bfcb9b7a4972b0504a14478f2667ff75b5bb4926069629e
+status ok
+out int 1 -1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 22 4a6046ff7afa008eafb187b2dfcad09402976b2e892e
+status ok
+out int 1 1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 44 39667e46374f018088dcabdf97c72045a239ddafb5b9880126ae76854cedf312d9fed79c530ac9e6fb830f63
+status ok
+out int 1 1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 e20a6c9b5412d3ed7d930f
+status ok
+out int 1 1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 ecf251d6b39a2a0b6e9430
+status ok
+out int 1 0
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 8aab3ec849ee47bd718488
+status ok
+out int 1 -1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 a4dde8868ba1702e0de438
+status ok
+out int 1 0
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 d18b84c825de1c5359125c
+status ok
+out int 1 0
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 22 c66895da3aa67f59eec8ed5d6c76de9cabdc9007575b
+status ok
+out int 1 2
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 716f46f3c25456e008d6c6
+status ok
+out int 1 -1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 89ffeea8abdcf9425c6f0b
+status ok
+out int 1 2
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 22 52ad9769bcb354e9ed43fa6d00d44010d61aa2867887
+status ok
+out int 1 -1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 33 f1c31c4243e064eeaad8fc1b9d07b216aead9e6b8290e33b3ff8d3deed4bd024c9
+status ok
+out int 1 0
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 48f015d02bad6cb4bd642c
+status ok
+out int 1 -2
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 22 4675fb2fd483f169681f9d579d3ba5b8bd92483d8b5f
+status ok
+out int 1 2
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 251a0c5918a666d1b2ca0f
+status ok
+out int 1 -2
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 55 c89e4af6c9eac8432c83f703b539762e9523651350fc0a38d30c32732783fdd5f1090c7b7e07a1988e023a55d378645badebae50ed5d16
+status ok
+out int 1 1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 22 5ca4b40f1c66f74f5747a65f9e07d664bb8c92e8a31c
+status ok
+out int 1 2
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 adad44b249be6d6368097b
+status ok
+out int 1 1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 33 4eedde9ea53740e9471d57872cf1514668e0ff392fc7c331d215e942d182b7be2c
+status ok
+out int 1 0
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 97f92aa163583c8b0b16ae
+status ok
+out int 1 -1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 ee07c3f8b33471e021091c
+status ok
+out int 1 1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 ba7ba66424f1efce2302e3
+status ok
+out int 1 0
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 33 42ac3f3b62350f6d0104df0a22fbe884e2d1a5f801b6c5ca039114dcf249222f88
+status ok
+out int 1 1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 c951c34804a6f850082ae0
+status ok
+out int 1 0
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 b0dc923a27a13b690afe34
+status ok
+out int 1 0
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 c7c7f88364e3153c1d2a57
+status ok
+out int 1 0
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 22 017cff85d3ff07e1d7ce8daa6c77740e116526702a0d
+status ok
+out int 1 0
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 ba036b46de2657f3edf494
+status ok
+out int 1 0
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 b569131632ceaea5320043
+status ok
+out int 1 0
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 ebf4615f409c9c7c8ee358
+status ok
+out int 1 1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 fd7264493d14a8daaedf4a
+status ok
+out int 1 1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 22 ba2cb9c03ebf7af1bbf3d32c68558fe9b1e9a8016a2f
+status ok
+out int 1 -2
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 9d3fca82ab17f6ab6de604
+status ok
+out int 1 -1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 74ac4a767dee2e0477a303
+status ok
+out int 1 2
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 231e1459020e1732022510
+status ok
+out int 1 3
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 e0f9f9a677a70ae5ee626c
+status ok
+out int 1 0
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 35e48518c56ac58838b287
+status ok
+out int 1 -2
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 22 10650547f696e07e0da771527558382f447d5b66388c
+status ok
+out int 1 -2
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 22 4959fa33e28a5ac3de2db5dd64bf77c0c3e5b48f7064
+status ok
+out int 1 0
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 33 035b025e5ed9e35d3929368e42c78ef82b11c93d37acf87f6db2e44b2d57401e8c
+status ok
+out int 1 0
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 d85fa86d6cde7f3ba424cb
+status ok
+out int 1 0
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 3f7dc7dc08c717d401a215
+status ok
+out int 1 -2
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 fa9fb5c3fe4df92d23a22e
+status ok
+out int 1 0
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 55 102030727a09c7272932aa0a54b2aaa4d023207086528657f9b268595b8d9cd3712c0302b4d37a2fab2a0ebf5717a367b5bf869ed11725
+status ok
+out int 1 2
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 d073d1a40f015c7941aa8f
+status ok
+out int 1 0
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 7e3d22a706f78d6e31b743
+status ok
+out int 1 2
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 22 13ac07e49f72c34eb7c6e89d0309118bd3aafb600896
+status ok
+out int 1 -1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 6b1ea5c7a20729a13f1e1b
+status ok
+out int 1 -1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 33 4f32038bf2dfaa386f7cd3179e03c518c28de117e3f0fad6782af80c7b1c5a8965
+status ok
+out int 1 1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 33 0dbb0b595901606b341cfda25c8281f7d64cd7f9978002aa9876e8428129980619
+status ok
+out int 1 -4
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 dfc0aa7f68ecf544c08375
+status ok
+out int 1 1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 2dde27fa6f50660e205656
+status ok
+out int 1 -2
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 d2ef3f65b8d36cb08e3c95
+status ok
+out int 1 0
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 33 2bbe744d69e2c045e8ecd38f6965ce341607342a30f0df92ac4eddc949e52bdb53
+status ok
+out int 1 1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 22 605cd9db9cc52fe92efde226ca06120acc82449e3451
+status ok
+out int 1 -2
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 44 22abf58a9878fa18293d4e09c77270080c09310f77497570ab0edd80089b19fb735103dc1fc07eca86fa090e
+status ok
+out int 1 3
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 22 8943c8a528a0c9026c4d94a17e4f1383d7abf3db74c9
+status ok
+out int 1 -1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 44 50bd84d8ecdad2ca8b26c1f128f65cc036a38e6d6bcc3dd418b4076477c1bd1fe3a61d6b559c1169d8a26d96
+status ok
+out int 1 1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 22 98fc3533dee49a675d4dccb8f9209eda5bbac3ee4f66
+status ok
+out int 1 1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 e654faab5f6ca12fbb965b
+status ok
+out int 1 0
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 22 2db23be520ff155169f9a8d765baefaa8fea3263f455
+status ok
+out int 1 0
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 22 56ce464f2b9a43b7b1f795b69932f9d328acdfd0901c
+status ok
+out int 1 0
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 cebd79ec46d58e39b0416b
+status ok
+out int 1 1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 325c89bec9741a458f9314
+status ok
+out int 1 3
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 33 9ea03e3321782599730df2865cd03846af09f23da1bc5ca1e47be7f4650dbd5f54
+status ok
+out int 1 2
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 33 2bd9cd71fc21189594ab7fecf6d85ae9cc79e911efea77d45bd169bed7bc9fb125
+status ok
+out int 1 2
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 44 0a805020cf1261fe068f38203c5cea9c6e48fea497816a4b008e5728835fee0b95be316d7ab63d0a4f78d7a3
+status ok
+out int 1 1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 22 b1209a40c45863be6c17cc5ef39c9dd9dad5f0eaea1a
+status ok
+out int 1 -1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 55 8d931c86e4ebca41b9d96a3cd1312cc7f4f4c1d112cdaf293f5ec861690a6ec7ef3707ec64b1e53d731b5382d6b5fa3dda31c2bf3ecd0a
+status ok
+out int 1 1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 499caa2e4a8b553d29bb0a
+status ok
+out int 1 3
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 96170c4e47cad12b5d005b
+status ok
+out int 1 -1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 d5e10ffa539ecf92340d09
+status ok
+out int 1 1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 d8cdbf6e85c1dce27cc847
+status ok
+out int 1 0
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 3369715d51436fc8a5e69a
+status ok
+out int 1 -2
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 22 4bf9f13ee251cd4e17733cbdea0faf94934b48f73ac3
+status ok
+out int 1 0
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 4abf6e72f1241137318214
+status ok
+out int 1 -2
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 33 3187fc1987f4eff243495ec51c9f5b0be4a6eed6c9c678dd7ee8a363eaccd93885
+status ok
+out int 1 -1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 22 323dfbe02dc8ea072341d3db73d944e2cdcb3581fa58
+status ok
+out int 1 0
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 8d0a47cb1887145e3f3eb2
+status ok
+out int 1 -1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 60cdad4cbbfda2eaaeb47c
+status ok
+out int 1 -1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 0a2d0d9197ba21cf67a611
+status ok
+out int 1 -4
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 2dd18860faeb7d29dd6c69
+status ok
+out int 1 -2
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 22 15ad98bebac725e7bac550e31aaf981a54e1ad7dce46
+status ok
+out int 1 0
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 22 5027c4213ee5632423c3cc779a9c5e20090ccd421ca0
+status ok
+out int 1 -1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 f234d0292defeb82464ab5
+status ok
+out int 1 0
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 22 325517655a526e5f3557fda5e469fc29243513185611
+status ok
+out int 1 0
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 22 96c479fce9f76a4ff0acdacab685f0a5b4c764088f4a
+status ok
+out int 1 1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 d07eb9e18295d5cf9d6ee3
+status ok
+out int 1 0
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 22 3ab85e84cbd94f33cdc6d9aebc5f4361e8b247f20456
+status ok
+out int 1 0
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 23 210bbfec4051a4bae8557bdb2848fdd3c933ada7d7b23b
+status ok
+out int 1 1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 754f075fc7ca7324c27838
+status ok
+out int 1 -1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 45ac3c5d862c12afe45037
+status ok
+out int 1 -2
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 22 2c919749ab4072da4294c0d3fb5f75d29fbc22eaaa47
+status ok
+out int 1 0
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 973ae1cd0557357e20cf24
+status ok
+out int 1 2
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 22 0c2490fd8857bf80e7714c8e97e5793f59c83e85be9c
+status ok
+out int 1 -1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 0b91ed2c30fbe24b142c25
+status ok
+out int 1 -3
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 22 2bb4b1818589198f2fa8d2a280318c8adc720ec9465c
+status ok
+out int 1 -1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 e58b0dea3d9bbad5fea201
+status ok
+out int 1 0
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 44 3b2b62620b7a768b0672b946142f84b0731bed619b9409720942ffc4c21dae98dd44b5d10b624a9d39b6f91b
+status ok
+out int 1 3
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 22 f6bb82a4985ed86d3b09fc904b1dddbd607b30e0261a
+status ok
+out int 1 -1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 96d0e15c7f33741f5fa87f
+status ok
+out int 1 -1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 d2b61f1a389a1c6b4966d7
+status ok
+out int 1 0
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 49bc0fd8f53866deef4e4a
+status ok
+out int 1 -2
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 22 c526d34ee9a7e80b68ede2f0026b88b6440da0516d1d
+status ok
+out int 1 1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 ffeb92a7167d47339f833f
+status ok
+out int 1 1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 33 edfa4f649f02fec1d29bec8f62338c220b129398616ad27948a1fdf8f866d6e806
+status ok
+out int 1 0
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 7051d0ac7023caf79a848b
+status ok
+out int 1 -1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 4100ebdcddaa0326509482
+status ok
+out int 1 -2
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 22 f7c8584b945cbd1c3df2f9ef72632a85c318fa23b77e
+status ok
+out int 1 1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 22 238fa7bf3df92349d6958054e3e50fa2f860fbd85220
+status ok
+out int 1 -1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 bcc3b14c0cf8e30bc8851d
+status ok
+out int 1 1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 9aa719c6a538cbfae2e005
+status ok
+out int 1 -1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 081fc4dd2a482f3f30b419
+status ok
+out int 1 -4
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 22 240d0c69aa0ebaaaf0f6fda5dded8910c21130ef6118
+status ok
+out int 1 1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 905ecb004fa13624289684
+status ok
+out int 1 -1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 f59cd88344a81203232502
+status ok
+out int 1 1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 151652cb9f87b4694d8849
+status ok
+out int 1 -3
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 79ddf3e0ace654cbe75e24
+status ok
+out int 1 -1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 22 80ae4eebfb9703f93a79e7270a52af87c19a1127fe6a
+status ok
+out int 1 -2
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 ef46967d00984fb441a1a5
+status ok
+out int 1 1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 22 b9b3b56cea2d1f4899b8fd60152a1c949a6459d5cb54
+status ok
+out int 1 2
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 22 183bfd9f36065729b90154a9b9d8d056f102201fa38c
+status ok
+out int 1 1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 340a4698089b1061a13455
+status ok
+out int 1 -2
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 22 d338ec0d401a1083aa29ea0fe8ce072fbc697bba900b
+status ok
+out int 1 -3
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 2cd12ff0d278cf51852691
+status ok
+out int 1 -2
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 53490810091f9fee81be9a
+status ok
+out int 1 -2
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 33 41732fef62d9867fada4b35c96f82ba3c90891bdfd7cac04f2e7d39d6b98694e39
+status ok
+out int 1 0
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 d906c5e47cb6fde686e52b
+status ok
+out int 1 1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 66765ef0e9609681ce8f21
+status ok
+out int 1 2
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 22 29304af3fce8811f9d7b3274b873818e0be31a26735b
+status ok
+out int 1 2
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 fd48c4eeb366c091eca4da
+status ok
+out int 1 0
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 22 d32fede202c8d59942e9ea1479b245cf2d76fe7da45f
+status ok
+out int 1 -3
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 e1a658d4d535db9b20936b
+status ok
+out int 1 1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 22 6b51a16db760b47ea193bffc5c3d2620ad9628f6423a
+status ok
+out int 1 0
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 c5816bed58bdb309ce3d38
+status ok
+out int 1 1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 a40613c47448e2a7bcae0e
+status ok
+out int 1 0
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 22 d7cb6ba6c0f15ddb7f51f7b0896cf13279233d105535
+status ok
+out int 1 1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 6fbe64874c030dcb8f4c6f
+status ok
+out int 1 -1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 c4b05160e86062b4b632c1
+status ok
+out int 1 0
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 3e266e4d395fd93437ce90
+status ok
+out int 1 -2
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 60ce8b5104c902a4b61f23
+status ok
+out int 1 2
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 57d8a698d9a7754d492d50
+status ok
+out int 1 2
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 54e0d85629369eb7c05200
+status ok
+out int 1 -1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 a043228acb1a174ddb7cbd
+status ok
+out int 1 -1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 22 31916c1fbf08ff0f09d6d15bb2e0846131022199e453
+status ok
+out int 1 -1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 22 935d0109b6cd80a965bdb1f06663bc692c97a947a732
+status ok
+out int 1 1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 66 3bce17cb4b67892f41e6c208346f90a1f4cb34b235060d5549cb2201c8a89794e4179be3558ca4c63bfbf2dc82d299cfc94bbd0cde4b85e2aaeea91dc7a44b611229
+status ok
+out int 1 0
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 22 1c43833fd05e73b6a85d413ad3e7da4d6cf1e7d8db0e
+status ok
+out int 1 3
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 22 82dc7ff4d3c76c18d179a791c007c3ec3cba29fd549c
+status ok
+out int 1 -1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 03d2e40a00112fce47882b
+status ok
+out int 1 -4
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 22 2f058ced362eae7e8889a80c0d9ddc58528790408232
+status ok
+out int 1 -3
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 ee2b3db313273df6e3be74
+status ok
+out int 1 0
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 751a9b2b15923625d11619
+status ok
+out int 1 -1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 e7dd2be05cb769be4eb67f
+status ok
+out int 1 0
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 22 71d9a3b24e852b777cd7855d3c4ace0b85f4e75ac440
+status ok
+out int 1 -1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 cf3ca46baef22b3bb7a609
+status ok
+out int 1 0
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 33 112b39c3269cf107b02d8b31683bf6043dab1a6621e997d8ca286c025e6dccab32
+status ok
+out int 1 2
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 a1edc761fa8fbb9abffeaa
+status ok
+out int 1 -1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 12 ecfff0c15ac0b93140a3b288
+status ok
+out int 1 1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 841dcfc35cec45f1660eb9
+status ok
+out int 1 -1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 dad04ec77cf274f94a6d21
+status ok
+out int 1 1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 22 992db666cf0a387e28c5a2bd48ae04e65af9133110e0
+status ok
+out int 1 0
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 2c5c2cf750437b7a5d230f
+status ok
+out int 1 3
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 f3f0d62518d2511357f36c
+status ok
+out int 1 1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 7440a8f478906db1ff8f46
+status ok
+out int 1 2
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 354a2a3e6501be4bb50f02
+status ok
+out int 1 3
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 33 966375bb63546af5bd62f48b3114d8dde17c09fc79cfd0c29da3fe8f40780dff2a
+status ok
+out int 1 1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 554d719cc380881198fc83
+status ok
+out int 1 -1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 22 bc7d74c3b301d26aec3fd8504f86aa51049597493676
+status ok
+out int 1 -2
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 9ff6ab3b87bcda6ef8e548
+status ok
+out int 1 2
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 22 9d19fe14b200a9850fc5cac4a42b64fdfb0408618613
+status ok
+out int 1 0
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 22 93d818f271b64c2f998d9be79026e2ad30387670bba6
+status ok
+out int 1 1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 a3ec8a6a4f76fa5041766d
+status ok
+out int 1 -1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 feba87ba43d4ac13feefaa
+status ok
+out int 1 1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 b254048fb4cb0be71c3373
+status ok
+out int 1 1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 5ce6aa72a1950f67acae1e
+status ok
+out int 1 -1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 63aacb8721cc01ffee746c
+status ok
+out int 1 -1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 22 b8b6e4fe873a46ebbe19c3cace765938a8dbde362562
+status ok
+out int 1 1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 22 320f83fc827664100bfde920356ae0379825e7264501
+status ok
+out int 1 4
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 d2a9966f4032ad93bb737d
+status ok
+out int 1 1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 22 4dfba516f7ba6a34e26752e99fe3fbf3bfb6fb2d3215
+status ok
+out int 1 0
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 22 2f370eac027d3e7efeaf89f4daa45dab289b6098bd85
+status ok
+out int 1 1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 976d4ff1499efa5a77aa45
+status ok
+out int 1 -1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 22 f909a4b2994cbe8014bbeff7f7699dad4883e5db3224
+status ok
+out int 1 0
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 55 1353aa47081af616f5735a36d978fe7bb025cf447b3d5400b3834ca8bc480beed9040041c27582b291d1dfa4b81bf9b25559ff8fca5699
+status ok
+out int 1 0
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 22 1197c3ebed2d50b58dfaf9c580c1cb48e011f3480f71
+status ok
+out int 1 1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 abcd33e24cfad1d96bef01
+status ok
+out int 1 1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 33 e5d0b179ab6214b996b3e51818910f05bae03f978aef586d55fb9856220ba55f58
+status ok
+out int 1 2
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 22 036b7ab022702474fb706478f4d9558262d0a45be623
+status ok
+out int 1 -1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 33 dc2e5db727fd97880191e8f3314198dcb72ea3c3ceffb020eb389c4a66a3402c46
+status ok
+out int 1 0
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 22 086077f7a507c82a4f9b849cd75d5573cc4baf62a529
+status ok
+out int 1 2
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 22 7f322b398e1b40b4fcb1b2c03d0e8b6034d25b65d8ba
+status ok
+out int 1 0
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 22 d6d4309029f375ff9bc5e46379e85d59cc0f6815b536
+status ok
+out int 1 2
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 22 acddb2facbe47353c8a0f09db6a37395457ff93ec408
+status ok
+out int 1 -1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 4d688a7c54b189ded9aa10
+status ok
+out int 1 -2
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 22 208252d55ab3f270bc508952dfc4a4993f7d41d39a0c
+status ok
+out int 1 -2
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 b039e3c3e907022e5e1331
+status ok
+out int 1 1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 22 1e807ffb37ea7991a609daba43b2ec5b2d86570152a8
+status ok
+out int 1 0
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 22 e1424125796b90b0d213f67c5324d63a61161622c14e
+status ok
+out int 1 2
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 d66603a51138fcfc307b2f
+status ok
+out int 1 1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 aa5ed94aba3d865b608839
+status ok
+out int 1 0
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 6d9d090ac3e7cf1b9a1c20
+status ok
+out int 1 -1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 22 7b870326e429dc1c9d23e0b42bce9514dabc0a876ccd
+status ok
+out int 1 0
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 df2ea01bd66d76667a73b0
+status ok
+out int 1 1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 55 5413770d21cdd229e6bafc4aea31e478169c913eb7bc4c3e46774f29fb83757ce156418dd270c2bbff5821fd4ee0abeb8d69ee02c79623
+status ok
+out int 1 -2
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 22 8a515c63a6243f1082edaaa4d08f67f2a9384fb96c93
+status ok
+out int 1 0
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 1ae139dadfb97cabedb25d
+status ok
+out int 1 -3
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 a21fb00c34b6b90345fab0
+status ok
+out int 1 -1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 33 2213d4d5464eafd5d2034e3e7856e9eef74d217000d1eeee860504a733fffea3b1
+status ok
+out int 1 1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 44 fec2a106df44dc34526bb3e6afc80998896d167be7e4ec42724172932cb29774fabe0de0462508138b13bd11
+status ok
+out int 1 1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 d01cc8ac4aefaa1725a278
+status ok
+out int 1 0
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 86dc809efccc51772df715
+status ok
+out int 1 2
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 22 37ae47ff81b7401a1bc4e1c7c31aa93b413deb84033f
+status ok
+out int 1 1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 22 697fefe13c4727e49d9cfebad227e6de61c6343fa502
+status ok
+out int 1 1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 ec295971b14986ba27ee20
+status ok
+out int 1 0
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 33 43750887c8b19a1ebbf5fa85c35a265c38b0e398efd2b6968ad1e6d7ecdfbdc983
+status ok
+out int 1 1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 f7cf925b11f486ed84cc60
+status ok
+out int 1 0
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 22 e968dd8b223f27ec3605fadc5b5d46a1cbf0465e188e
+status ok
+out int 1 0
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 22 42a0ff98350ac83e1d13e19ce110bc7e7bf3d60f9d02
+status ok
+out int 1 2
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 22 2e6a17ea6126e8102fcbce6e93b4653c05b2c0802085
+status ok
+out int 1 -1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 22 e532028e5f08f3ddf595df439168f13e5f1be291df29
+status ok
+out int 1 3
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 44 a53fc0c692899c10ed3ddd1ea6c38834c5cb36a65ec1008397f14291ebe8b0c3f3d34c14c1d353a391643ede
+status ok
+out int 1 0
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 44 813dec7848847764b308ec14a3563ecdb5278848833b0aaf37a2b5bbb98bbc393269b47d51b590ce6b41c320
+status ok
+out int 1 2
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 44 2bc83268cfe70cf84885925491e6a0be83b850eccefd5c3236cfdadf2b6818f1bc7bb8968a771510ec994c86
+status ok
+out int 1 -1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 33 fb7bac0f8b6b6f216f31c02c38940479b062259542a7241b547fc997205235e063
+status ok
+out int 1 -2
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 f87cf584195be2a5209f95
+status ok
+out int 1 1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 44 0c8bda30826ec48934b32f15ba2b3d2d7ea4105af1708863b2abdaa8962009859774635d301f23e42a408330
+status ok
+out int 1 2
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 b9d370f6524ee5b9aafa39
+status ok
+out int 1 0
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 cb09f77f746d3e12de8c67
+status ok
+out int 1 0
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 22 6f7b4864eb3bd3fd5b058ca1de55914f6385a7d6c059
+status ok
+out int 1 -1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 33 97e7b7cb336f2a913fd56b546cfcb2c244b7787b636128f2cf4a6504a57e37032a
+status ok
+out int 1 3
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 b88f9a5d0bcaa242a76d06
+status ok
+out int 1 1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 65e6e02ecb8b7a7c9c426b
+status ok
+out int 1 -1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 4b2a376069cdd7301b4414
+status ok
+out int 1 -2
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 95f84f165ad5e00ede6e5f
+status ok
+out int 1 -1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 22 2231ef8f619210772909e4f1723c0930507d8ca8cf7d
+status ok
+out int 1 1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 aaec418dc492d710fb54da
+status ok
+out int 1 0
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 88fbdedc72833cb3827148
+status ok
+out int 1 2
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 c4c2799df960f058581c31
+status ok
+out int 1 0
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 22 2701b64037a1506ae114c15b8c1bd0a52905425de07f
+status ok
+out int 1 -1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 8e109ed644fd9379bbec57
+status ok
+out int 1 -1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 db34d27e76739571fa0910
+status ok
+out int 1 1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 22 9bf51658a422c4b85989acdb4ce45a7fd26bab7da38e
+status ok
+out int 1 1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 44 110348a37ea6ccca423339cf9c1666227764326d09b3415f2c6c401e522471c8e4ad3f60bb6bdd68970a0e46
+status ok
+out int 1 0
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 7aeb221da51ae079c0ea34
+status ok
+out int 1 -1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 55 0af50ee7bf77eb69b880fc977381029f4891afdf8dc1b63f85ba4200cc975329b81b1c0c6919c176ce9f157a7654934c3f8a811cbc2557
+status ok
+out int 1 2
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 33 61f0c21b982433c02905f5f1778e0d590646b1b18ff29415744973c368e406929c
+status ok
+out int 1 -1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 e5f81ef8512cac51c9dd64
+status ok
+out int 1 1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 22 0bc0ef92a809b01bf41d976e0ba8204be2238c30a938
+status ok
+out int 1 2
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 44 5915ff72d540e86a145df9dba730ec196567d90461f7530811187f36de7a7c1b499490f4ea6c35cc1af0068d
+status ok
+out int 1 -1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 4f84bf0cc5c7f68a9d7107
+status ok
+out int 1 3
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 fdc9e25eb5491aa19c987b
+status ok
+out int 1 0
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 44 05a08c2bc02253fe92ffb39129d89e840c51ad002ce20631399b571c6988973d355a6a62d0aa98e167019f36
+status ok
+out int 1 2
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 22 013ff2ce4e3fc099782fd0c7443d745e3f5a2a45e424
+status ok
+out int 1 0
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 22 190e95701a38537dc2994e610b56b9a691cd6e4bc80e
+status ok
+out int 1 -1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 55 b8483be86b4271d3602fcc05e7dc1ec084e60356b44458d87800a054373d59fdd5106fe5db4f72b086b5ed408b1cee9b7f77f393cb7f41
+status ok
+out int 1 2
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 55 ee329b5985ef2889d029b3e52f815cf3174d64839fc96fdd2c52682771c2016db63bdf197a2ebde668eb199eb77d31a77bc43af806d07b
+status ok
+out int 1 0
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 22 4a6d25d82dadf70f36b9beaffe9707955a2f2ab44724
+status ok
+out int 1 1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 128bbb634a1d381a78e016
+status ok
+out int 1 -3
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 22 ba6b3dde94a59e290eddd4ebb98baab9b5945d185b85
+status ok
+out int 1 1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 f9e27627f69dd805086598
+status ok
+out int 1 1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 33 64877503a5c2d02023e3f22f8fadec403372468c17fd650461436b5f9dc70ecc95
+status ok
+out int 1 -1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 5a4b979a54fe314a525663
+status ok
+out int 1 -1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 22 4cc0ac11fd2a0ced5cf2b3444e8e73e7720a504f9642
+status ok
+out int 1 -2
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 22 0232c3f7e5a51c068efe64f0e8e2afcd5b1ff6eb472d
+status ok
+out int 1 1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 33 043d9e1abbc02c083318b24c923bbc849b89b8687369e306444f7514022d0f90cf
+status ok
+out int 1 0
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 8374d1764eccdabcd9fa05
+status ok
+out int 1 -1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 b2e53ea36f8a52c662f81d
+status ok
+out int 1 0
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 22 7a401b9f3e8ebddeadb8faf6545c3e160f5129a7c11f
+status ok
+out int 1 1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 66 5926541db58e422239eaeeeb8466d43f1c353fc758f66f2c02cd419987254ea6e28e26471b860860a52c9ddc220be0375cc5f46c13edc394f876d4c96d147045b856
+status ok
+out int 1 -1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 ba1551bf7b03ee98d7298e
+status ok
+out int 1 1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 b8eda34ddded26bf5daf34
+status ok
+out int 1 1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 8ef023bd979606ea42114c
+status ok
+out int 1 2
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 55 83d08092b7cecc67c6c6d711eb88f0300db01f63a3c33d2f028a508fc58d36553e2d5e9324be24e411c7e1a97f027645838d3a2e433024
+status ok
+out int 1 -1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 6f9a7cb084d62879296259
+status ok
+out int 1 -1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 9e2f949d5682980631d31e
+status ok
+out int 1 2
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 66 61045e819e72a13f9cb7775904c2907cecb0017ff1976df8f54bf1d4d7fd8eef7816d8ec1be04ccb9b9f0f6a3ea8be6d11e237a2212b57c203ac3699a28e605da475
+status ok
+out int 1 0
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 fd93309f3997140efe4e83
+status ok
+out int 1 0
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 5928c88888c71a13ffea1f
+status ok
+out int 1 -1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 b34a5cd4c2650ffadee6a4
+status ok
+out int 1 0
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 85e47d57569f971a7e383b
+status ok
+out int 1 -1
+case
+mu float 1 0000000000000000
+sigma float 1 3ff6ed9bb088ee1d
+params ints 2 512 666
+random bytes 11 860c32f5cc7073be0c6618
+status ok
+out int 1 -1
