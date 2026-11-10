@@ -1,0 +1,20 @@
+[package]
+name = "fndsa"
+version = "0.1.0"
+edition = "2021"
+# u32::is_multiple_of (Tests) gibt es seit Rust 1.87.
+rust-version = "1.87"
+description = "FN-DSA (Falcon) in Rust, mit konstanter Laufzeit auf geheimen Daten"
+publish = false
+
+[dependencies]
+sha3 = "0.10.8"
+zeroize = { version = "1.8.1", features = ["zeroize_derive"] }
+
+[features]
+# Macht die Einstiegspunkte für `cargo fuzz` sichtbar (src/fuzzing.rs).
+fuzzing = []
+
+[profile.test]
+# Die KAT-Tests rechnen viel; ohne Optimierung dauern sie unnötig lange.
+opt-level = 2

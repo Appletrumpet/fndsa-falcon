@@ -1,0 +1,58 @@
+name: Rust
+
+on:
+  push:
+    paths: ["Rust/**", "Python/data/**", ".github/workflows/rust.yml"]
+  pull_request:
+    paths: ["Rust/**", "Python/data/**", ".github/workflows/rust.yml"]
+
+jobs:
+  check:
+    # Beide Zielplattformen aus PLAN.md, Abschnitt 10 (nur Korrektheit,
+    # keine Zeitmessungen).
+    strategy:
+      matrix:
+        os: [ubuntu-24.04, ubuntu-24.04-arm]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Rust installieren
+        run: |
+          rustup toolchain install stable --profile minimal --component rustfmt,clippy
+          rustup default stable
+      - name: CI-Skript
+        run: bash Rust/ci.sh
+
+  msrv:
+    # Prüft die kleinste unterstützte Version aus Cargo.toml (rust-version).
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Rust 1.87 installieren
+        run: rustup toolchain install 1.87 --profile minimal
+      - name: Tests mit Rust 1.87
+        working-directory: Rust
+        run: cargo +1.87 test --all-features
+
+  fuzz:
+    # Baut die Fuzz-Ziele (PLAN.md, Abschnitt 7) und lässt jedes kurz laufen.
+    # cargo fuzz braucht Nightly und läuft nur unter Linux.
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Nightly und cargo-fuzz installieren
+        run: |
+          rustup toolchain install nightly --profile minimal
+          cargo install cargo-fuzz --locked
+      - name: Fuzz-Ziele bauen
+        working-directory: Rust
+        run: cargo +nightly fuzz build
+      - name: Start-Korpus aus den KAT-Daten erzeugen
+        working-directory: Rust
+        run: cargo +nightly run --example seed_corpus -- fuzz/corpus
+      - name: Fuzz-Ziele je 60 s ausführen
+        working-directory: Rust
+        run: |
+          for t in decode_pk decode_sk decompress verify; do
+            cargo +nightly fuzz run "$t" -- -max_total_time=60
+          done

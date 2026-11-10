@@ -1,0 +1,46 @@
+[package]
+name = "fndsa-fuzz"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+# Ausführen (Linux oder WSL, Nightly-Rust):
+#   cargo install cargo-fuzz
+#   cargo +nightly fuzz run verify
+# Die Logik liegt in src/fuzzing.rs des Haupt-Crates und wird dort auch
+# ohne cargo fuzz mit `cargo test` geprüft.
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+fndsa = { path = "..", features = ["fuzzing"] }
+
+# Eigener Workspace, damit `cargo test` im Haupt-Crate dieses Crate nicht baut.
+[workspace]
+members = ["."]
+
+[[bin]]
+name = "decode_pk"
+path = "fuzz_targets/decode_pk.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "decode_sk"
+path = "fuzz_targets/decode_sk.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "decompress"
+path = "fuzz_targets/decompress.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "verify"
+path = "fuzz_targets/verify.rs"
+test = false
+doc = false

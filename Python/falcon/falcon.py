@@ -58,17 +58,24 @@ def sign(
 ) -> Signature:
     """Signaturerzeugung. Alg. 10.
 
-    Ablauf:
-      1. salt = rng.random_bytes(40)
-      2. c = hash_to_point(salt + message, params)
-      3. t = compute_target(c, sk, params.q)
-      4. while True:
-           z = ff_sampling(t, sk.tree, params, rng)
-           s = compute_signature_vector(t, z, sk)
-           if is_short_fft(s, params): break
-      5. s1, s2 = to_coefficients(s)
-      6. s2_encoded = compress(s2, params)
-         if s2_encoded is not None: return Signature(salt, s2_encoded)
+    Ablauf (Ebene 2; der Salt liegt vor beiden Schleifen, Alg. 10, Z. 1):
+      salt = rng.random_bytes(40)
+      c = hash_to_point(salt + message, params)
+      t = compute_target(c, sk, params.q)
+      while True:
+          while True:
+              z = ff_sampling(t, sk.tree, params, rng)
+              s = compute_signature_vector(t, z, sk)
+              if is_short_fft(s, params): break
+          s1, s2 = to_coefficients(s)
+          if not is_short(s1, s2, params): continue
+          s2_encoded = compress(s2, params)
+          if s2_encoded is not None: return Signature(salt, s2_encoded)
+
+    is_short auf den gerundeten Koeffizienten ist eine zusätzliche
+    Absicherung: is_short_fft rechnet in Gleitkomma, verify dagegen exakt.
+    Liegt eine Signatur knapp an der Schranke, verhindert die Prüfung, dass
+    sign eine Signatur ausgibt, die verify ablehnt.
     """
     salt = rng.random_bytes(40)
     c = hash_to_point(salt + message, params)
@@ -82,6 +89,8 @@ def sign(
                 break
 
         s1, s2 = to_coefficients(s)
+        if not is_short(s1, s2, params):
+            continue
         s2_encoded = compress(s2, params)
 
         if s2_encoded is not None:
@@ -102,6 +111,9 @@ def verify(
       3. s1 = compute_s1(c, s2, pk.h, params)
       4. return is_short(s1, s2, params)
     """
+    # Ungültige Eingaben (falscher Typ, falsche Länge von h) führen zur
+    # Ablehnung. Andere Ausnahmen deuten auf einen Programmfehler hin und
+    # werden bewusst nicht abgefangen.
     try:
         if len(sig.salt) != 40:
             return False
@@ -113,7 +125,7 @@ def verify(
 
         s1 = compute_s1(c, s2, pk.h, params)
         return is_short(s1, s2, params)
-    except Exception:
+    except (ValueError, TypeError):
         return False
 
 

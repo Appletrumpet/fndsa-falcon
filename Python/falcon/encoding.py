@@ -12,8 +12,7 @@ Kodierungen (§3.11.3); teilweises Padding ist ungültig.
 from typing import List, Optional, Tuple
 from .params import Params
 from .datatypes import Signature
-
-Q = 12289
+from .modq import Q
 
 FG_BITS = {
     2: 8,
@@ -134,9 +133,10 @@ def decompress(b: bytes, params: Params) -> Optional[List[int]]:
       - ungepolsterte Kodierungen (§3.11.3)
     Teilweises Padding ist ungültig.
 
-    Zusätzlich wird eine obere Länge geprüft. Wegen NIST-KAT Falcon-1024
-    count = 82 wird maximal padded_len + 1 akzeptiert; längere Eingaben
-    werden abgelehnt.
+    Ungepolsterte Kodierungen dürfen länger als die gepolsterte Länge sein
+    (NIST-KAT Falcon-1024 count = 82); eine feste Obergrenze gibt es nicht.
+    Die Laufzeit ist linear in der Eingabelänge, und zu grosse Werte
+    scheitern in verify an der Normprüfung.
     """
     if not isinstance(b, (bytes, bytearray)) or len(b) == 0:
         return None
@@ -144,11 +144,6 @@ def decompress(b: bytes, params: Params) -> Optional[List[int]]:
     b = bytes(b)
     padded_len = params.sig_bytelen - 41
     if padded_len < 0:
-        return None
-
-    # Obere Längenprüfung. Exakt sig_bytelen kann hier nicht erzwungen werden,
-    # ohne den bekannten überlangen KAT-Fall zu brechen.
-    if len(b) > padded_len + 1:
         return None
 
     padded = (len(b) == padded_len)
@@ -393,10 +388,8 @@ def decode_sig(b: bytes, params: Params) -> Signature:
     if not isinstance(b, (bytes, bytearray)) or len(b) < 42:
         raise ValueError("Signatur ist zu kurz")
 
-    # Wegen NIST-KAT Falcon-1024 count = 82 wird sig_bytelen + 1 toleriert.
-    if len(b) > params.sig_bytelen + 1:
-        raise ValueError("Signatur ist zu lang")
-
+    # Keine Obergrenze: ungepolsterte Signaturen dürfen länger als
+    # sig_bytelen sein (wie in decompress).
     b = bytes(b)
     logn = _logn(params.n)
     expected_header = 0x30 | logn

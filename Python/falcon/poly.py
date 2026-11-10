@@ -52,36 +52,16 @@ def poly_mul(a: List[int], b: List[int]) -> List[int]:
 
     res = [0] * n
 
-    # Für dünne Polynome direkt über die Nichtnull-Einträge.
-    if len(nz_a) * len(nz_b) <= max(64, (n * n) // 8):
-        for i, ai in nz_a:
-            for j, bj in nz_b:
-                k = i + j
-                if k < n:
-                    res[k] += ai * bj
-                else:
-                    res[k - n] -= ai * bj
-        return res
-
-    # Dichtere Fälle: schoolbook, aber ohne unnötige Multiplikationen mit 0.
-    if len(nz_b) == n:
+    # Schoolbook über die Nichtnull-Einträge von a. Ist b dicht besetzt,
+    # sind zusammenhängende Schleifen über b schneller als die
+    # Nichtnull-Liste; sonst nur die Nichtnull-Einträge von b.
+    if len(nz_b) > n // 2:
         for i, ai in nz_a:
             m = n - i
             for j in range(m):
                 res[i + j] += ai * b[j]
             for j in range(m, n):
                 res[i + j - n] -= ai * b[j]
-    elif len(nz_b) > n // 2:
-        for i, ai in nz_a:
-            m = n - i
-            for j in range(m):
-                bj = b[j]
-                if bj:
-                    res[i + j] += ai * bj
-            for j in range(m, n):
-                bj = b[j]
-                if bj:
-                    res[i + j - n] -= ai * bj
     else:
         for i, ai in nz_a:
             for j, bj in nz_b:
