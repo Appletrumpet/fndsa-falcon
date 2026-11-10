@@ -11,7 +11,9 @@ publish = false
 chacha20 = { version = "0.9.1", features = ["zeroize"] }
 # Zufallsquelle für Sign; ohne getrandom, damit das Crate auch für wasm32 baut.
 rand_core = { version = "0.6.4", default-features = false }
-sha3 = "0.10.8"
+# zeroize: der Keccak-Zustand wird beim Verwerfen gelöscht (er enthält beim
+# Keygen den geheimen Seed und beim Signieren den Seed des Samplers).
+sha3 = { version = "0.10.8", features = ["zeroize"] }
 zeroize = { version = "1.8.1", features = ["zeroize_derive"] }
 
 [dev-dependencies]
@@ -21,7 +23,20 @@ aes = "0.8.4"
 [features]
 # Macht die Einstiegspunkte für `cargo fuzz` sichtbar (src/fuzzing.rs).
 fuzzing = []
+# Valgrind-Prüfung der konstanten Laufzeit (PLAN.md §6): poison/declassify
+# rufen Valgrind auf; nur für examples/ctgrind.rs unter Linux.
+ctgrind = []
+# Zeitmessung nach dudect (PLAN.md §6): Bausteine für examples/dudect.rs.
+dudect = []
 
 [profile.test]
 # Die KAT-Tests rechnen viel; ohne Optimierung dauern sie unnötig lange.
 opt-level = 2
+
+[[example]]
+name = "ctgrind"
+required-features = ["ctgrind"]
+
+[[example]]
+name = "dudect"
+required-features = ["dudect"]

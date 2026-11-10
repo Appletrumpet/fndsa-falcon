@@ -37,7 +37,7 @@ pub(crate) fn compute_public_key(f: &[i8], g: &[i8]) -> Result<Vec<u16>, Error> 
         Zeroizing::new(g.iter().map(|&x| modq::from_i32(x as i32)).collect());
     modq::ntt(&mut ft);
     modq::ntt(&mut gt);
-    if modq::any_zero_mask(&ft) != 0 {
+    if crate::ct::declassify(modq::any_zero_mask(&ft)) != 0 {
         return Err(Error::NotInvertible);
     }
     let mut h: Vec<u32> = ft
@@ -46,7 +46,10 @@ pub(crate) fn compute_public_key(f: &[i8], g: &[i8]) -> Result<Vec<u16>, Error> 
         .map(|(&a, &b)| modq::mul(b, modq::inv(a)))
         .collect();
     modq::intt(&mut h);
-    Ok(h.into_iter().map(|x| x as u16).collect())
+    let h: Vec<u16> = h.into_iter().map(|x| x as u16).collect();
+    // h ist der Public Key und damit öffentlich.
+    crate::ct::unpoison(&h);
+    Ok(h)
 }
 
 /// Verify (Alg. 16). Alles hier ist öffentlich, normaler Code erlaubt.
@@ -102,7 +105,7 @@ pub(crate) fn recompute_g(f: &[i8], g: &[i8], big_f: &[i8]) -> Result<Zeroizing<
         v
     };
     let (ft, gt, bigft) = (ntt_of(f), ntt_of(g), ntt_of(big_f));
-    if modq::any_zero_mask(&ft) != 0 {
+    if crate::ct::declassify(modq::any_zero_mask(&ft)) != 0 {
         return Err(Error::NotInvertible);
     }
     let mut t: Zeroizing<Vec<u32>> = Zeroizing::new(
@@ -208,15 +211,19 @@ pub(crate) fn to_coefficients(
     (r(s0), r(s1))
 }
 
-/// Ganzzahlige Normprüfung wie in Verify (Alg. 16, Z. 6). Gesättigt, damit
-/// auch unsinnig grosse Werte keinen Überlauf auslösen.
+/// Ganzzahlige Normprüfung wie in Verify (Alg. 16, Z. 6). s₁ ist geheim:
+/// ohne Verzweigung. Beträge werden auf 2³¹ begrenzt (über Maske), damit
+/// auch unsinnig grosse Werte nicht überlaufen; die Summe läuft in u128.
 fn is_short(s1: &[i64], s2: &[i64], bound: u64) -> bool {
-    let norm = s1
-        .iter()
-        .chain(s2)
-        .map(|&x| x.unsigned_abs().saturating_mul(x.unsigned_abs()))
-        .fold(0u64, u64::saturating_add);
-    norm <= bound
+    use crate::ct::{cond_neg64, mask64_lt, select64};
+    let mut norm: u128 = 0;
+    for &x in s1.iter().chain(s2) {
+        // Betrag ohne Verzweigung (unsigned_abs verzweigt im Debug-Build)
+        let a = cond_neg64(x as u64, (x as u64) >> 63);
+        let a = select64(mask64_lt(1 << 31, a), a, 1 << 31);
+        norm += (a * a) as u128;
+    }
+    norm <= bound as u128
 }
 
 /// Teile des Secret Keys, die Sign braucht.
@@ -246,14 +253,16 @@ pub(crate) fn sign_core(
         let (s0, s1) = loop {
             let (z0, z1) = ff_sampling(&t0, &t1, key.tree, params, rng);
             let (s0, s1) = compute_signature_vector((&t0, &t1), (&z0, &z1), key.basis);
-            if is_short_fft_mask(&s0, &s1, params.sig_bound) != 0 {
+            if crate::ct::declassify(is_short_fft_mask(&s0, &s1, params.sig_bound)) != 0 {
                 break (s0, s1);
             }
         };
         let (c1, c2) = to_coefficients(&s0, &s1);
-        if !is_short(&c1, &c2, params.sig_bound) {
+        if !crate::ct::declassify(is_short(&c1, &c2, params.sig_bound)) {
             continue;
         }
+        // Ab hier ist s₂ Teil der Signatur und damit öffentlich.
+        crate::ct::unpoison(&c2[..]);
         // Ab hier ist s₂ öffentlich. |s₂ᵢ| ≤ √β² < 2¹⁵ wegen der Normprüfung.
         let s2: Vec<i16> = c2.iter().map(|&x| x as i16).collect();
         if let Some(enc) = compress(&s2, params.s2_padded_len()) {

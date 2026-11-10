@@ -1,9 +1,12 @@
 # Plan: FN-DSA (Falcon) in Rust, seitenkanalresistent
 
-Stand: 10. November 2026, Branch `Rust`. Phase 0 bis 5 und 7 sind
-umgesetzt: Keygen ist eine Portierung der Referenz (PQClean, `keygen.c`,
-`fft.c`) und erzeugt aus allen 200 KAT-Seeds byte-genau die KAT-Schlüssel.
-Offen sind Phase 6 (Seitenkanal-Prüfung) und 8 (Messungen). Zuvor:
+Stand: 10. November 2026, Branch `Rust`. Phase 0 bis 7 sind umgesetzt.
+Phase 6 (Seitenkanal-Prüfung): Valgrind ohne Befund auf x86-64 (Release
+und opt-level 0, lokal in Docker; aarch64 im CI-Job `ctgrind`), dudect
+ohne Befund auf x86-64-Hardware, Assembler-Stichprobe auf beiden Zielen.
+Ergebnisse und Befunde in Abschnitt 6. Offen ist Phase 8 (Messungen).
+Keygen ist eine Portierung der Referenz (PQClean, `keygen.c`, `fft.c`) und
+erzeugt aus allen 200 KAT-Seeds byte-genau die KAT-Schlüssel. Zuvor:
 Phase 0 bis 4 sind umgesetzt:
 Phase 2 (`fpr`, FFT), Phase 3 (`prng`, Sampler) und Phase 4 (Baum,
 ffSampling, Sign) rechnen **bitgleich** mit Python, geprüft gegen
@@ -428,7 +431,7 @@ nur noch auf alle Seeds.
 | 3 | `prng`, `sampler` | BaseSampler und ApproxExp gegen alle Schritte der Sampler-Testvektoren; BerExp-Äquivalenztest; statistische Tests für SamplerZ (Abschnitt 7) (**erledigt**, gegen `Python/data/vectors/sampler.*`) | mittel |
 | 4 | `tree`, `ffsampling`, `sign` (mit KAT-sk, `load_secret_key` inkl. `recompute_G`) | Falcon-Baum und ffSampling bitgleich gegen `Python/data/vectors/tree.*` und `ffsampling.*` (Test-Generator wie beim SamplerZ); KAT-sk → sign → verify (**erledigt**; dazu `flow.sign` und `flow.sign_restart` byte-genau) | mittel |
 | 5 | `zint`, `ntrugen` (NTRUSolve fester Länge, Portierung der Referenz), `keygen`; AES-CTR-DRBG für Tests von Anfang an | fG − gF = q, γ-Schranke, sk-Format, keygen → sign → verify für 512/1024, reduzierte n; **KAT count 0 byte-genau** (f, g, dann F) für beide Varianten (**erledigt**; dazu `fft_ref.rs`, die FFT der Referenz, weil `reduce` mit ihr rundet) | **gross** |
-| 6 | Seitenkanal-Prüfung (Abschnitt 6) | dudect ohne Befund, Valgrind ohne Befund auf geheimen Daten | mittel |
+| 6 | Seitenkanal-Prüfung (Abschnitt 6) | dudect ohne Befund, Valgrind ohne Befund auf geheimen Daten (**erledigt** für x86-64; aarch64: Valgrind in der CI, dudect braucht Hardware) | mittel |
 | 7 | KAT-Schlüssel byte-genau (L10), alle Seeds | alle 200 KAT-Seeds ergeben exakt sk und pk der KAT-Dateien (Signaturen wegen L7 nicht) (**erledigt** zusammen mit Phase 5) | klein, wenn count 0 in Phase 5 stimmt |
 | 8 (optional) | Benchmarks gegen Python, `native-fpu` | Zahlen für die Arbeit | klein |
 
@@ -472,6 +475,71 @@ drei voneinander unabhängige Prüfungen:
 Alle drei Prüfungen laufen auf beiden Zielplattformen (Abschnitt 10).
 
 Zusätzlich: Durchsicht, dass alle geheimen Puffer gelöscht werden.
+
+### 6.1 Ergebnisse (Phase 6, 10.11.2026)
+
+**Valgrind** (`examples/ctgrind.rs`, `ctgrind.sh`, Feature `ctgrind`):
+Keygen-Seed und Seed des Samplers werden als geheim markiert (`ct::poison`),
+dann laufen Keygen, Speichern, Laden, Sign und Verify für 512 und 1024. Die
+erlaubten Stellen aus der Tabelle oben geben `ct::declassify` bzw.
+`ct::unpoison` (h, s₂ nach der Annahme) frei.
+- Ergebnis: **keine Meldung** auf x86-64, im Release-Build und mit
+  opt-level 0 ohne Überlaufprüfungen (die Überlaufprüfungen des
+  Debug-Builds sind selbst Verzweigungen auf Werten und gehören nicht zum
+  Konstantzeit-Code). aarch64 prüft der CI-Job `ctgrind`.
+- Wirksamkeit belegt: Selbsttest (absichtliche Verzweigung auf geheimem
+  Byte wird gemeldet) und zwei Gegenproben (ohne die Freigabe in SamplerZ
+  bzw. beim Neuziehen in Keygen meldet Valgrind sofort).
+- **Befunde, behoben:**
+  1. `zint_sub`, `zint_norm_zero`, `zint_bezout` (portierter Keygen):
+     LLVM baute Auswahlen über Masken ohne Barriere in Sprünge um →
+     Masken durch `ct::barrier`.
+  2. Schiebungen mit geheimer Weite in `fpr` und im Sampler (Memcheck
+     verlangt bekannte Schiebeweiten) → `ct::shr64`/`ct::shl64` mit sechs
+     festen Schritten; Runden in `make` bitweise statt über `0xC8 >> x`.
+     Damit hängt die Laufzeit auch auf CPUs ohne konstante Schiebebefehle
+     nicht von den Werten ab.
+  3. `is_short` in Sign: `saturating_mul/add` und `unsigned_abs`
+     verzweigen → Begrenzung über Maske, Summe in u128.
+  4. Prüfungen mit `||` bzw. `contains` werten in zwei Schritten aus und
+     verzweigen vor der Freigabe → Masken (`out_of_range_mask`).
+  5. `check_fg` brach beim ersten zu grossen Koeffizienten ab (`any`) →
+     Maske über alle Koeffizienten.
+  6. Im Prüfprogramm selbst: `poison(&[T])` wirkte im Release-Build nicht,
+     weil der Compiler hinter `&` unveränderliche Daten annimmt → `&mut`.
+
+**dudect** (`examples/dudect.rs`, Feature `dudect`), x86-64-Laptop,
+Windows, Zyklenzähler; fest gegen zufällig, |t| (Schwelle 4.5):
+
+| Baustein | Messungen | \|t\| |
+|---|---|---|
+| fpr Division, Multiplikation, Addition, Wurzel, Runden | je 10⁶ | 0.96 – 1.70 |
+| BaseSampler | 10⁶ | 1.01 |
+| SamplerZ (μ, σ′) | 2·10⁵ | 0.75 |
+| Sign (fester Schlüssel gegen 16 andere) | 3000 | 3.74 |
+
+Sign liegt näher an der Schwelle (Mediane 0.6 % auseinander). Erklärung:
+Die Zahl der Neustarts in Sign hängt leicht vom Schlüssel ab; das ist eine
+erlaubte Verzweigung (Tabelle oben). Der Cache wird vor jeder Messung für
+beide Klassen gleich geleert, sonst bliebe nur der feste Schlüssel im Cache
+(erster Lauf: |t| = 6.2, ebenso BaseSampler |t| = 13 durch ungleiche
+Vorbereitung der Eingaben; beides Fehler des Prüfprogramms, behoben).
+Keygen wird nicht gemessen: Es verwirft Kandidaten absichtlich (erlaubte
+Verzweigung), seine Laufzeit hängt deshalb vom Seed ab.
+
+**Assembler:** keine Gleitkomma- und Divisionsbefehle der Hardware im
+ganzen Crate (x86-64, aarch64); `fpr`-Operationen, Smith-Division und
+Gleitkommateile des Samplers ohne bedingte Sprünge (einzige Ausnahme: die
+feste Schleife der Division). Für den portierten Keygen-Code ersetzt die
+Valgrind-Prüfung die Durchsicht von Hand.
+
+**Gelöschte Puffer:** zusätzlich gelöscht werden jetzt der Keccak-Zustand
+(`sha3` mit Feature `zeroize`) und die Zwischenfelder der γ-Berechnung.
+Bekannte Grenze: der Ausgabepuffer im XOF-Leser von `digest` und Werte in
+Registern und auf dem Stack.
+
+**Noch offen:** Valgrind auf aarch64 läuft erst nach dem nächsten Push in
+der CI; dudect auf aarch64 braucht echte Hardware (Abschnitt 10).
 
 ---
 

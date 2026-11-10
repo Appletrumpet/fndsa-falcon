@@ -115,7 +115,7 @@ pub fn ber_threshold(x: Fpr, ccs: Fpr) -> u64 {
     let s = select64(mask64_lt(63, s as u64), s as u64, 63);
     let y = approx_exp(r, ccs);
     // (2y − 1) >> s, für y = 0 (−1 >> s < 0) gilt z = 0
-    (y.wrapping_mul(2).wrapping_sub(1) >> s) & mask64_nonzero(y)
+    crate::ct::shr64(y.wrapping_mul(2).wrapping_sub(1), s) & mask64_nonzero(y)
 }
 
 /// BerExp (Alg. 14, streng konstant): 1 mit Wahrscheinlichkeit
@@ -179,7 +179,7 @@ pub fn sampler_z(mu: Fpr, sigma_p: Fpr, params: &Params, rng: &mut impl RandomSo
         // Z. 7–9
         let x = k.x(z, z0, r);
         // Erlaubte Verzweigung: angenommen ja/nein (isochron, siehe oben).
-        if ber_exp(x, k.ccs, rng) != 0 {
+        if crate::ct::declassify(ber_exp(x, k.ccs, rng)) != 0 {
             return s + z;
         }
     }

@@ -23,6 +23,23 @@ jobs:
       - name: CI-Skript
         run: bash Rust/ci.sh
 
+  ctgrind:
+    # Konstante Laufzeit mit Valgrind (PLAN.md §6), auf beiden Zielplattformen.
+    strategy:
+      matrix:
+        os: [ubuntu-24.04, ubuntu-24.04-arm]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Rust und Valgrind installieren
+        run: |
+          rustup toolchain install stable --profile minimal
+          rustup default stable
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq valgrind
+      - name: Valgrind-Prüfung
+        run: bash Rust/ctgrind.sh
+
   msrv:
     # Prüft die kleinste unterstützte Version aus Cargo.toml (rust-version).
     runs-on: ubuntu-24.04

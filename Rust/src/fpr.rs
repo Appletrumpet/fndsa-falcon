@@ -20,9 +20,9 @@
 //! = m · 2^e. Vor dem Runden liegt `m` in [2⁵⁴, 2⁵⁵): 53 Bits Mantisse, ein
 //! Rundungsbit und ein „Sticky“-Bit (ODER aller weggefallenen Bits).
 //!
-//! Schiebebefehle mit variabler Weite (`x >> n`) gelten auf x86-64 und
-//! aarch64 als Befehle mit fester Laufzeit; die Weite darf deshalb von
-//! geheimen Werten abhängen.
+//! Schiebungen mit geheimer Weite laufen über `ct::shr64`/`ct::shl64`
+//! (sechs feste Schritte mit Masken), nicht über Schiebebefehle mit
+//! variabler Weite (Befund der Valgrind-Prüfung, Phase 6).
 //!
 //! Referenz: fpr.h / fpr.c (Technik: Mantisse mit drei Zusatzbits,
 //! Normalisierung in festen Schritten, Division und Wurzel Bit für Bit).
@@ -30,7 +30,7 @@
 use core::ops::{Add, Div, Mul, Neg, Sub};
 
 use crate::ct::{
-    cond_neg64, mask64_from_bit, mask64_from_msb, mask64_lt, mask64_nonzero, select64,
+    cond_neg64, mask64_from_bit, mask64_from_msb, mask64_lt, mask64_nonzero, select64, shl64, shr64,
 };
 
 const SIGN: u64 = 1 << 63;
@@ -110,7 +110,7 @@ impl Fpr {
         // Wert = m · 2^e; e gerade machen, damit sich die Wurzel teilen lässt.
         let mut e = ex - 1075;
         let odd = (e & 1) as u64;
-        let m = m << odd;
+        let m = select64(mask64_from_bit(odd), m, m << 1);
         e -= odd as i32;
 
         // q = ⌊√(m · 2⁵⁴)⌋ Bit für Bit, 54 Runden; m · 2⁵⁴ < 2¹⁰⁸.
@@ -208,8 +208,8 @@ impl Add for Fpr {
         let d = (ex - ey) as u64;
         my &= mask64_from_msb(d.wrapping_sub(60));
         let d = d & 63;
-        let lost = my & ((1u64 << d) - 1);
-        my = (my >> d) | (mask64_nonzero(lost) & 1);
+        let lost = my & shl64(1, d).wrapping_sub(1);
+        my = shr64(my, d) | (mask64_nonzero(lost) & 1);
 
         // bei verschiedenen Vorzeichen subtrahieren
         let sd = sx ^ sy;
@@ -240,10 +240,11 @@ impl Mul for Fpr {
         // Produkt in [2¹⁰⁴, 2¹⁰⁶) oder 0
         let p = (mx as u128) * (my as u128);
         let top = ((p >> 105) as u64) & 1;
-        let sh = 50 + top as u32;
-        let lost = p & ((1u128 << sh) - 1);
-        let sticky = mask64_nonzero((lost as u64) | ((lost >> 64) as u64)) & 1;
-        let m = ((p >> sh) as u64) | sticky;
+        // um 50 oder 51 Stellen schieben (feste Schiebung, dann Auswahl)
+        let q = (p >> 50) as u64;
+        let lost50 = (p as u64) & ((1u64 << 50) - 1);
+        let sticky = (mask64_nonzero(lost50) | (mask64_from_bit(top) & mask64_from_bit(q))) & 1;
+        let m = select64(mask64_from_bit(top), q, q >> 1) | sticky;
         // (mx · 2^(ex−1075)) · (my · 2^(ey−1075)) = m · 2^(ex+ey−2150+sh)
         make(s, ex + ey - 2100 + top as i32, m)
     }
@@ -312,7 +313,9 @@ fn shrink(m: u64, e: i32) -> (u64, i32) {
 fn make(s: u64, e: i32, m: u64) -> Fpr {
     // Aufrunden je nach den drei untersten Bits (letztes Mantissenbit,
     // Rundungsbit, Sticky): bei 011, 110 und 111, also 0xC8 als Bitmaske.
-    let cc = (0xC8u64 >> (m & 7)) & 1;
+    // Bitweise statt mit einer Schiebe-Tabelle: aufrunden, wenn das
+    // Rundungsbit gesetzt ist und Sticky oder letztes Mantissenbit auch.
+    let cc = (m >> 1) & (m | (m >> 2)) & 1;
     // Wert = (m/4) · 2^(e+2); die führende 1 von m/4 erhöht das
     // Exponentenfeld um 1, deshalb e + 1076 statt e + 1077.
     let ee = (e + 1076) as i64 as u64;
@@ -345,19 +348,19 @@ fn int_parts(x: u64) -> IntParts {
     // |x| = m · 2^e
     let e = ex - 1075;
     // e ≥ 0: ganzzahlig, m · 2^e (|x| < 2⁶³ vorausgesetzt).
-    let int_big = m << ((e as u64) & 63);
+    let int_big = shl64(m, (e as u64) & 63);
     // e < 0: um sh = −e Stellen nach rechts; ab 63 Stellen ist alles Rest
     // (m < 2⁵³, also auch mit sh = 63 richtig).
     let t = (-e) as i64 as u64;
     let sh = select64(mask64_lt(63, t), t, 63) & 63;
-    let low = (1u64 << sh).wrapping_sub(1);
+    let low = shl64(1, sh).wrapping_sub(1);
     let small = mask64_from_msb(e as i64 as u64);
     IntParts {
         s,
-        int: select64(small, int_big, m >> sh),
+        int: select64(small, int_big, shr64(m, sh)),
         frac: m & low & small,
         // bei ganzzahligem x ein Wert, den frac (= 0) nie erreicht
-        half: select64(small, u64::MAX, 1u64 << (sh.wrapping_sub(1) & 63)),
+        half: select64(small, u64::MAX, shl64(1, sh.wrapping_sub(1) & 63)),
     }
 }
 

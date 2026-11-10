@@ -111,6 +111,27 @@ pub fn cond_neg64(v: u64, s: u64) -> u64 {
     (v ^ m).wrapping_sub(m)
 }
 
+/// x >> n für 0 ≤ n < 64, n geheim: sechs feste Schiebungen, je über eine
+/// Maske ausgewählt. Kein Schiebebefehl mit variabler Weite, damit die
+/// Laufzeit auch auf CPUs ohne konstante Schiebebefehle nicht von n abhängt
+/// (und Valgrind keine geheime Schiebeweite meldet).
+#[inline(always)]
+pub fn shr64(mut x: u64, n: u64) -> u64 {
+    for j in 0..6 {
+        x = select64(mask64_from_bit(n >> j), x, x >> (1u32 << j));
+    }
+    x
+}
+
+/// x << n für 0 ≤ n < 64, n geheim (wie `shr64`).
+#[inline(always)]
+pub fn shl64(mut x: u64, n: u64) -> u64 {
+    for j in 0..6 {
+        x = select64(mask64_from_bit(n >> j), x, x << (1u32 << j));
+    }
+    x
+}
+
 /// Maske „x ≠ 0“.
 #[inline(always)]
 pub fn mask64_nonzero(x: u64) -> u64 {
@@ -128,6 +149,107 @@ pub fn mask64_lt(a: u64, b: u64) -> u64 {
 #[inline(always)]
 pub fn select64(mask: u64, a: u64, b: u64) -> u64 {
     a ^ (mask & (a ^ b))
+}
+
+// ---------------------------------------------------------------------------
+// Prüfung mit Valgrind (PLAN.md §6, „ctgrind“)
+// ---------------------------------------------------------------------------
+//
+// Mit dem Feature `ctgrind` markiert `poison` geheime Bytes für Memcheck als
+// „nicht initialisiert“. Memcheck meldet dann jede Verzweigung und jeden
+// Speicherzugriff, dessen Adresse davon abhängt. An den erlaubten Stellen
+// (PLAN.md §6, Tabelle der freigegebenen Verzweigungen) gibt `declassify`
+// das Ergebnis frei. Ohne das Feature sind alle Funktionen leer.
+//
+// Die Aufrufe an Valgrind sind die dokumentierten „client requests“: eine
+// Folge von Rotationen, die ohne Valgrind nichts bewirkt (zusammen 128 Bit
+// = keine Änderung), und die Valgrind erkennt.
+
+#[cfg(feature = "ctgrind")]
+mod vg {
+    const MC: u64 = ((b'M' as u64) << 24) | ((b'C' as u64) << 16);
+    pub const MAKE_MEM_UNDEFINED: u64 = MC + 1;
+    pub const MAKE_MEM_DEFINED: u64 = MC + 2;
+
+    /// Client Request an Valgrind; ohne Valgrind wirkungslos.
+    #[inline(never)]
+    pub fn request(req: u64, addr: u64, len: u64) {
+        let args: [u64; 6] = [req, addr, len, 0, 0, 0];
+        #[cfg(target_arch = "x86_64")]
+        // SAFETY: Die Folge ändert keine Register ausser rdx (Ergebnis) und
+        // den Flags; rdi wird um 128 Bit rotiert, also nicht verändert.
+        unsafe {
+            core::arch::asm!(
+                "rol rdi, 3",
+                "rol rdi, 13",
+                "rol rdi, 61",
+                "rol rdi, 51",
+                "xchg rbx, rbx",
+                inout("rdx") 0u64 => _,
+                in("rax") args.as_ptr(),
+                inout("rdi") 0u64 => _,
+            );
+        }
+        #[cfg(target_arch = "aarch64")]
+        // SAFETY: wie oben; x12 wird um 128 Bit rotiert, x3 ist das Ergebnis.
+        unsafe {
+            core::arch::asm!(
+                "ror x12, x12, #3",
+                "ror x12, x12, #13",
+                "ror x12, x12, #51",
+                "ror x12, x12, #61",
+                "orr x10, x10, x10",
+                inout("x3") 0u64 => _,
+                in("x4") args.as_ptr(),
+                inout("x12") 0u64 => _,
+            );
+        }
+        let _ = &args;
+    }
+}
+
+/// Markiert Speicher als geheim (für Valgrind „nicht initialisiert“).
+///
+/// Nimmt `&mut`: Bei `&[T]` darf der Compiler annehmen, dass sich die Daten
+/// nicht ändern, und mit einer früheren (unmarkierten) Kopie weiterrechnen;
+/// dann sähe Valgrind die Markierung nicht (Befund des Selbsttests).
+#[allow(unused_variables)]
+#[cfg_attr(not(feature = "ctgrind"), allow(dead_code))]
+#[inline(always)]
+pub fn poison<T>(data: &mut [T]) {
+    #[cfg(feature = "ctgrind")]
+    vg::request(
+        vg::MAKE_MEM_UNDEFINED,
+        data.as_ptr() as u64,
+        core::mem::size_of_val(data) as u64,
+    );
+}
+
+/// Markiert Speicher als öffentlich (z. B. s₂ nach der Annahme, h).
+#[allow(unused_variables)]
+#[inline(always)]
+pub fn unpoison<T>(data: &[T]) {
+    #[cfg(feature = "ctgrind")]
+    vg::request(
+        vg::MAKE_MEM_DEFINED,
+        data.as_ptr() as u64,
+        core::mem::size_of_val(data) as u64,
+    );
+}
+
+/// Gibt einen aus geheimen Daten berechneten Wert frei, an einer erlaubten
+/// Verzweigung (PLAN.md §6). Ohne `ctgrind` die Identität.
+#[inline(always)]
+pub fn declassify<T: Copy>(x: T) -> T {
+    #[cfg(feature = "ctgrind")]
+    {
+        let v = [x];
+        unpoison(&v);
+        // SAFETY: v ist ein gültiger, initialisierter Wert auf dem Stack.
+        unsafe { core::ptr::read_volatile(&v[0]) }
+    }
+    #[cfg(not(feature = "ctgrind"))]
+    x
 }
 
 #[cfg(test)]
@@ -173,5 +295,11 @@ mod tests {
         assert_eq!(cond_neg64(5, 0), 5);
         assert_eq!(cond_neg64(5, 1), 5u64.wrapping_neg());
         assert_eq!(cond_neg64(1 << 63, 1), 1 << 63);
+        for n in 0..64u64 {
+            for x in [1u64, 0xDEAD_BEEF_0123_4567, u64::MAX] {
+                assert_eq!(shr64(x, n), x >> n);
+                assert_eq!(shl64(x, n), x << n);
+            }
+        }
     }
 }

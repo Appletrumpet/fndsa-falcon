@@ -111,11 +111,13 @@ pub(crate) fn poly_small_mkgauss<R: XofReader>(
         // Erlaubte Verzweigungen (PLAN.md 3.1, Ausnahme): neu ziehen.
         let s = loop {
             let s = mkgauss(rng, logn.get());
-            if !(-127..=127).contains(&s) {
+            // Maske statt `contains` (das im Debug-Build in zwei Schritten
+            // vergleicht und damit vor der Freigabe verzweigt).
+            if crate::ct::declassify(crate::encoding::out_of_range_mask(s, 127)) != 0 {
                 continue;
             }
             if u == n - 1 {
-                if (mod2 ^ (s as u32 & 1)) == 0 {
+                if crate::ct::declassify((mod2 ^ (s as u32 & 1)) == 0) {
                     continue;
                 }
             } else {
@@ -155,17 +157,20 @@ fn gamma_sq(f: &[i8], g: &[i8]) -> Fpr {
     let (fh, gh) = (fft(&to(f)), fft(&to(g)));
     let q = Fpr::of_i64(Q as i64);
     // 1/(|f|² + |g|²) punktweise (reell)
-    let inv: Vec<Fpr> = fh
-        .iter()
-        .zip(gh.iter())
-        .map(|(a, b)| (a.re * a.re + a.im * a.im + b.re * b.re + b.im * b.im).inv())
-        .collect();
-    let scale = |x: &[Cplx]| -> Vec<Cplx> {
-        fft_adj(x)
-            .iter()
-            .zip(&inv)
-            .map(|(c, &s)| Cplx::new(c.re * q * s, c.im * q * s))
-            .collect()
+    let inv: Zeroizing<Vec<Fpr>> = Zeroizing::new(
+        fh.iter()
+            .zip(gh.iter())
+            .map(|(a, b)| (a.re * a.re + a.im * a.im + b.re * b.re + b.im * b.im).inv())
+            .collect(),
+    );
+    let scale = |x: &[Cplx]| -> Zeroizing<Vec<Cplx>> {
+        Zeroizing::new(
+            fft_adj(x)
+                .iter()
+                .zip(inv.iter())
+                .map(|(c, &s)| Cplx::new(c.re * q * s, c.im * q * s))
+                .collect(),
+        )
     };
     let (r1, r2) = (ifft(&scale(&fh)), ifft(&scale(&gh)));
     let mut b = Fpr::ZERO;
@@ -181,20 +186,22 @@ fn gamma_sq(f: &[i8], g: &[i8]) -> Fpr {
 /// Gibt h zurück, wenn alle bestehen. Referenz: keygen.c, keygen.
 pub(crate) fn check_fg(logn: LogN, f: &[i8], g: &[i8]) -> Option<Vec<u16>> {
     let lim = 1i32 << (logn.fg_bits() - 1);
-    // Verwerfen darf verzweigen (Kandidat wird nie benutzt).
-    if f.iter()
-        .chain(g)
-        .any(|&x| x as i32 >= lim || x as i32 <= -lim)
-    {
+    // Verwerfen darf verzweigen (Kandidat wird nie benutzt), aber erst nach
+    // allen Koeffizienten: Maske statt Abbruch beim ersten.
+    let mut bad = 0u32;
+    for &x in f.iter().chain(g) {
+        bad |= crate::encoding::out_of_range_mask(x as i32, lim - 1);
+    }
+    if crate::ct::declassify(bad) != 0 {
         return None;
     }
     let normf = poly_small_sqnorm(f);
     let normg = poly_small_sqnorm(g);
     let norm = normf.wrapping_add(normg) | 0u32.wrapping_sub((normf | normg) >> 31);
-    if norm >= 16823 {
+    if crate::ct::declassify(norm >= 16823) {
         return None;
     }
-    if gamma_sq(f, g).lt_mask(BNORM_MAX) == 0 {
+    if crate::ct::declassify(gamma_sq(f, g).lt_mask(BNORM_MAX)) == 0 {
         return None;
     }
     crate::falcon::compute_public_key(f, g).ok()
@@ -363,10 +370,12 @@ fn solve_ntru_deepest(m: &mut [u32], logn_top: u32, f: &[i8], g: &[i8]) -> bool 
     let t1 = gp + len;
     make_fg(m, fp, f, g, logn_top, logn_top as usize, false);
     zint_rebuild_crt(m, fp, len, len, 2, false, t1);
-    if !zint_bezout(m, gp_big, fp_big, fp, gp, len, t1) {
+    if !crate::ct::declassify(zint_bezout(m, gp_big, fp_big, fp, gp, len, t1)) {
         return false;
     }
-    zint_mul_small(m, fp_big, len, Q_U32) == 0 && zint_mul_small(m, gp_big, len, Q_U32) == 0
+    let c1 = zint_mul_small(m, fp_big, len, Q_U32);
+    let c2 = zint_mul_small(m, gp_big, len, Q_U32);
+    crate::ct::declassify((c1 | c2) == 0)
 }
 
 /// F′(xᵈ)·adj(g) und G′(xᵈ)·adj(f) in NTT-Form: gemeinsamer Schritt von
@@ -550,7 +559,7 @@ fn solve_ntru_intermediate(m: &mut [u32], logn_top: u32, f: &[i8], g: &[i8], dep
         for u in 0..n {
             let xv = fget(m, rt2 + 2 * u) * pdc;
             // Verwerfen darf verzweigen (Kandidat wird aufgegeben).
-            if mtwo31m1.lt_mask(xv) == 0 || xv.lt_mask(ptwo31m1) == 0 {
+            if crate::ct::declassify(mtwo31m1.lt_mask(xv) & xv.lt_mask(ptwo31m1)) == 0 {
                 return false;
             }
             m[k + u] = xv.rint() as i32 as u32;
@@ -723,7 +732,7 @@ fn solve_ntru_binary_depth1(m: &mut [u32], logn_top: u32, f: &[i8], g: &[i8]) ->
     let mtwo63m1 = Fpr::from_bits(14114281232179134464);
     for u in 0..n {
         let z = fget(m, rt5 + 2 * u);
-        if z.lt_mask(ptwo63m1) == 0 || mtwo63m1.lt_mask(z) == 0 {
+        if crate::ct::declassify(z.lt_mask(ptwo63m1) & mtwo63m1.lt_mask(z)) == 0 {
             return false;
         }
         fset(m, rt5 + 2 * u, Fpr::of_i64(z.rint()));
@@ -945,7 +954,7 @@ pub(crate) fn solve_ntru(logn: u32, f: &[i8], g: &[i8], lim: i32) -> Option<FgPa
             modp_montymul(m[gt + u], m[ft_big + u], p, p0i),
             p,
         );
-        if z != r {
+        if crate::ct::declassify(z != r) {
             return None;
         }
     }

@@ -15,7 +15,7 @@ der Python-Version (`../Python`) abweicht.
 | 3 | Zufallsquelle (`prng`), Sampler | fertig |
 | 4 | Falcon-Baum, ffSampling, Sign, Secret Key laden | fertig |
 | 5 | Keygen (NTRUSolve fester Länge, Portierung der Referenz) | fertig |
-| 6 | Seitenkanal-Prüfung (Valgrind, dudect, Assembler vollständig) | offen |
+| 6 | Seitenkanal-Prüfung (Valgrind, dudect, Assembler) | fertig für x86-64 (aarch64: Valgrind in der CI) |
 | 7 | KAT-Schlüssel byte-genau aus den Seeds | fertig (alle 200) |
 | 8 | Messungen, `native-fpu` | offen |
 
@@ -59,6 +59,13 @@ Die CI auf GitHub (`.github/workflows/rust.yml`) hat drei Jobs:
 - `msrv`: Tests mit Rust 1.87;
 - `fuzz`: baut die Fuzz-Ziele, erzeugt den Start-Korpus und lässt jedes
   Ziel 60 Sekunden laufen.
+
+Konstante Laufzeit prüfen (PLAN.md §6):
+
+```bash
+bash ctgrind.sh     # Valgrind, nur Linux (z. B. in Docker); CI-Job "ctgrind"
+cargo run --release --example dudect --features dudect   # Zeitmessung
+```
 
 Fuzzing (nur Linux oder WSL, Nightly-Rust):
 
@@ -158,6 +165,8 @@ Keys (G, Basis, Baum) und Sign: `fpr`, FFT, Sampler, ffSampling.
   zieht immer 8 Bytes (L7). Einzige Verzweigung ist „SamplerZ nimmt an“,
   deren Häufigkeit nicht von μ und σ′ abhängt (PLAN.md 3.4);
 - Zufall im Sampler aus ChaCha20, Puffer werden nach Gebrauch gelöscht;
+- erlaubte Verzweigungen sind im Code mit `ct::declassify` markiert; nur
+  dort gibt die Valgrind-Prüfung geheime Werte frei;
 - Sign: erlaubte Verzweigungen nur bei „Norm zu gross“ und „s₂ passt nicht
   in die Länge“ (Neustart, PLAN.md §6); `SigningKey` und alle
   FFT-Zwischenwerte (`Poly`) werden beim Verwerfen gelöscht;
@@ -202,10 +211,23 @@ in Register oder auf den Stack legt, werden nicht gelöscht. `zeroize`
 erreicht nur Puffer, die das Programm selbst besitzt; Rust bietet keinen
 Weg, den Stack nach einem Aufruf sicher zu löschen.
 
-**Noch nicht nachgewiesen:** Den vollständigen Nachweis, dass der Compiler
-keine geheimabhängigen Sprünge erzeugt, liefert erst Phase 6 (Assembler auf
-beiden Plattformen, Valgrind, dudect). Gegen Power- und EM-Angriffe schützt
-die Implementierung nicht (PLAN.md §1).
+**Nachweis (Phase 6, Einzelheiten in PLAN.md 6.1):**
+- **Valgrind** (Prinzip ctgrind): Keygen-Seed und Zufall des Samplers als
+  geheim markiert; Keygen, Laden, Sign, Verify ohne jede Meldung auf
+  x86-64 (Release und opt-level 0). Ein Selbsttest und zwei Gegenproben
+  zeigen, dass die Prüfung greift. Sechs Befunde wurden dabei behoben,
+  u. a. Sprünge, die LLVM im portierten Keygen aus Masken gebaut hatte,
+  und Schiebungen mit geheimer Weite (jetzt `ct::shr64`/`shl64`).
+- **dudect** auf x86-64-Hardware: alle Bausteine |t| < 4.5 (Gleitkomma
+  ≤ 1.7, Sampler ≤ 1.0, Sign 3.7, erklärt durch die erlaubte,
+  schlüsselabhängige Zahl der Neustarts).
+- **Assembler:** keine Gleitkomma- oder Divisionsbefehle der Hardware,
+  keine bedingten Sprünge in den Gleitkomma- und Sampler-Funktionen
+  (x86-64 und aarch64).
+
+Offen: Valgrind auf aarch64 läuft im CI-Job `ctgrind`; dudect auf aarch64
+braucht echte Hardware. Gegen Power- und EM-Angriffe schützt die
+Implementierung nicht (PLAN.md §1).
 
 ## Aufbau
 
@@ -233,6 +255,8 @@ src/
   fuzzing.rs   Einstiegspunkte für cargo fuzz (Feature `fuzzing`)
 tests/         KAT-Tests, Leser für KAT- und Python-Testvektoren
 scripts/       Erzeugung von src/fft_table.rs und src/keygen_tables.rs
-examples/      seed_corpus: Start-Korpus für die Fuzz-Ziele
+examples/      seed_corpus: Start-Korpus für die Fuzz-Ziele;
+               ctgrind, dudect: Prüfung der konstanten Laufzeit
 fuzz/          Fuzz-Ziele (cargo fuzz)
+ctgrind.sh     Valgrind-Prüfung (examples/ctgrind.rs)
 ```

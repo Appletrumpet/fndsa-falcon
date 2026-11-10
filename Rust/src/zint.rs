@@ -287,7 +287,9 @@ pub(crate) fn modp_poly_rec_res(m: &mut [u32], f: usize, logn: u32, p: u32, p0i:
 /// Referenz: keygen.c, zint_sub.
 pub(crate) fn zint_sub(m: &mut [u32], a: usize, b: usize, len: usize, ctl: u32) -> u32 {
     let mut cc = 0u32;
-    let mk = 0u32.wrapping_sub(ctl);
+    // Barriere: sonst baut LLVM die Auswahl in einen Sprung um (Befund der
+    // Valgrind-Prüfung, Phase 6).
+    let mk = crate::ct::barrier(0u32.wrapping_sub(ctl));
     for u in 0..len {
         let mut aw = m[a + u];
         let w = aw.wrapping_sub(m[b + u]).wrapping_sub(cc);
@@ -368,8 +370,8 @@ pub(crate) fn zint_norm_zero(m: &mut [u32], x: usize, p: usize, len: usize) {
         let wp = (m[p + u] >> 1) | (bb << 30);
         bb = m[p + u] & 1;
         let cc = wp.wrapping_sub(wx);
-        let cc = (0u32.wrapping_sub(cc) >> 31) | 0u32.wrapping_sub(cc >> 31);
-        r |= cc & (r & 1).wrapping_sub(1);
+        let cc = (0u32.wrapping_sub(cc) >> 31) | crate::ct::barrier(0u32.wrapping_sub(cc >> 31));
+        r |= cc & crate::ct::barrier((r & 1).wrapping_sub(1));
     }
     zint_sub(m, x, p, len, r >> 31);
 }
@@ -633,7 +635,8 @@ pub(crate) fn zint_bezout(
     for j in 1..len {
         rc |= m[a + j];
     }
-    ((1 - ((rc | rc.wrapping_neg()) >> 31)) & m[x] & m[y]) != 0
+    // als Zahl 0/1 zurück; der Aufrufer gibt das Ergebnis frei (declassify)
+    crate::ct::barrier((1 - ((rc | rc.wrapping_neg()) >> 31)) & m[x] & m[y]) != 0
 }
 
 /// x ← x + k·y·2^sc (sc = 31·sch + scl), mit Vorzeichen, abgeschnitten
@@ -750,7 +753,8 @@ pub(crate) fn poly_big_to_small(d: &mut [i8], m: &[u32], s: usize, lim: i32, log
     let n = 1usize << logn;
     for u in 0..n {
         let z = zint_one_to_plain(m[s + u]);
-        if z < -lim || z > lim {
+        // Verwerfen darf verzweigen (der Kandidat wird aufgegeben).
+        if crate::ct::declassify(crate::encoding::out_of_range_mask(z, lim)) != 0 {
             return false;
         }
         d[u] = z as i8;

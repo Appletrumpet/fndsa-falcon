@@ -277,7 +277,7 @@ pub fn encode_sk(sk: &SecretPolys) -> Result<Zeroizing<Vec<u8>>, Error> {
         w.write(x as u8 as u32, 8);
     }
     let out = Zeroizing::new(w.finish());
-    if bad != 0 {
+    if ct::declassify(bad) != 0 {
         return Err(Error::KeyOutOfRange);
     }
     Ok(out)
@@ -329,7 +329,7 @@ pub fn decode_sk(b: &[u8]) -> Result<SecretPolys, Error> {
     if r.pos != r.total() {
         return Err(Error::InvalidEncoding("Restbits im Secret Key"));
     }
-    if bad != 0 {
+    if ct::declassify(bad) != 0 {
         return Err(Error::InvalidEncoding("Minimalwert im Secret Key"));
     }
     Ok(sk)

@@ -44,6 +44,62 @@ mod zint;
 #[doc(hidden)]
 pub mod fuzzing;
 
+/// Für `examples/ctgrind.rs`: geheime Bytes für Valgrind markieren.
+#[cfg(feature = "ctgrind")]
+#[doc(hidden)]
+pub mod ctgrind {
+    pub use crate::ct::{poison, unpoison};
+}
+
+/// Für `examples/dudect.rs`: Bausteine mit geheimen Eingaben einzeln
+/// aufrufbar machen (Zeitmessung, PLAN.md §6).
+#[cfg(feature = "dudect")]
+#[doc(hidden)]
+pub mod dudect {
+    use crate::fpr::Fpr;
+
+    /// a/b auf IEEE-754-Bits.
+    pub fn fpr_div(a: u64, b: u64) -> u64 {
+        (Fpr::from_bits(a) / Fpr::from_bits(b)).to_bits()
+    }
+    /// a·b auf IEEE-754-Bits.
+    pub fn fpr_mul(a: u64, b: u64) -> u64 {
+        (Fpr::from_bits(a) * Fpr::from_bits(b)).to_bits()
+    }
+    /// a + b auf IEEE-754-Bits.
+    pub fn fpr_add(a: u64, b: u64) -> u64 {
+        (Fpr::from_bits(a) + Fpr::from_bits(b)).to_bits()
+    }
+    /// √a auf IEEE-754-Bits.
+    pub fn fpr_sqrt(a: u64) -> u64 {
+        Fpr::from_bits(a).sqrt().to_bits()
+    }
+    /// Runden auf IEEE-754-Bits.
+    pub fn fpr_rint(a: u64) -> i64 {
+        Fpr::from_bits(a).rint()
+    }
+    /// SamplerZ mit μ, σ′ als Bits; Zufall aus ChaCha20 mit `seed`.
+    pub fn sampler_z(mu: u64, sigma: u64, seed: &[u8]) -> i64 {
+        let mut rng = crate::prng::Prng::new(seed);
+        crate::sampler::sampler_z(
+            Fpr::from_bits(mu),
+            Fpr::from_bits(sigma),
+            &crate::params::FALCON_512,
+            &mut rng,
+        )
+    }
+    /// BaseSampler mit 9 festen Zufallsbytes.
+    pub fn base_sampler(bytes: [u8; 9]) -> u32 {
+        struct Fixed([u8; 9]);
+        impl crate::prng::RandomSource for Fixed {
+            fn fill(&mut self, out: &mut [u8]) {
+                out.copy_from_slice(&self.0[..out.len()]);
+            }
+        }
+        crate::sampler::base_sampler(&mut Fixed(bytes))
+    }
+}
+
 #[cfg(test)]
 #[path = "../tests/common/mod.rs"]
 mod kat;
@@ -181,7 +237,7 @@ impl SigningKey {
         big_f: &[i8],
     ) -> Result<Self, Error> {
         let big_g = falcon::recompute_g(f, g, big_f)?;
-        if falcon::key_valid_mask(f, g, big_f, &big_g) == 0 {
+        if ct::declassify(falcon::key_valid_mask(f, g, big_f, &big_g)) == 0 {
             return Err(Error::InvalidKey);
         }
         let basis = tree::build_basis_fft(f, g, big_f, &big_g);
@@ -193,7 +249,7 @@ impl SigningKey {
         let eps = fp(1e-10);
         let lo = fp(params.sigma_min) - eps;
         let hi = fp(params.sigma_max) + eps;
-        if tree::leaves_in_range_mask(&tree, lo, hi) == 0 {
+        if ct::declassify(tree::leaves_in_range_mask(&tree, lo, hi)) == 0 {
             return Err(Error::InvalidKey);
         }
         // f ist invertierbar, das hat recompute_g geprüft.
