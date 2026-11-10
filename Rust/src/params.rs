@@ -73,24 +73,43 @@ impl LogN {
 
 /// Parametersatz einer Falcon-Instanz (Tab. 3.3).
 ///
-/// σ, σmin und σmax stehen hier als `f64` zur Dokumentation. Auf geheimen
-/// Daten werden sie ab Phase 3 als emulierte Gleitkommazahlen (`fpr`)
-/// verwendet (PLAN.md, 3.3).
+/// Die Felder sind nicht öffentlich, damit sich ihr Typ ändern darf: σ,
+/// σmin und σmax stehen hier als `f64` zur Dokumentation und werden ab
+/// Phase 3 als emulierte Gleitkommazahlen (`fpr`) verwendet (PLAN.md, 3.3).
 #[derive(Debug)]
 pub struct Params {
-    pub logn: LogN,
-    pub sigma: f64,
-    pub sigma_min: f64,
-    pub sigma_max: f64,
+    pub(crate) logn: LogN,
+    #[allow(dead_code)] // ab Phase 3 (Sampler)
+    pub(crate) sigma: f64,
+    #[allow(dead_code)] // ab Phase 3 (Sampler)
+    pub(crate) sigma_min: f64,
+    #[allow(dead_code)] // ab Phase 3 (Sampler)
+    pub(crate) sigma_max: f64,
     /// ⌊β²⌋, maximale quadrierte Norm einer Signatur.
-    pub sig_bound: u64,
+    pub(crate) sig_bound: u64,
     /// Feste Länge der Signatur in Bytes (Header + Salt + s₂).
-    pub sig_bytelen: usize,
+    pub(crate) sig_bytelen: usize,
 }
 
 impl Params {
+    /// log₂ n.
+    pub fn logn(&self) -> LogN {
+        self.logn
+    }
+
+    /// Polynomgrad n.
     pub fn n(&self) -> usize {
         self.logn.n()
+    }
+
+    /// ⌊β²⌋, maximale quadrierte Norm einer gültigen Signatur.
+    pub fn sig_bound(&self) -> u64 {
+        self.sig_bound
+    }
+
+    /// Feste Länge der Signatur in Bytes (Header + Salt + s₂, gepolstert).
+    pub fn sig_bytelen(&self) -> usize {
+        self.sig_bytelen
     }
 
     /// Länge des gepolsterten s₂ in Bytes: sig_bytelen − 1 − 40.

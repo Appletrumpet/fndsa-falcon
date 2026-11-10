@@ -8,7 +8,7 @@
 mod common;
 
 use common::{load_kat, split_kat_sm};
-use fndsa::{Signature, VerifyingKey};
+use fndsa::{Error, LogN, Signature, VerifyingKey};
 
 fn check_all(n: usize) {
     for rec in load_kat(n) {
@@ -77,4 +77,28 @@ fn malformed_inputs() {
     assert!(Signature::from_bytes(&[0x30; 50]).is_err()); // logn = 0
     assert!(VerifyingKey::from_bytes(&[]).is_err());
     assert!(VerifyingKey::from_bytes(&[0x09; 10]).is_err());
+}
+
+/// Gültig kodierte Public Keys (h = 0) für die verkleinerten Grade: das
+/// Format wird akzeptiert, es gibt aber keinen Parametersatz.
+#[test]
+fn reduced_degrees_are_unsupported() {
+    for l in 1..=8u32 {
+        let logn = LogN::new(l).unwrap();
+        let mut pk = vec![0u8; logn.pk_bytes()];
+        pk[0] = l as u8;
+        assert_eq!(
+            VerifyingKey::from_bytes(&pk),
+            Err(Error::UnsupportedLogN),
+            "logn {l}"
+        );
+    }
+    // Header mit logn = 0 oder 11 ist dagegen schon als Format ungültig.
+    for l in [0u8, 11] {
+        assert_ne!(
+            VerifyingKey::from_bytes(&[l; 897]),
+            Err(Error::UnsupportedLogN)
+        );
+        assert!(VerifyingKey::from_bytes(&[l; 897]).is_err());
+    }
 }

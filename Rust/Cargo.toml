@@ -2,6 +2,8 @@
 name = "fndsa"
 version = "0.1.0"
 edition = "2021"
+# u32::is_multiple_of (Tests) gibt es seit Rust 1.87.
+rust-version = "1.87"
 description = "FN-DSA (Falcon) in Rust, mit konstanter Laufzeit auf geheimen Daten"
 publish = false
 

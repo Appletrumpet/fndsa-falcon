@@ -33,7 +33,10 @@ use std::fmt;
 pub use params::{LogN, Params, FALCON_1024, FALCON_512, Q};
 
 /// Fehler beim Dekodieren oder Erzeugen von Schlüsseln und Signaturen.
+///
+/// `non_exhaustive`: Sign und Keygen (Phase 4/5) bringen neue Fälle dazu.
 #[derive(Clone, Debug, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum Error {
     /// logn liegt nicht in 1..=10.
     InvalidLogN,

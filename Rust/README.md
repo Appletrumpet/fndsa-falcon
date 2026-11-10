@@ -23,8 +23,13 @@ cargo test          # alle Tests, liest die Testdaten aus ../Python/data/
 bash ci.sh          # Formatierung, Clippy, Tests, Release-Build, Doku
 ```
 
-Die CI läuft auf GitHub für x86-64 und aarch64
-(`.github/workflows/rust.yml`).
+Kleinste unterstützte Rust-Version: 1.87 (`rust-version` in `Cargo.toml`).
+
+Die CI auf GitHub (`.github/workflows/rust.yml`) hat drei Jobs:
+
+- `check`: `ci.sh` auf x86-64 und aarch64;
+- `msrv`: Tests mit Rust 1.87;
+- `fuzz`: baut die Fuzz-Ziele und lässt jedes 60 Sekunden laufen.
 
 Fuzzing (nur Linux oder WSL, Nightly-Rust):
 
@@ -71,23 +76,39 @@ Geheime Daten sind f, g, F, G und alles daraus (PLAN.md 3.1). Davon berührt
 der bisherige Code nur das Secret-Key-Format und h = g/f:
 
 - keine Verzweigung und kein Speicherzugriff, der von geheimen Werten
-  abhängt; Auswahl über Masken (`src/ct.rs`), Masken laufen durch eine
-  Optimierungsbarriere (`black_box`);
+  abhängt; Auswahl über Masken (`src/ct.rs`);
+- jede Maske läuft durch eine Optimierungsbarriere: auf x86-64 und aarch64
+  eine leere Assembler-Anweisung, die den Wert im Register lässt, sonst
+  `core::hint::black_box` (das den Wert über den Stack schickt);
 - keine Hardware-Division auf geheimen Werten (Barrett-Reduktion mod q);
 - Inverse mod q per Fermat mit fester Exponentenkette;
 - geheime Puffer werden gelöscht (`zeroize`); Ausgabepuffer werden in voller
   Länge angelegt, damit beim Vergrössern keine ungelöschten Kopien bleiben.
 
-**Noch nicht nachgewiesen:** Ob der Compiler daraus wirklich Code ohne
-geheimabhängige Sprünge macht, prüft erst Phase 6 (Assembler, Valgrind,
-dudect). Gegen Power- und EM-Angriffe schützt die Implementierung nicht
-(PLAN.md §1).
+**Stichprobe im Assembler (Release):** Auf x86-64 werden die Masken in
+`modq::ntt` und im Code für das Secret-Key-Format mit `sar` gebildet und
+bleiben im Register; es gibt keine Sprünge, die von Werten abhängen. Auf
+aarch64 (nur übersetzt, nicht ausgeführt) gilt dasselbe für `modq::ntt`
+mit `asr`. Die übrigen
+Sprünge kommen von Schleifen, Grenzprüfungen und Längen, die nur von n
+abhängen. Die einzige Verzweigung auf geheimen Daten ist die gewollte
+Endprüfung „Secret Key gültig?“. Das ist eine Stichprobe, kein Nachweis.
+
+**Bekannte Grenze:** Lokale Variablen mit geheimen Werten, die der Compiler
+in Register oder auf den Stack legt, werden nicht gelöscht. `zeroize`
+erreicht nur Puffer, die das Programm selbst besitzt; Rust bietet keinen
+Weg, den Stack nach einem Aufruf sicher zu löschen.
+
+**Noch nicht nachgewiesen:** Den vollständigen Nachweis, dass der Compiler
+keine geheimabhängigen Sprünge erzeugt, liefert erst Phase 6 (Assembler auf
+beiden Plattformen, Valgrind, dudect). Gegen Power- und EM-Angriffe schützt
+die Implementierung nicht (PLAN.md §1).
 
 ## Aufbau
 
 ```
 src/
-  lib.rs       öffentliche API: VerifyingKey, Signature, LogN, Error
+  lib.rs       öffentliche API: VerifyingKey, Signature, LogN, Params, Error
   params.rs    Tab. 3.3, LogN
   ct.rs        Masken und Auswahl ohne Verzweigung
   modq.rs      Arithmetik mod 12289, NTT

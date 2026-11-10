@@ -1,9 +1,9 @@
 # Plan: FN-DSA (Falcon) in Rust, seitenkanalresistent
 
-Stand: 9. November 2026, Branch `Rust`. Phase 0 und 1 sind vollständig
+Stand: 10. November 2026, Branch `Rust`. Phase 0 und 1 sind vollständig
 umgesetzt (Crate, `params`, `ct` in Grundform mit Optimierungsbarriere,
 `modq`, `hashing`, `encoding`, Verify, CI-Skript `ci.sh` und GitHub-Workflow
-für x86-64/aarch64, Fuzz-Ziele aus §7). Alle 200 KAT-Signaturen werden
+für x86-64/aarch64 mit Jobs für Rust 1.87 und die Fuzz-Ziele aus §7). Alle 200 KAT-Signaturen werden
 akzeptiert, pk- und sk-Format byte-genau. Was umgesetzt ist und wie Rust von
 Python abweicht, steht in [README.md](README.md) (Ebene 5 der Doku).
 Abweichungen vom Plan: Vollständige Parametersätze (σ, β², Signaturlänge)
@@ -151,7 +151,10 @@ nicht nötig.
    `core::hint::black_box` als Barriere; kritische Funktionen im Assembler
    prüfen (`cargo asm`). `black_box` ist laut Rust-Doku nur „best effort“,
    keine Garantie; deshalb ist die Assembler- und Valgrind-Prüfung (Abschnitt 6)
-   Pflicht und nicht nur Ergänzung.
+   Pflicht und nicht nur Ergänzung. Umgesetzt (Phase 1): auf x86-64 und
+   aarch64 eine leere `asm!`-Anweisung mit dem Wert als `inout(reg)`, weil
+   `black_box` jeden Wert über den Stack schickt (langsamer, und Masken aus
+   geheimen Daten bleiben im Stack); `black_box` nur als Rückfall.
 7. Geheime Puffer in `Zeroizing<…>` bzw. mit `ZeroizeOnDrop`.
 8. Kein `Debug`/`Display`, das geheime Werte ausgibt.
 
