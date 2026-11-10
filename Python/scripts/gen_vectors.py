@@ -35,7 +35,7 @@ from falcon import encoding, falcon as top, ffsampling, fft, hashing  # noqa: E4
 from falcon import modq, ntrugen, poly, sampler, tree  # noqa: E402
 from falcon.datatypes import Signature  # noqa: E402
 from falcon.params import FALCON_512, FALCON_1024  # noqa: E402
-from support import FixedRNG, ShakeRNG, load_kat  # noqa: E402
+from support import FixedRNG, ShakeRNG, load_kat, nmul  # noqa: E402
 import dataclasses  # noqa: E402
 
 OUT = ROOT / "data" / "vectors"
@@ -620,6 +620,182 @@ def edge_cases() -> None:
         top.is_short([-x for x in squares(params.sig_bound)], [0] * params.n, params)
 
 
+def keygen_flows() -> None:
+    """keygen für reduzierte Grade; dort treten die Neustartgründe häufig auf."""
+    recording["on"] = False
+    for n in (2, 4, 8, 16, 32, 64, 128, 256):
+        for i in range(3):
+            seed = b"flow-keygen-%d-%d" % (n, i)
+            params = with_n(n)
+            sk, pk = top.keygen(params, ShakeRNG(seed))
+            add_case("flow.keygen", ["case"] + emit("seed", "bytes", seed)
+                     + emit("n", "int", n) + emit("key", "ints4", (sk.f, sk.g, sk.F, sk.G))
+                     + emit("h", "ints", pk.h) + ["status ok"])
+    # Seeds, bei denen ein nicht invertierbares f zum Neustart führt (per Suche gefunden).
+    real = ntrugen.is_invertible_mod_q
+    for n, i in ((32, 8), (128, 15), (128, 31), (256, 32)):
+        seed = b"flow-keygen-noninv-%d-%d" % (n, i)
+        seen = []
+        def spy(f, q):
+            seen.append(real(f, q))
+            return seen[-1]
+        ntrugen.is_invertible_mod_q = spy
+        sk, pk = top.keygen(with_n(n), ShakeRNG(seed))
+        ntrugen.is_invertible_mod_q = real
+        assert False in seen, seed
+        add_case("flow.keygen", ["case"] + emit("seed", "bytes", seed)
+                 + emit("n", "int", n) + emit("key", "ints4", (sk.f, sk.g, sk.F, sk.G))
+                 + emit("h", "ints", pk.h) + ["status ok"])
+    recording["on"] = True
+
+
+def bigint_vectors() -> None:
+    """Grosse Ganzzahlen (C und Rust brauchen eigenen Code). Ergebnisse von Python-int."""
+    r = random.Random(0xB16)
+
+    def add(op, a, b, *outs):
+        case = ["case"] + emit("op", "bytes", op.encode()) + emit("a", "int", a) + emit("b", "int", b)
+        add_case("bigint", case + ["status ok"] + [ln for i, v in enumerate(outs)
+                                                     for ln in emit(f"out{i}", "int", v)])
+
+    def ops(a, b):
+        add("add", a, b, a + b)
+        add("sub", a, b, a - b)
+        add("mul", a, b, a * b)
+        if b != 0:
+            add("divmod", abs(a), abs(b), abs(a) // abs(b), abs(a) % abs(b))
+
+    def shifted(a, k):
+        add("shl", a, k, a << k if a >= 0 else -(abs(a) << k))
+        add("shr", a, k, abs(a) >> k)
+        add("bitlen", a, 0, abs(a).bit_length())
+
+    specials = [0, 1, -1, 2, 2 ** 31, 2 ** 32 - 1, 2 ** 32, 2 ** 32 + 1, -(2 ** 32), 2 ** 64 - 1, 2 ** 64,
+                2 ** 96 - 1, 2 ** 96, -(2 ** 127), 2 ** 128 - 1, 2 ** 9400, 2 ** 9400 - 1]
+    for a in specials:
+        for b in specials:
+            ops(a, b)
+    # Rechtsschieben und Länge über Limb-Grenzen
+    for a in specials:
+        for k in (0, 1, 31, 32, 33, 63, 64, 65, 100, 9400, 9401, 20000):
+            shifted(a, k)
+    # Lange Division: Fälle, in denen die geschätzte Ziffer korrigiert werden muss
+    b32 = 2 ** 32
+    def limbs(*x):
+        return sum(v * b32 ** i for i, v in enumerate(x))
+    for a, b in ((limbs(0, 0, 0x80000000, 0x7FFFFFFF), limbs(1, 0, 0x80000000)),
+                 (limbs(3, 0, 0x80000000), limbs(1, 0, 0x20000000)),
+                 (limbs(0, 0xFFFFFFFE, 0x80000000), limbs(0xFFFFFFFF, 0x80000000)),
+                 (limbs(0, 0, 1), limbs(0xFFFFFFFF, 1)),
+                 (limbs(0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF), limbs(0xFFFFFFFF, 0xFFFFFFFF)),
+                 (limbs(0, 0, 0xFFFFFFFF, 0x7FFFFFFF), limbs(0xFFFFFFFF, 0xFFFFFFFF, 0x7FFFFFFF))):
+        ops(a, b)
+    for _ in range(200):
+        bits_a, bits_b = r.randint(1, 5000), r.randint(1, 5000)
+        a = r.getrandbits(bits_a) * r.choice((1, -1))
+        b = r.getrandbits(bits_b) * r.choice((1, -1))
+        ops(a, b)
+        shifted(a, r.randint(0, 200))
+    for _ in range(300):
+        # Ziffern nur aus Extremwerten: treffen die Korrekturzweige der Division
+        a = sum(r.choice((0, 1, 0x7FFFFFFF, 0x80000000, 0xFFFFFFFF)) * b32 ** i for i in range(r.randint(1, 9)))
+        b = sum(r.choice((0, 1, 0x7FFFFFFF, 0x80000000, 0xFFFFFFFF)) * b32 ** i for i in range(r.randint(1, 5)))
+        ops(a, b)
+
+
+def edge_cases_keygen() -> None:
+    r = random.Random(0x4E47)
+
+    def big(bits):
+        return r.getrandbits(bits) * r.choice((1, -1))
+
+    # --- poly -----------------------------------------------------------------
+    for n in (1, 2, 4, 16):
+        for bits in (8, 64, 2000):
+            a, b = [big(bits) for _ in range(n)], [big(bits) for _ in range(n)]
+            poly.poly_add(a, b)
+            poly.poly_sub(a, b)
+            poly.poly_neg(a)
+            poly.poly_mul(a, b)
+            poly.lift(a)
+            poly.galois_conjugate(a)
+            if n >= 2:
+                poly.split(a)
+    poly.poly_mul([1, 2, 3, 4], [5, 6, 7, 8])
+    poly.poly_mul([1, 0, 0, 2], [0, 3, 0, 0])
+    poly.poly_mul([0, 0, 0, 0], [5, 6, 7, 8])
+    for a in ([7], [], [1, 2, 3], [1, 2, 3, 4, 5]):
+        attempt(poly.split, a)
+
+    # --- Feldnorm, xgcd -------------------------------------------------------
+    for a in ([1, 2, 3, 4], [3, 4], [0, 1, 0, 0], [2 ** 3000, 1]):
+        ntrugen.field_norm(a)
+    for n in (2, 4, 16, 64):
+        ntrugen.field_norm([big(40) for _ in range(n)])
+    for a in ([7], [], [1, 2, 3]):
+        attempt(ntrugen.field_norm, a)
+    for a, b in ((3, 5), (5, 3), (12, 18), (17, 17), (1, 0), (0, 7), (0, 0), (12289, 2), (2 ** 64, 6),
+                 (-3, 5), (3, -5), (-12, -18), (2 ** 9400, 2 ** 9400 - 1)):
+        ntrugen.xgcd(a, b)
+    for _ in range(20):
+        ntrugen.xgcd(r.getrandbits(6400) | 1, r.getrandbits(6400) | 1)
+
+    # --- Skalierung -------------------------------------------------------------
+    for c in (0, 1, -1, 2 ** 53 - 1, 2 ** 53, 2 ** 53 + 1, 2 ** 53 + 3, -(2 ** 53 + 3), 2 ** 54 - 1, 2 ** 54 + 2,
+              2 ** 60 + 2 ** 6, 2 ** 60 + 2 ** 7, 2 ** 61 - 1, -(2 ** 61 - 1), 2 ** 9400 + 2 ** 9346, 2 ** 9400 - 1):
+        for scale in (0, 1, 60, 350, 500, 8900):
+            if abs(c).bit_length() - scale < 1000:     # sonst OverflowError; reduce skaliert immer vorher
+                ntrugen._scaled_float(c, scale)
+    for x in (0.0, -0.0, 0.5, -0.5, 1.5, 2.5, -2.5, 0.75, 1e300, -1e300, 5e-324, 1.0000000000000002,
+              math.inf, -math.inf, math.nan):
+        for e in (-2000, -1100, -64, -63, -54, -53, -52, -1, 0, 1, 52, 53, 54, 100, 9000):
+            ntrugen._round_scaled_float(x, e)
+
+    # --- reduce --------------------------------------------------------------------
+    ntrugen.reduce([1, 0], [0, 0], [5, -3], [2, 7])
+    ntrugen.reduce([1, 0], [1, 0], [10, 0], [0, 0])
+    ntrugen.reduce([0, 0], [0, 0], [5, -3], [2, 7])
+    ntrugen.reduce([3], [4], [1000], [1000])
+    for n in (2, 4, 16, 64):
+        f, g = [r.randint(-5, 5) for _ in range(n)], [r.randint(-5, 5) for _ in range(n)]
+        F, G = [r.randint(-10 ** 6, 10 ** 6) for _ in range(n)], [r.randint(-10 ** 6, 10 ** 6) for _ in range(n)]
+        ntrugen.reduce(f, g, F, G)
+    # Grosse Werte wie in NTRUSolve: nahe einem Vielfachen von (f, g). Für beliebige grosse F, G
+    # endet reduce nicht, da die 53 Bit der Gleitkommarechnung die Auslöschung nicht auflösen.
+    for n, bits in ((4, 2000), (16, 9400)):
+        f, g = [r.randint(-9, 9) for _ in range(n)], [r.randint(-9, 9) for _ in range(n)]
+        K = [big(bits) for _ in range(n)]
+        F = [x + r.randint(-50, 50) for x in nmul(K, f)]
+        G = [x + r.randint(-50, 50) for x in nmul(K, g)]
+        ntrugen.reduce(f, g, F, G)
+
+    # --- solve_ntru -----------------------------------------------------------------
+    for f, g in (([3], [5]), ([4], [6]), ([2, 0], [0, 2]), ([1, 1], [1, 1])):
+        ntrugen.solve_ntru(f, g, with_n(max(2, len(f))))
+    for n in (2, 4, 8, 16, 64):
+        for _ in range(6):
+            ntrugen.solve_ntru([r.randint(-4, 4) for _ in range(n)], [r.randint(-4, 4) for _ in range(n)], with_n(n))
+
+    # --- sample_short_poly, gram_schmidt_norm ----------------------------------------
+    rng = RecordingRNG(ShakeRNG(b"edge-short-poly"))
+    for n in (2, 16, 256):
+        ntrugen.sample_short_poly(with_n(n), rng)
+    for n in (2, 4, 16):
+        one = [1] + [0] * (n - 1)
+        ntrugen.gram_schmidt_norm(one, [0] * n, with_n(n))
+        ntrugen.gram_schmidt_norm(one, one, with_n(n))
+        ntrugen.gram_schmidt_norm([0] * n, [0] * n, with_n(n))
+    ntrugen.gram_schmidt_norm([200, 0], [0, 0], with_n(2))
+    for n in (4, 16, 64):
+        ntrugen.gram_schmidt_norm([r.randint(-6, 6) for _ in range(n)], [r.randint(-6, 6) for _ in range(n)], with_n(n))
+
+    # --- öffentlicher Schlüssel ---------------------------------------------------
+    top.compute_public_key([1, 0], [3, 4], FALCON_512)
+    top.compute_public_key([2, 0], [3, 4], FALCON_512)
+    top.compute_public_key([1, 0], [-1, 0], FALCON_512)
+    attempt(top.compute_public_key, [0, 0], [1, 0], FALCON_512)
+
+
 def edge_cases_sign() -> None:
     r = random.Random(0x516E)
 
@@ -748,6 +924,7 @@ def header() -> list:
 
 
 def main() -> None:
+    sys.set_int_max_str_digits(0)       # Koeffizienten mit mehr als 4300 Dezimalstellen
     preflight()
     for module, name, argspec, outspec, cap in WRAPS:
         wrap(module, name, argspec, outspec, cap)
@@ -758,9 +935,11 @@ def main() -> None:
 
     flows()
     restart_flows()
+    keygen_flows()
 
     edge_cases_unlimited()
     shake_vectors()
+    bigint_vectors()
 
     OUT.mkdir(parents=True, exist_ok=True)
     for old in OUT.glob("*.txt"):
@@ -792,6 +971,7 @@ def edge_cases_unlimited() -> None:
     counts = _Unlimited()
     edge_cases()
     edge_cases_sign()
+    edge_cases_keygen()
     counts = saved
 
 
