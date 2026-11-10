@@ -11,9 +11,13 @@ der Python-Version (`../Python`) abweicht.
 |---|---|---|
 | 0 | Crate, Parameter, Testdaten, CI | fertig |
 | 1 | mod q (NTT), HashToPoint, Byteformate, Verify | fertig |
-| 2–8 | `fpr`, FFT, Sampler, Sign, Keygen, Seitenkanal-Prüfung, KAT-Schlüssel | offen |
+| 2 | emulierte Gleitkommazahlen (`fpr`), FFT | fertig |
+| 3 | Zufallsquelle (`prng`), Sampler | fertig |
+| 4–8 | Sign, Keygen, Seitenkanal-Prüfung, KAT-Schlüssel | offen |
 
 Bisher kann das Crate also Signaturen **prüfen**, aber noch nicht erzeugen.
+Die Bausteine für Sign (FFT, Sampler) sind fertig und getestet, aber noch
+nicht von aussen aufrufbar.
 
 ## Bauen und testen
 
@@ -63,7 +67,16 @@ mit Zufallsdaten und beschädigten KAT-Daten mitgeprüft.
 - die Beispiele und Ablehnungsfälle aus `Python/tests/test_encoding.py` und
   `test_hashing.py`;
 - veränderte Nachricht, Salt, s₂, Header oder fremder Schlüssel werden
-  abgelehnt (gezielt und mit zufälligen Bitfehlern).
+  abgelehnt (gezielt und mit zufälligen Bitfehlern);
+- `fpr` bitgleich gegen Hardware-`f64` (add, sub, mul, div, sqrt, Umwandlung,
+  Runden; je 300 000 Zufallswerte mit vielen Rundungsfällen, dazu ±0 und
+  Unterlauf);
+- FFT, iFFT, split/merge und alle punktweisen Operationen **bitgleich** gegen
+  `Python/data/vectors/fft.*` (auch das Vorzeichen von Nullen);
+- Sampler bitgleich gegen `Python/data/vectors/sampler.*`: BaseSampler,
+  ApproxExp, Schwelle z und Ergebnis von BerExp, x aus SamplerZ und SamplerZ
+  selbst (mit einem Test-Generator, der den Byteverbrauch von Alg. 14
+  nachbildet); dazu Mittelwert, Varianz und χ²-Test der SamplerZ-Ausgabe.
 
 ## Unterschiede zur Python-Version
 
@@ -74,18 +87,29 @@ Python wird nicht angepasst (PLAN.md 2.2). Die Unterschiede sind gewollt:
 | \|sᵢ\| in `decompress` | keine Obergrenze | > 2047 wird abgelehnt | L5: fester Typ, wie die Referenz |
 | Keygen, nicht speicherbare Schlüssel | möglich (selten) | werden verworfen | L6, kommt mit Phase 5 |
 | Secret-Key-Format | normaler Code | Laufzeit unabhängig von f, g, F; Fehler verrät nicht, welcher Koeffizient | Seitenkanal |
-| Gleitkomma | `float`/`complex` | emuliert (`fpr`), ab Phase 2 | L3 |
-| Vergleich der Gleitkommawerte | – | mit Toleranz, nicht bitgleich | `cmath.exp` und CPythons komplexe Division (PLAN.md 3.3) |
-| BerExp | bricht nach dem ersten entscheidenden Byte ab | immer 8 Bytes, ab Phase 3 | L7 |
+| Gleitkomma | `float`/`complex` | emuliert (`fpr`), nur Ganzzahlbefehle | L3 |
+| Vergleich der Gleitkommawerte | – | bitgleich mit Python und C | gleiche Wurzeltabelle, gleiche Reihenfolge, korrekt gerundetes `fpr` (PLAN.md 3.3) |
+| FFT-Darstellung | alle n Werte | alle n Werte (nicht n/2 wie geplant) | sonst andere Rechenwege und andere Bits (PLAN.md L8) |
+| Zufall im Sampler | Bytes direkt aus der Quelle | Seed → SHAKE256 → ChaCha20 | L9 |
+| BerExp | bricht nach dem ersten entscheidenden Byte ab | immer 8 Bytes | L7 |
 | Parametersätze | `Params` für 512/1024, Grad 1..10 erlaubt | `LogN` 1..=10 für Formate und NTT; Verify nur für 512/1024 (`UnsupportedLogN`) | verkleinerte Parameter kommen mit Phase 5 |
 
 ## Seitenkanal: was bisher gilt
 
 Geheime Daten sind f, g, F, G und alles daraus (PLAN.md 3.1). Davon berührt
-der bisherige Code nur das Secret-Key-Format und h = g/f:
+der bisherige Code das Secret-Key-Format, h = g/f und die Bausteine für
+Sign: `fpr`, FFT und Sampler.
 
 - keine Verzweigung und kein Speicherzugriff, der von geheimen Werten
   abhängt; Auswahl über Masken (`src/ct.rs`);
+- Gleitkomma nur emuliert (`src/fpr.rs`): Division und Wurzel Bit für Bit
+  mit fester Rundenzahl, Normalisierung in sechs festen Schritten, kein
+  Befehl der Gleitkommaeinheit; Schiebebefehle mit variabler Weite gelten
+  auf x86-64 und aarch64 als Befehle mit fester Laufzeit;
+- Sampler: BaseSampler vergleicht mit allen 18 Tabelleneinträgen, BerExp
+  zieht immer 8 Bytes (L7). Einzige Verzweigung ist „SamplerZ nimmt an“,
+  deren Häufigkeit nicht von μ und σ′ abhängt (PLAN.md 3.4);
+- Zufall im Sampler aus ChaCha20, Puffer werden nach Gebrauch gelöscht;
 - jede Maske läuft durch eine Optimierungsbarriere: auf x86-64 und aarch64
   eine leere Assembler-Anweisung, die den Wert im Register lässt, sonst
   `core::hint::black_box` (das den Wert über den Stack schickt);
@@ -119,13 +143,19 @@ die Implementierung nicht (PLAN.md §1).
 src/
   lib.rs       öffentliche API: VerifyingKey, Signature, LogN, Params, Error
   params.rs    Tab. 3.3, LogN
-  ct.rs        Masken und Auswahl ohne Verzweigung
+  ct.rs        Masken und Auswahl ohne Verzweigung (32 und 64 Bit)
+  fpr.rs       emulierte IEEE-754-Gleitkommazahlen, konstante Laufzeit
+  fft.rs       FFT, split/merge, komplexe Operationen (Smith-Division)
+  fft_table.rs Wurzeln ζ (erzeugt mit scripts/gen_fft_table.py)
+  prng.rs      Seed → SHAKE256 → ChaCha20
+  sampler.rs   BaseSampler, ApproxExp, BerExp, SamplerZ
   modq.rs      Arithmetik mod 12289, NTT
   hashing.rs   HashToPoint (öffentlich, variable Laufzeit erlaubt)
   encoding.rs  Kompression von s₂, pk- und sk-Format
   falcon.rs    Verify, h = g/f
   fuzzing.rs   Einstiegspunkte für cargo fuzz (Feature `fuzzing`)
-tests/         KAT-Tests, Parser für die Testdaten
+tests/         KAT-Tests, Leser für KAT- und Python-Testvektoren
+scripts/       Erzeugung von src/fft_table.rs
 examples/      seed_corpus: Start-Korpus für die Fuzz-Ziele
 fuzz/          Fuzz-Ziele (cargo fuzz)
 ```

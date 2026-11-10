@@ -18,9 +18,14 @@
 mod ct;
 mod encoding;
 mod falcon;
+mod fft;
+mod fft_table;
+mod fpr;
 mod hashing;
 mod modq;
 mod params;
+mod prng;
+mod sampler;
 
 #[cfg(any(test, feature = "fuzzing"))]
 #[doc(hidden)]

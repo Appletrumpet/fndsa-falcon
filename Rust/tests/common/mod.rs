@@ -4,6 +4,8 @@
 //! Crate (`#[path]` in lib.rs) benutzt; deshalb nur `std`.
 #![allow(dead_code)]
 
+pub mod vectors;
+
 use std::path::PathBuf;
 
 pub struct KatRecord {

@@ -1,6 +1,9 @@
 # Plan: FN-DSA (Falcon) in Rust, seitenkanalresistent
 
-Stand: 10. November 2026, Branch `Rust`. Phase 0 und 1 sind vollständig
+Stand: 10. November 2026, Branch `Rust`. Phase 0 bis 3 sind umgesetzt:
+Phase 2 (`fpr`, FFT) und Phase 3 (`prng`, Sampler) rechnen **bitgleich**
+mit Python, geprüft gegen `Python/data/vectors/` (siehe Änderung zu 3.3).
+Phase 0 und 1 sind vollständig
 umgesetzt (Crate, `params`, `ct` in Grundform mit Optimierungsbarriere,
 `modq`, `hashing`, `encoding`, Verify, CI-Skript `ci.sh` und GitHub-Workflow
 für x86-64/aarch64 mit Jobs für Rust 1.87 und die Fuzz-Ziele aus §7). Alle 200 KAT-Signaturen werden
@@ -68,7 +71,7 @@ Implementations of Falcon“, 2019):
 | L5 | `decompress` | „keine Obergrenze für \|sᵢ\|“ | in Rust braucht es einen festen Typ (`i16`) | **entschieden (9.11.2026):** wie die Referenz, \|sᵢ\| > 2047 ablehnen; im Rahmen der Normschranke kommt das bei echten Signaturen praktisch nie vor |
 | L6 | Keygen und sk-Format | 7.5: keine Prüfung, ob f, g, F ins sk-Format passen | bei Falcon-1024 lässt sich etwa 1 von 10⁴ Schlüsseln nicht speichern | **entschieden (9.11.2026):** wie die Referenz, solche Kandidaten verwerfen (f, g nach FG_BITS, F, G mit 8 Bit) |
 | L7 | BerExp | Alg. 14: Schleife bricht ab, sobald ein Byte entscheidet | Zahl der gezogenen Bytes hängt von z ab | **entschieden (9.11.2026):** nur streng konstant, immer 8 Bytes, siehe 3.4 |
-| L8 | FFT-Darstellung | alle n Werte, Reihenfolge ζₖ | doppelte Arbeit | nur n/2 Werte (der Rest ist konjugiert); Reihenfolge der Doku beibehalten, damit die Python-Werte vergleichbar bleiben (mit Toleranz, siehe Abschnitt 7) |
+| L8 | FFT-Darstellung | alle n Werte, Reihenfolge ζₖ | doppelte Arbeit | ~~nur n/2 Werte~~ **geändert (10.11.2026):** alle n Werte wie Python, damit die Rechenwege und damit die Bits gleich bleiben (siehe 3.3); die doppelte Arbeit ist für die Arbeit unkritisch |
 | L9 | Zufall | beliebiges `rng.random_bytes` | SamplerZ braucht pro Signatur Tausende Bytes | Seed aus OS-Zufall → SHAKE256 → ChaCha20-PRNG (Referenz) |
 | L10 | KAT byte-genau | 7.3: nicht reproduzierbar | stimmt nur ohne den RNG-Ablauf der Referenz | **entschieden (9.11.2026):** die **KAT-Schlüssel** werden byte-genau reproduziert, mit dem Keygen-Ablauf der Referenz (Seed → SHAKE256 → Tabellen-Gauss), siehe 3.5 und Phase 7. Die **KAT-Signaturen** nicht: wegen L7 zieht BerExp andere Bytes als die Referenz |
 | L11 | `_SIGMA_EPS` (Python) | nicht dokumentiert | nur wegen gerundetem σmin nötig | in Rust exakte Konstanten, keine Toleranz; die Prüfung σ′ ∈ [σmin, σmax] wird zur Debug-Assertion, weil σ′ geheim ist |
@@ -189,6 +192,19 @@ durch komplexe Zahlen mit CPythons eigenem Divisionsalgorithmus, und die
 ζ-Tabelle wird auf jeder Ebene neu berechnet. Rust rechnet mit exakten
 Konstanten und `conj(ζ)/2` statt Division durch `2ζ`. Gleitkommawerte werden
 deshalb mit Toleranz verglichen (Abschnitt 7).
+
+**Geändert (10.11.2026, Phase 2):** Die Voraussetzung oben gilt nicht mehr.
+Mit dem Merge von `main` rechnet Python reproduzierbar (Smith-Division als
+einzelne Operationen, Ziel Z1 der C-Portierung), und die Wurzeln ζ liegen als
+feste Tabelle vor (`C/src/fft_table.h`, aus den Python-Werten erzeugt). Rust
+übernimmt dieselbe Tabelle (`src/fft_table.rs`, erzeugt mit
+`scripts/gen_fft_table.py`) und dieselbe Reihenfolge der Operationen. Weil
+`fpr` korrekt rundet, sind FFT, Sampler und x/z im Sampler **bitgleich** mit
+den Testvektoren in `Python/data/vectors/`, einschliesslich des Vorzeichens
+von Nullen. Die Smith-Division hat keine Verzweigung: beide Zweige sind mit
+vertauschten Operanden dieselbe Formel, die Auswahl läuft über Masken.
+Zahlenbereich von `fpr` (umgesetzt): keine subnormalen Zahlen, kein ±∞,
+kein NaN; Unterlauf ergibt ±0.
 
 Optional als Feature `native-fpu`: `f64` direkt, nur für Ziele, auf denen
 add/mul/sqrt nachweislich konstante Laufzeit haben (z. B. x86-64 mit SSE2, ohne
@@ -322,7 +338,8 @@ Rust/
     fpr.rs            # emulierte Gleitkommazahlen (L3), optional native-fpu
     poly.rs           # Ganzzahlpolynome kleiner Grösse (i16/i32)
     modq.rs           # NTT mod 12289, Montgomery
-    fft.rs            # FFT auf Fpr, n/2 komplexe Werte (L8), split/merge
+    fft.rs            # FFT auf Fpr, n komplexe Werte wie Python (L8), split/merge
+    fft_table.rs      # Wurzeln ζ als Bits, erzeugt aus C/src/fft_table.h
     hashing.rs        # HashToPoint (variable Laufzeit, öffentlich)
     encoding.rs       # Kompression, pk/sk/sig-Formate (öffentlich)
     prng.rs           # SHAKE256-Seed → ChaCha20 (L9)
@@ -393,9 +410,9 @@ nur noch auf alle Seeds.
 |---|---|---|---|
 | 0 | Crate, `params`, Testdaten aus `Python/data/` einbinden, CI-Skript | Build, Tab. 3.3 | klein |
 | 1 | `modq` (konstant), `hashing`, `encoding`, `verify` | alle 200 KAT-Signaturen gültig, pk/sk-Formate gegen KAT | klein–mittel |
-| 2 | `ct`, `fpr` (emuliert), `fft` | `fpr` bitgleich gegen `f64` für Millionen Zufallswerte im normalen Zahlenbereich inkl. Grenzfälle; FFT gegen Python-Werte mit Toleranz | mittel |
-| 3 | `prng`, `sampler` | BaseSampler und ApproxExp gegen alle Schritte der Sampler-Testvektoren; BerExp-Äquivalenztest; statistische Tests für SamplerZ (Abschnitt 7) | mittel |
-| 4 | `tree`, `ffsampling`, `sign` (mit KAT-sk, `load_secret_key` inkl. `recompute_G`) | Falcon-Baum exakt gegen Testvektor; ffSampling mit Test-RNG gegen Python (ganzzahlige Ausgabe gleich, Gleitkomma mit Toleranz); KAT-sk → sign → verify | mittel |
+| 2 | `ct`, `fpr` (emuliert), `fft` | `fpr` bitgleich gegen `f64` für Millionen Zufallswerte im normalen Zahlenbereich inkl. Grenzfälle; FFT **bitgleich** gegen `Python/data/vectors/fft.*` (**erledigt**) | mittel |
+| 3 | `prng`, `sampler` | BaseSampler und ApproxExp gegen alle Schritte der Sampler-Testvektoren; BerExp-Äquivalenztest; statistische Tests für SamplerZ (Abschnitt 7) (**erledigt**, gegen `Python/data/vectors/sampler.*`) | mittel |
+| 4 | `tree`, `ffsampling`, `sign` (mit KAT-sk, `load_secret_key` inkl. `recompute_G`) | Falcon-Baum und ffSampling bitgleich gegen `Python/data/vectors/tree.*` und `ffsampling.*` (Test-Generator wie beim SamplerZ); KAT-sk → sign → verify | mittel |
 | 5 | `zint`, `ntrugen` (NTRUSolve fester Länge, Portierung der Referenz), `keygen`; AES-CTR-DRBG für Tests von Anfang an | fG − gF = q, γ-Schranke, sk-Format, keygen → sign → verify für 512/1024, reduzierte n; **KAT count 0 byte-genau** (f, g, dann F) für beide Varianten | **gross** |
 | 6 | Seitenkanal-Prüfung (Abschnitt 6) | dudect ohne Befund, Valgrind ohne Befund auf geheimen Daten | mittel |
 | 7 | KAT-Schlüssel byte-genau (L10), alle Seeds | alle 200 KAT-Seeds ergeben exakt sk und pk der KAT-Dateien (Signaturen wegen L7 nicht) | klein, wenn count 0 in Phase 5 stimmt |
@@ -449,14 +466,11 @@ Zusätzlich: Durchsicht, dass alle geheimen Puffer gelöscht werden.
 - **Portiert aus Python:** die Tests aus `Python/tests/` dort, wo sie
   Spezifikationseigenschaften prüfen (Parameter, Kompression, Formate, NTT,
   FFT-Eigenschaften, Sampler, ffLDL-Invarianten).
-- **Differenztests gegen Python:** Ein Skript in `Python/scripts/` erzeugt
-  JSON-Vektoren (FFT, split/merge, Baum für die KAT-Schlüssel, ffSampling mit
-  festen Zufallsbytes). Python bleibt unverändert, daher **nicht bitgleich**
-  (Gründe in 3.3): Gleitkommawerte mit relativer Toleranz (Richtwert 2⁻⁴⁰,
-  beim Umsetzen festlegen), ganzzahlige Ergebnisse (z aus ffSampling, s₁, s₂)
-  müssen gleich sein. Bei sehr seltenen Abweichungen durch Rundung an einer
-  Ganzzahlgrenze den Fall einzeln prüfen. Exakte Referenzwerte für Baum und
-  Signaturvektor liefern die Sampler-Testvektoren.
+- **Differenztests gegen Python:** `Python/scripts/gen_vectors.py` (aus der
+  C-Portierung) erzeugt Vektoren für jede Funktion
+  (`Python/data/vectors/*.txt`, Leser in `tests/common/vectors.rs`).
+  **Geändert (10.11.2026):** Vergleich **bitgleich**, nicht mit Toleranz
+  (Begründung in 3.3). Umgesetzt für FFT und Sampler.
 - **Nicht bitgleich zu erwarten:** (F, G) aus NTRUSolve (3.5) und wegen L7
   alles, was auf die Zufallsfolge nach dem ersten BerExp-Aufruf angewiesen ist
   (SamplerZ-Folgen, exakte Signatur aus dem Testvektor).
