@@ -44,3 +44,9 @@ name = "verify"
 path = "fuzz_targets/verify.rs"
 test = false
 doc = false
+
+[[bin]]
+name = "signing_key"
+path = "fuzz_targets/signing_key.rs"
+test = false
+doc = false

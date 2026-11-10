@@ -9,7 +9,46 @@
 
 use crate::encoding;
 use crate::params::{FALCON_1024, FALCON_512};
-use crate::{Signature, VerifyingKey};
+use crate::prng::{Prng, RandomSource};
+use crate::{Signature, SigningKey, VerifyingKey};
+
+/// Feste Zufallsquelle für das Fuzz-Ziel `signing_key` (ChaCha20 aus einem
+/// festen Seed), damit Läufe reproduzierbar sind.
+struct FuzzRng(Prng);
+
+impl rand_core::RngCore for FuzzRng {
+    fn next_u32(&mut self) -> u32 {
+        let mut b = [0; 4];
+        self.0.fill(&mut b);
+        u32::from_le_bytes(b)
+    }
+    fn next_u64(&mut self) -> u64 {
+        let mut b = [0; 8];
+        self.0.fill(&mut b);
+        u64::from_le_bytes(b)
+    }
+    fn fill_bytes(&mut self, dest: &mut [u8]) {
+        self.0.fill(dest);
+    }
+    fn try_fill_bytes(&mut self, dest: &mut [u8]) -> Result<(), rand_core::Error> {
+        self.0.fill(dest);
+        Ok(())
+    }
+}
+
+impl rand_core::CryptoRng for FuzzRng {}
+
+/// Secret Key laden; wenn gültig: wieder kodieren, signieren, prüfen. Darf
+/// bei keiner Eingabe abstürzen oder hängen (Sign mit erfundenem Schlüssel
+/// lief früher endlos, siehe `SigningKey::from_bytes`).
+pub fn signing_key(data: &[u8]) {
+    if let Ok(sk) = SigningKey::from_bytes(data) {
+        assert_eq!(&sk.to_bytes()[..], data);
+        let mut rng = FuzzRng(Prng::new(b"fuzz"));
+        let sig = sk.sign(b"fuzz", &mut rng);
+        assert!(sk.verifying_key().verify(b"fuzz", &sig));
+    }
+}
 
 /// Public Key: dekodieren, und wenn gültig, wieder kodieren.
 pub fn decode_pk(data: &[u8]) {
@@ -146,6 +185,15 @@ mod tests {
                     let j = (r.next() as usize) % bad_pk.len();
                     bad_pk[j] ^= bit;
                     decode_pk(&bad_pk);
+                }
+
+                // Laden und Signieren mit echtem und beschädigtem Secret Key
+                signing_key(&rec.sk);
+                for _ in 0..5 {
+                    let mut bad_sk = rec.sk.clone();
+                    let j = 1 + (r.next() as usize) % (bad_sk.len() - 1);
+                    bad_sk[j] ^= 1u8 << (r.next() % 8);
+                    signing_key(&bad_sk);
                 }
 
                 // gültige Eingabe für das Verify-Ziel

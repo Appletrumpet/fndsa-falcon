@@ -29,7 +29,9 @@
 
 use core::ops::{Add, Div, Mul, Neg, Sub};
 
-use crate::ct::{mask64_from_msb, mask64_lt, mask64_nonzero, select64};
+use crate::ct::{
+    cond_neg64, mask64_from_bit, mask64_from_msb, mask64_lt, mask64_nonzero, select64,
+};
 
 const SIGN: u64 = 1 << 63;
 const FRAC: u64 = (1 << 52) - 1;
@@ -45,7 +47,6 @@ impl zeroize::DefaultIsZeroes for Fpr {}
 impl Fpr {
     pub const ZERO: Fpr = Fpr(0);
     pub const ONE: Fpr = Fpr(0x3FF0_0000_0000_0000);
-    #[allow(dead_code)] // für Keygen (Phase 5)
     pub const TWO: Fpr = Fpr(0x4000_0000_0000_0000);
 
     /// Aus den IEEE-754-Bits.
@@ -67,7 +68,7 @@ impl Fpr {
     pub fn scaled(i: i64, sc: i32) -> Fpr {
         let s = (i as u64) >> 63;
         // Betrag ohne Verzweigung; i64::MIN ergibt 2⁶³ als u64.
-        let m = ((i as u64) ^ 0u64.wrapping_sub(s)).wrapping_add(s);
+        let m = cond_neg64(i as u64, s);
         let (m, e) = norm64(m, sc);
         let (m, e) = shrink(m, e);
         make(s, e, m)
@@ -94,13 +95,11 @@ impl Fpr {
     }
 
     /// x², korrekt gerundet.
-    #[allow(dead_code)] // für Keygen (Phase 5)
     pub fn sqr(self) -> Fpr {
         self * self
     }
 
     /// 1/x, korrekt gerundet; x ≠ 0.
-    #[allow(dead_code)] // für Keygen (Phase 5)
     pub fn inv(self) -> Fpr {
         Fpr::ONE / self
     }
@@ -136,7 +135,7 @@ impl Fpr {
         // aufrunden, wenn Rest > ½ oder Rest = ½ und Ganzzahl ungerade
         let gt = mask64_lt(p.half, p.frac);
         let eq = !mask64_nonzero(p.frac ^ p.half);
-        let up = (gt | (eq & 0u64.wrapping_sub(p.int & 1))) & 1;
+        let up = (gt | (eq & mask64_from_bit(p.int))) & 1;
         apply_sign(p.s, p.int + up)
     }
 
@@ -144,12 +143,12 @@ impl Fpr {
     pub fn floor(self) -> i64 {
         let p = int_parts(self.0);
         // bei negativem x mit Rest eine Stufe weiter weg von 0
-        let up = mask64_nonzero(p.frac) & 0u64.wrapping_sub(p.s) & 1;
+        let up = mask64_nonzero(p.frac) & mask64_from_bit(p.s) & 1;
         apply_sign(p.s, p.int + up)
     }
 
     /// Abschneiden (Richtung 0); |x| < 2⁶³.
-    #[allow(dead_code)] // für Keygen (Phase 5)
+    #[allow(dead_code)] // nur in Tests benutzt
     pub fn trunc(self) -> i64 {
         let p = int_parts(self.0);
         apply_sign(p.s, p.int)
@@ -214,7 +213,7 @@ impl Add for Fpr {
 
         // bei verschiedenen Vorzeichen subtrahieren
         let sd = sx ^ sy;
-        let m = mx.wrapping_add((my ^ 0u64.wrapping_sub(sd)).wrapping_add(sd));
+        let m = mx.wrapping_add(cond_neg64(my, sd));
 
         let (m, e) = norm64(m, ex - 1078);
         let (m, e) = shrink(m, e);
@@ -270,7 +269,7 @@ impl Div for Fpr {
         let sticky = mask64_nonzero(r) & 1;
         // q in [2⁵⁴, 2⁵⁶); bei q ≥ 2⁵⁵ ein Bit nach rechts (ins Sticky).
         let top = (q >> 55) & 1;
-        let m = select64(0u64.wrapping_sub(top), q, (q >> 1) | (q & 1)) | sticky;
+        let m = select64(mask64_from_bit(top), q, (q >> 1) | (q & 1)) | sticky;
         make(s, ex - ey - 55 + top as i32, m)
     }
 }
@@ -365,8 +364,7 @@ fn int_parts(x: u64) -> IntParts {
 /// s = 1: −v, sonst v.
 #[inline(always)]
 fn apply_sign(s: u64, v: u64) -> i64 {
-    let neg = 0u64.wrapping_sub(s);
-    ((v ^ neg).wrapping_add(s)) as i64
+    cond_neg64(v, s) as i64
 }
 
 #[cfg(test)]

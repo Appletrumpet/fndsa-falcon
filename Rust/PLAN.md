@@ -1,12 +1,20 @@
 # Plan: FN-DSA (Falcon) in Rust, seitenkanalresistent
 
-Stand: 10. November 2026, Branch `Rust`. Phase 0 bis 4 sind umgesetzt:
+Stand: 10. November 2026, Branch `Rust`. Phase 0 bis 5 und 7 sind
+umgesetzt: Keygen ist eine Portierung der Referenz (PQClean, `keygen.c`,
+`fft.c`) und erzeugt aus allen 200 KAT-Seeds byte-genau die KAT-Schlüssel.
+Offen sind Phase 6 (Seitenkanal-Prüfung) und 8 (Messungen). Zuvor:
+Phase 0 bis 4 sind umgesetzt:
 Phase 2 (`fpr`, FFT), Phase 3 (`prng`, Sampler) und Phase 4 (Baum,
 ffSampling, Sign) rechnen **bitgleich** mit Python, geprüft gegen
 `Python/data/vectors/` (siehe Änderung zu 3.3); auch ganze Signaturen aus
 `flow.sign` stimmen Byte für Byte, wenn Rust denselben Zufall bekommt.
 Abweichung in Phase 4: Bei einem Neustart behält Sign das Salt (wie Alg. 10
-und Python), statt wie in 3.6 beschrieben ein neues zu ziehen.
+und Python), statt wie in 3.6 beschrieben ein neues zu ziehen. Ergänzt nach
+der Analyse von Phase 1–4: `SigningKey::from_bytes` prüft |G| ≤ 127,
+fG − gF = q und σ′ ∈ [σmin, σmax] für alle Blätter (sonst lief Sign mit
+erfundenen Schlüsseln endlos); Verify nach Sign ist umgesetzt; neues
+Fuzz-Ziel `signing_key`.
 Phase 0 und 1 sind vollständig
 umgesetzt (Crate, `params`, `ct` in Grundform mit Optimierungsbarriere,
 `modq`, `hashing`, `encoding`, Verify, CI-Skript `ci.sh` und GitHub-Workflow
@@ -78,7 +86,7 @@ Implementations of Falcon“, 2019):
 | L8 | FFT-Darstellung | alle n Werte, Reihenfolge ζₖ | doppelte Arbeit | ~~nur n/2 Werte~~ **geändert (10.11.2026):** alle n Werte wie Python, damit die Rechenwege und damit die Bits gleich bleiben (siehe 3.3); die doppelte Arbeit ist für die Arbeit unkritisch |
 | L9 | Zufall | beliebiges `rng.random_bytes` | SamplerZ braucht pro Signatur Tausende Bytes | Seed aus OS-Zufall → SHAKE256 → ChaCha20-PRNG (Referenz) |
 | L10 | KAT byte-genau | 7.3: nicht reproduzierbar | stimmt nur ohne den RNG-Ablauf der Referenz | **entschieden (9.11.2026):** die **KAT-Schlüssel** werden byte-genau reproduziert, mit dem Keygen-Ablauf der Referenz (Seed → SHAKE256 → Tabellen-Gauss), siehe 3.5 und Phase 7. Die **KAT-Signaturen** nicht: wegen L7 zieht BerExp andere Bytes als die Referenz |
-| L11 | `_SIGMA_EPS` (Python) | nicht dokumentiert | nur wegen gerundetem σmin nötig | in Rust exakte Konstanten, keine Toleranz; die Prüfung σ′ ∈ [σmin, σmax] wird zur Debug-Assertion, weil σ′ geheim ist |
+| L11 | `_SIGMA_EPS` (Python) | nicht dokumentiert | nur wegen gerundetem σmin nötig | ~~Debug-Assertion~~ **umgesetzt (Phase 4):** σ′ ∈ [σmin − 1e-10, σmax + 1e-10] wird einmal beim Laden des Secret Keys für alle Blätter geprüft, ohne Verzweigung auf den Werten (`InvalidKey` sonst). Die Toleranz bleibt nötig, weil σmin in Tab. 3.3 gerundet ist |
 
 **Entschieden:** L2, L5, L6, L7, L10. Alle Punkte aus 2.2 sind damit
 entschieden.
@@ -317,7 +325,8 @@ Division auf geheimen Daten). Standard bleibt die Emulation.
   Python gleich, umgesetzt in Phase 4). Das Ergebnis ja/nein darf
   verzweigen.
 - Optional (Fault-Schutz): nach dem Signieren `verify` aufrufen; das kostet
-  wenig im Vergleich zum Signieren.
+  wenig im Vergleich zum Signieren. **Umgesetzt (Phase 4):** bei Fehlschlag
+  neu signieren, nach drei Fehlschlägen Panik statt falscher Signatur.
 
 ### 3.7 Modulare Arithmetik (mod q)
 
@@ -418,9 +427,9 @@ nur noch auf alle Seeds.
 | 2 | `ct`, `fpr` (emuliert), `fft` | `fpr` bitgleich gegen `f64` für Millionen Zufallswerte im normalen Zahlenbereich inkl. Grenzfälle; FFT **bitgleich** gegen `Python/data/vectors/fft.*` (**erledigt**) | mittel |
 | 3 | `prng`, `sampler` | BaseSampler und ApproxExp gegen alle Schritte der Sampler-Testvektoren; BerExp-Äquivalenztest; statistische Tests für SamplerZ (Abschnitt 7) (**erledigt**, gegen `Python/data/vectors/sampler.*`) | mittel |
 | 4 | `tree`, `ffsampling`, `sign` (mit KAT-sk, `load_secret_key` inkl. `recompute_G`) | Falcon-Baum und ffSampling bitgleich gegen `Python/data/vectors/tree.*` und `ffsampling.*` (Test-Generator wie beim SamplerZ); KAT-sk → sign → verify (**erledigt**; dazu `flow.sign` und `flow.sign_restart` byte-genau) | mittel |
-| 5 | `zint`, `ntrugen` (NTRUSolve fester Länge, Portierung der Referenz), `keygen`; AES-CTR-DRBG für Tests von Anfang an | fG − gF = q, γ-Schranke, sk-Format, keygen → sign → verify für 512/1024, reduzierte n; **KAT count 0 byte-genau** (f, g, dann F) für beide Varianten | **gross** |
+| 5 | `zint`, `ntrugen` (NTRUSolve fester Länge, Portierung der Referenz), `keygen`; AES-CTR-DRBG für Tests von Anfang an | fG − gF = q, γ-Schranke, sk-Format, keygen → sign → verify für 512/1024, reduzierte n; **KAT count 0 byte-genau** (f, g, dann F) für beide Varianten (**erledigt**; dazu `fft_ref.rs`, die FFT der Referenz, weil `reduce` mit ihr rundet) | **gross** |
 | 6 | Seitenkanal-Prüfung (Abschnitt 6) | dudect ohne Befund, Valgrind ohne Befund auf geheimen Daten | mittel |
-| 7 | KAT-Schlüssel byte-genau (L10), alle Seeds | alle 200 KAT-Seeds ergeben exakt sk und pk der KAT-Dateien (Signaturen wegen L7 nicht) | klein, wenn count 0 in Phase 5 stimmt |
+| 7 | KAT-Schlüssel byte-genau (L10), alle Seeds | alle 200 KAT-Seeds ergeben exakt sk und pk der KAT-Dateien (Signaturen wegen L7 nicht) (**erledigt** zusammen mit Phase 5) | klein, wenn count 0 in Phase 5 stimmt |
 | 8 (optional) | Benchmarks gegen Python, `native-fpu` | Zahlen für die Arbeit | klein |
 
 ---
@@ -496,7 +505,8 @@ Zusätzlich: Durchsicht, dass alle geheimen Puffer gelöscht werden.
     die diskrete Gaussverteilung für mehrere (μ, σ′), mit festen Seeds wie in
     7.2 der Doku.
 - **Fuzzing** (`cargo fuzz`) für `decode_pk`, `decode_sk`, `decode_sig`,
-  `decompress` und `verify`: diese verarbeiten Daten von aussen.
+  `decompress` und `verify`: diese verarbeiten Daten von aussen. Dazu
+  `signing_key` (laden, signieren, prüfen).
 
 ---
 
@@ -534,10 +544,18 @@ Noch offen (blockiert erst Phase 6, nicht den Start):
 
 - aarch64-Hardware für Valgrind und dudect beschaffen bzw. klären
   (Abschnitt 10).
-- Die Keygen-Details aus 3.5 (Byte-Reihenfolge, Neuziehen, Reihenfolge der
-  Prüfungen) und der Zahlenbereich von `fpr` (3.3) beruhen auf meiner
-  Erinnerung an die Referenz und werden zu Beginn von Phase 2 bzw. 5 im
-  Quelltext der Referenz nachgeprüft.
+- ~~Die Keygen-Details aus 3.5 … werden … nachgeprüft.~~ **Nachgeprüft
+  (Phase 5, PQClean `keygen.c`):** Seed (48 Bytes) → SHAKE256 → alle
+  Zufallswerte; 64-Bit-Werte little-endian (`get_rng_u64`); Tabellen-Gauss
+  mit Summe von 1024/n Ziehungen; neu gezogen wird ein einzelner
+  Koeffizient ausserhalb **±127** (nicht ±`lim`) und der letzte bis zur
+  ungeraden Summe; danach verwirft die Referenz den ganzen Kandidaten,
+  wenn ein Koeffizient nicht in FG_BITS passt. Reihenfolge der Prüfungen:
+  FG_BITS, ‖(g, −f)‖² < 16823, γ² < 16822.4121, h = g/f (invertierbar),
+  NTRUSolve mit |F|, |G| ≤ 127. Zusätzlich gefunden: `reduce` rundet mit
+  der FFT der Referenz (n/2 Werte, `fpr_gm_tab`); sie ist mitportiert
+  (`fft_ref.rs`). γ rechnet Rust mit der eigenen FFT, weil γ nur
+  „verwerfen ja/nein“ entscheidet. Zahlenbereich von `fpr` siehe 3.3.
 
 ---
 

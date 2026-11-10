@@ -4,6 +4,7 @@
 //! Crate (`#[path]` in lib.rs) benutzt; deshalb nur `std`.
 #![allow(dead_code)]
 
+pub mod drbg;
 pub mod vectors;
 
 use std::path::PathBuf;

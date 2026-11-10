@@ -14,21 +14,34 @@ der Python-Version (`../Python`) abweicht.
 | 2 | emulierte Gleitkommazahlen (`fpr`), FFT | fertig |
 | 3 | Zufallsquelle (`prng`), Sampler | fertig |
 | 4 | Falcon-Baum, ffSampling, Sign, Secret Key laden | fertig |
-| 5–8 | Keygen, Seitenkanal-Prüfung, KAT-Schlüssel, Messungen | offen |
+| 5 | Keygen (NTRUSolve fester Länge, Portierung der Referenz) | fertig |
+| 6 | Seitenkanal-Prüfung (Valgrind, dudect, Assembler vollständig) | offen |
+| 7 | KAT-Schlüssel byte-genau aus den Seeds | fertig (alle 200) |
+| 8 | Messungen, `native-fpu` | offen |
 
-Das Crate kann Signaturen **prüfen** und mit einem geladenen Secret Key
-**erzeugen**. Schlüssel erzeugen kann es noch nicht (Phase 5); bis dahin
-stammen die Secret Keys z. B. aus den NIST-KAT-Dateien.
+Das Crate kann Schlüssel **erzeugen**, Signaturen **erzeugen** und
+**prüfen**, für Falcon-512 und Falcon-1024.
 
 ```rust
-let sk = SigningKey::from_bytes(&sk_bytes)?;   // berechnet G, Basis, Baum
-let sig = sk.sign(msg, &mut rng);              // rng: CryptoRngCore, z. B. OsRng
-assert!(sk.verifying_key().verify(msg, &sig));
+let (sk, pk) = fndsa::keygen(LogN::FALCON_512, &mut rng)?; // rng: z. B. OsRng
+let sk_bytes = sk.to_bytes();                // speichern (Zeroizing)
+let sk = SigningKey::from_bytes(&sk_bytes)?; // laden: G, Basis, Baum, Prüfung
+let sig = sk.sign(msg, &mut rng);
+assert!(pk.verify(msg, &sig));
 ```
 
-Laufzeit (Release, ein Kern, x86-64-Laptop): Laden ≈ 4 ms / 10 ms,
-Signieren ≈ 6 ms / 12 ms für Falcon-512 / Falcon-1024, alles mit
-emulierten Gleitkommazahlen.
+`keygen_from_seed(logn, &seed)` erzeugt denselben Schlüssel aus demselben
+Seed (48 Bytes); mit den Seeds der NIST-KAT-Dateien entstehen byte-genau
+die KAT-Schlüssel.
+
+Laufzeit (Release, ein Kern, x86-64-Laptop), alles mit emulierten
+Gleitkommazahlen:
+
+| | Falcon-512 | Falcon-1024 |
+|---|---|---|
+| Keygen | ≈ 25 ms | ≈ 61 ms |
+| Secret Key laden | ≈ 5 ms | ≈ 11 ms |
+| Signieren | ≈ 6 ms | ≈ 12 ms |
 
 ## Bauen und testen
 
@@ -53,7 +66,7 @@ Fuzzing (nur Linux oder WSL, Nightly-Rust):
 cargo install cargo-fuzz
 cd Rust
 cargo run --example seed_corpus -- fuzz/corpus   # Start-Korpus aus den KATs
-cargo +nightly fuzz run verify      # auch: decode_pk, decode_sk, decompress
+cargo +nightly fuzz run verify      # auch: decode_pk, decode_sk, decompress, signing_key
 ```
 
 Der Start-Korpus ist nötig: Ein zufälliger Public Key ist fast nie gültig
@@ -98,7 +111,18 @@ mit Zufallsdaten und beschädigten KAT-Daten mitgeprüft.
 - mit den KAT-Schlüsseln: Laden und Speichern byte-genau, abgeleiteter
   Public Key gleich dem KAT-Public-Key, Signaturen mit fester Länge, die
   Verify annimmt und die bei veränderter Nachricht abgelehnt werden;
-- ungültige Secret Keys: f nicht invertierbar, Grad ohne Parametersatz.
+- **Keygen byte-genau gegen alle 200 KAT-Schlüssel** (f, g, F und h): der
+  Seed der KAT-Datei geht wie im NIST-Programm durch den AES-256-CTR-DRBG
+  (`tests/common/drbg.rs`, prüft sich selbst an allen Seeds und
+  Nachrichten der KAT-Dateien), daraus 48 Bytes für `keygen_from_seed`;
+- Keygen für verkleinerte Grade n = 2 … 256: fG − gF = q, kleine
+  Koeffizienten; zufällige Schlüssel lassen sich speichern, laden,
+  signieren und prüfen; gleicher Seed, gleicher Schlüssel;
+- Bausteine von NTRUSolve: Primzahltabelle (p ≡ 1 mod 2048, Wurzel g,
+  CRT-Faktor s), Rechnen mod p, NTT, binärer GCD, FFT der Referenz;
+- ungültige Secret Keys: f nicht invertierbar, Grad ohne Parametersatz,
+  erfundene Schlüssel (`InvalidKey`, siehe unten); alle 200 KAT-Schlüssel
+  bestehen die Schlüsselprüfung.
 
 ## Unterschiede zur Python-Version
 
@@ -107,7 +131,8 @@ Python wird nicht angepasst (PLAN.md 2.2). Die Unterschiede sind gewollt:
 | Punkt | Python | Rust | Grund |
 |---|---|---|---|
 | \|sᵢ\| in `decompress` | keine Obergrenze | > 2047 wird abgelehnt | L5: fester Typ, wie die Referenz |
-| Keygen, nicht speicherbare Schlüssel | möglich (selten) | werden verworfen | L6, kommt mit Phase 5 |
+| Keygen, nicht speicherbare Schlüssel | möglich (selten) | werden verworfen | L6 |
+| Keygen | eigener Ablauf, Python-Ganzzahlen | Portierung der Referenz: Tabellen-Gauss, NTRUSolve fester Länge im RNS, FFT der Referenz | L4, L10; ergibt die KAT-Schlüssel byte-genau |
 | Secret-Key-Format | normaler Code | Laufzeit unabhängig von f, g, F; Fehler verrät nicht, welcher Koeffizient | Seitenkanal |
 | Gleitkomma | `float`/`complex` | emuliert (`fpr`), nur Ganzzahlbefehle | L3 |
 | Vergleich der Gleitkommawerte | – | bitgleich mit Python und C | gleiche Wurzeltabelle, gleiche Reihenfolge, korrekt gerundetes `fpr` (PLAN.md 3.3) |
@@ -136,6 +161,19 @@ Keys (G, Basis, Baum) und Sign: `fpr`, FFT, Sampler, ffSampling.
 - Sign: erlaubte Verzweigungen nur bei „Norm zu gross“ und „s₂ passt nicht
   in die Länge“ (Neustart, PLAN.md §6); `SigningKey` und alle
   FFT-Zwischenwerte (`Poly`) werden beim Verwerfen gelöscht;
+- Keygen wie die Referenz: f, g mit vollständigem Tabellendurchlauf,
+  NTRUSolve mit Ganzzahlen fester Länge (RNS, CRT, binärer GCD mit fester
+  Rundenzahl, `reduce` mit fester Zahl von Durchläufen). Erlaubte
+  Verzweigungen: einzelnen Koeffizienten neu ziehen (ausserhalb ±127 oder
+  falsche Parität beim letzten) und Kandidat verwerfen (PLAN.md 3.1, §6).
+  Die Masken im portierten Code laufen wie in der Referenz nicht durch die
+  Barriere; das prüft Phase 6 im Assembler;
+- Laden des Secret Keys prüft ohne Verzweigung auf den Werten, dass es ein
+  echter Falcon-Schlüssel ist: |G| ≤ 127, fG − gF = q exakt und alle Blätter
+  in [σmin, σmax] (L11, Toleranz 1e-10 wie Python). Sonst `InvalidKey`;
+  ohne diese Prüfung lief Sign mit erfundenen Schlüsseln endlos;
+- Schutz gegen Fault-Angriffe: jede Signatur wird vor der Ausgabe mit
+  Verify geprüft (PLAN.md 3.6);
 - jede Maske läuft durch eine Optimierungsbarriere: auf x86-64 und aarch64
   eine leere Assembler-Anweisung, die den Wert im Register lässt, sonst
   `core::hint::black_box` (das den Wert über den Stack schickt);
@@ -144,7 +182,13 @@ Keys (G, Basis, Baum) und Sign: `fpr`, FFT, Sampler, ffSampling.
 - geheime Puffer werden gelöscht (`zeroize`); Ausgabepuffer werden in voller
   Länge angelegt, damit beim Vergrössern keine ungelöschten Kopien bleiben.
 
-**Stichprobe im Assembler (Release):** Auf x86-64 werden die Masken in
+**Stichprobe im Assembler (Release):** Im ganzen Crate gibt es keinen
+Gleitkomma- oder Divisionsbefehl der Hardware (x86-64 und aarch64). Die
+`fpr`-Operationen, die Smith-Division und die Gleitkommateile des Samplers
+haben keinen bedingten Sprung; einzige Ausnahme ist die feste Schleife der
+Division. Wo LLVM Masken umbaut, entsteht `cmov`/`csel` (ohne Sprung). Alle
+Masken laufen durch die Barriere (`ct::mask64_from_bit`, `cond_neg64`).
+Auf x86-64 werden die Masken in
 `modq::ntt` und im Code für das Secret-Key-Format mit `sar` gebildet und
 bleiben im Register; es gibt keine Sprünge, die von Werten abhängen. Auf
 aarch64 (nur übersetzt, nicht ausgeführt) gilt dasselbe für `modq::ntt`
@@ -167,7 +211,8 @@ die Implementierung nicht (PLAN.md §1).
 
 ```
 src/
-  lib.rs       öffentliche API: SigningKey, VerifyingKey, Signature, LogN, Params, Error
+  lib.rs       öffentliche API: keygen, keygen_from_seed, SigningKey,
+               VerifyingKey, Signature, LogN, Params, Error
   params.rs    Tab. 3.3, LogN
   ct.rs        Masken und Auswahl ohne Verzweigung (32 und 64 Bit)
   fpr.rs       emulierte IEEE-754-Gleitkommazahlen, konstante Laufzeit
@@ -181,9 +226,13 @@ src/
   hashing.rs   HashToPoint (öffentlich, variable Laufzeit erlaubt)
   encoding.rs  Kompression von s₂, pk- und sk-Format
   falcon.rs    Verify, h = g/f, G neu berechnen, Sign
+  ntrugen.rs   Keygen: f, g ziehen, Prüfungen, NTRUSolve (Portierung)
+  zint.rs      Ganzzahlen fester Länge, Rechnen mod p, NTT (Portierung)
+  fft_ref.rs   FFT der Referenz (n/2 Werte), nur für NTRUSolve
+  keygen_tables.rs  Primzahlen und Wurzeln der Referenz (erzeugt)
   fuzzing.rs   Einstiegspunkte für cargo fuzz (Feature `fuzzing`)
 tests/         KAT-Tests, Leser für KAT- und Python-Testvektoren
-scripts/       Erzeugung von src/fft_table.rs
+scripts/       Erzeugung von src/fft_table.rs und src/keygen_tables.rs
 examples/      seed_corpus: Start-Korpus für die Fuzz-Ziele
 fuzz/          Fuzz-Ziele (cargo fuzz)
 ```

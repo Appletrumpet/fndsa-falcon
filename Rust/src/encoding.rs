@@ -249,7 +249,7 @@ pub struct SecretPolys {
 
 /// Maske „x liegt nicht in [−lim, lim]“, ohne Verzweigung.
 #[inline(always)]
-fn out_of_range_mask(x: i32, lim: i32) -> u32 {
+pub(crate) fn out_of_range_mask(x: i32, lim: i32) -> u32 {
     ct::mask_from_msb((lim - x) as u32) | ct::mask_from_msb((x + lim) as u32)
 }
 

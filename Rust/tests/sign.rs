@@ -88,6 +88,52 @@ fn signatures_differ_and_all_verify() {
     assert!(vk.verify(b"gleiche Nachricht", &b));
 }
 
+/// Die Schlüsselprüfung lehnt keinen echten Schlüssel ab (alle 200 KAT).
+#[test]
+fn all_kat_keys_load() {
+    for n in [512, 1024] {
+        for rec in load_kat(n) {
+            assert!(
+                SigningKey::from_bytes(&rec.sk).is_ok(),
+                "{n} count {}",
+                rec.count
+            );
+        }
+    }
+}
+
+/// Erfundene Schlüssel: gültiges Format, f invertierbar, aber kein
+/// NTRU-Schlüssel. Früher geladen, danach lief Sign endlos.
+#[test]
+fn fabricated_keys_are_rejected() {
+    // f = 1, g = 0, F = 0: G = 0 ist klein, aber fG − gF = 0 ≠ q
+    let mut one = vec![0x59u8, 0x04];
+    one.extend([0; 1279]);
+    assert!(matches!(
+        SigningKey::from_bytes(&one),
+        Err(Error::InvalidKey)
+    ));
+
+    // zufällig verteilte kleine Koeffizienten: G mod q wird gross
+    let mut x = 0x1234_5678u64;
+    let mut invalid = 0;
+    for _ in 0..10 {
+        let mut sk = vec![0x59u8];
+        for _ in 0..1280 {
+            x ^= x << 13;
+            x ^= x >> 7;
+            x ^= x << 17;
+            sk.push(if x.is_multiple_of(5) { 0x04 } else { 0 });
+        }
+        match SigningKey::from_bytes(&sk) {
+            Err(Error::InvalidKey) => invalid += 1,
+            Err(Error::NotInvertible) => {}
+            other => panic!("erfundener Schlüssel angenommen: {:?}", other.err()),
+        }
+    }
+    assert!(invalid > 0);
+}
+
 #[test]
 fn invalid_secret_keys() {
     // f = 0 ist nicht invertierbar

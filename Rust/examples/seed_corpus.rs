@@ -12,7 +12,7 @@
 //! ```
 //!
 //! Legt je Ziel einen Ordner an (`decode_pk`, `decode_sk`, `decompress`,
-//! `verify`) mit dem Aufbau, den `src/fuzzing.rs` erwartet.
+//! `verify`, `signing_key`) mit dem Aufbau, den `src/fuzzing.rs` erwartet.
 
 #[path = "../tests/common/mod.rs"]
 mod common;
@@ -52,6 +52,7 @@ fn main() {
             for (target, data) in [
                 ("decode_pk", &rec.pk[..]),
                 ("decode_sk", &rec.sk[..]),
+                ("signing_key", &rec.sk[..]),
                 ("decompress", &sig[41..]),
                 ("verify", &verify[..]),
             ] {

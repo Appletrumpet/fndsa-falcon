@@ -53,6 +53,6 @@ jobs:
       - name: Fuzz-Ziele je 60 s ausführen
         working-directory: Rust
         run: |
-          for t in decode_pk decode_sk decompress verify; do
+          for t in decode_pk decode_sk decompress verify signing_key; do
             cargo +nightly fuzz run "$t" -- -max_total_time=60
           done

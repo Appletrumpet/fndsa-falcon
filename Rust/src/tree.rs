@@ -106,6 +106,16 @@ pub fn normalize_leaves(tree: &mut Tree, sigma: Fpr) {
     }
 }
 
+/// Maske „alle Blätter liegen in [lo, hi]“ (alle Bits gesetzt = ja), ohne
+/// Verzweigung auf den Werten. Prüft σ′ ∈ [σmin, σmax] (L11) einmal beim
+/// Laden statt bei jedem Aufruf von SamplerZ.
+pub fn leaves_in_range_mask(tree: &Tree, lo: Fpr, hi: Fpr) -> u64 {
+    match tree {
+        Tree::Leaf(x) => !(x.lt_mask(lo) | hi.lt_mask(*x)),
+        Tree::Node(_, l, r) => leaves_in_range_mask(l, lo, hi) & leaves_in_range_mask(r, lo, hi),
+    }
+}
+
 /// Falcon-Baum aus der Basis (Alg. 4, Z. 4–7).
 pub fn build_falcon_tree(b: &Basis, sigma: Fpr) -> Tree {
     let [g00, _g01, g10, g11] = gram_matrix(b);

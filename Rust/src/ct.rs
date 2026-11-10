@@ -98,6 +98,19 @@ pub fn mask64_from_msb(x: u64) -> u64 {
     barrier64(0u64.wrapping_sub(x >> 63))
 }
 
+/// Maske aus dem untersten Bit von b (b ist 0 oder 1).
+#[inline(always)]
+pub fn mask64_from_bit(b: u64) -> u64 {
+    barrier64(0u64.wrapping_sub(b & 1))
+}
+
+/// −v, wenn das unterste Bit von s gesetzt ist, sonst v (Zweierkomplement).
+#[inline(always)]
+pub fn cond_neg64(v: u64, s: u64) -> u64 {
+    let m = mask64_from_bit(s);
+    (v ^ m).wrapping_sub(m)
+}
+
 /// Maske „x ≠ 0“.
 #[inline(always)]
 pub fn mask64_nonzero(x: u64) -> u64 {
@@ -155,5 +168,10 @@ mod tests {
         }
         assert_eq!(select64(0, 3, 7), 3);
         assert_eq!(select64(u64::MAX, 3, 7), 7);
+        assert_eq!(mask64_from_bit(0), 0);
+        assert_eq!(mask64_from_bit(1), u64::MAX);
+        assert_eq!(cond_neg64(5, 0), 5);
+        assert_eq!(cond_neg64(5, 1), 5u64.wrapping_neg());
+        assert_eq!(cond_neg64(1 << 63, 1), 1 << 63);
     }
 }

@@ -1,40 +1,44 @@
 //! FN-DSA (Falcon) in Rust, mit konstanter Laufzeit auf geheimen Daten.
 //!
-//! Stand: Phase 0 bis 4 aus `PLAN.md` – Parameter, Arithmetik mod q,
-//! HashToPoint, Byteformate, Verify, emulierte Gleitkommazahlen, FFT,
-//! Sampler und Sign. Keygen folgt in Phase 5; bis dahin werden Secret Keys
-//! geladen (z. B. aus den NIST-KAT-Dateien).
+//! Stand: Phase 0 bis 5 und 7 aus `PLAN.md` – Keygen, Sign, Verify und
+//! alle Byteformate für Falcon-512 und Falcon-1024. Keygen ist eine
+//! Portierung der Referenz und erzeugt aus den NIST-KAT-Seeds byte-genau
+//! die KAT-Schlüssel.
 //!
 //! ```no_run
-//! use fndsa::{Signature, SigningKey, VerifyingKey};
+//! use fndsa::{keygen, LogN, Signature, SigningKey, VerifyingKey};
 //! # struct R; impl rand_core::RngCore for R { fn next_u32(&mut self) -> u32 { 0 }
 //! # fn next_u64(&mut self) -> u64 { 0 } fn fill_bytes(&mut self, _: &mut [u8]) {}
 //! # fn try_fill_bytes(&mut self, _: &mut [u8]) -> Result<(), rand_core::Error> { Ok(()) } }
 //! # impl rand_core::CryptoRng for R {}
-//! # let (sk_bytes, msg, mut rng) = (vec![0u8], b"msg", R);
-//! let sk = SigningKey::from_bytes(&sk_bytes).unwrap();
-//! let sig = sk.sign(msg, &mut rng); // rng: z. B. rand_core::OsRng
-//! let pk: VerifyingKey = sk.verifying_key();
+//! # let (msg, mut rng) = (b"msg", R);
+//! let (sk, pk) = keygen(LogN::FALCON_512, &mut rng).unwrap(); // rng: z. B. OsRng
+//! let sk_bytes = sk.to_bytes();                              // speichern
+//! let sk = SigningKey::from_bytes(&sk_bytes).unwrap();        // laden
+//! let sig = sk.sign(msg, &mut rng);
+//! let _: &VerifyingKey = &pk;
 //! assert!(pk.verify(msg, &Signature::from_bytes(&sig.to_bytes()).unwrap()));
 //! ```
 
 #![warn(missing_docs)]
 
-// Bausteine, die erst Keygen (Phase 5) braucht, tragen einzeln
-// `#[allow(dead_code)]`. Mit dem Aufruf in Phase 5 wird es entfernt.
 mod ct;
 mod encoding;
 mod falcon;
 mod ffsampling;
 mod fft;
+mod fft_ref;
 mod fft_table;
 mod fpr;
 mod hashing;
+mod keygen_tables;
 mod modq;
+mod ntrugen;
 mod params;
 mod prng;
 mod sampler;
 mod tree;
+mod zint;
 
 #[cfg(any(test, feature = "fuzzing"))]
 #[doc(hidden)]
@@ -67,6 +71,9 @@ pub enum Error {
     KeyOutOfRange,
     /// f ist modulo q nicht invertierbar.
     NotInvertible,
+    /// Kein gültiger Falcon-Schlüssel: G passt nicht in 8 Bit, fG − gF ≠ q
+    /// oder die Basis ist zu schlecht (σ′ ausserhalb von [σmin, σmax]).
+    InvalidKey,
 }
 
 impl fmt::Display for Error {
@@ -77,6 +84,7 @@ impl fmt::Display for Error {
             Error::InvalidEncoding(why) => write!(f, "ungültige Kodierung: {why}"),
             Error::KeyOutOfRange => write!(f, "Schlüssel passt nicht ins Secret-Key-Format"),
             Error::NotInvertible => write!(f, "f ist modulo q nicht invertierbar"),
+            Error::InvalidKey => write!(f, "kein gültiger Falcon-Schlüssel"),
         }
     }
 }
@@ -142,28 +150,64 @@ pub struct SigningKey {
     /// enthält Ĝ (G selbst wird nach dem Aufbau nicht mehr gebraucht)
     basis: tree::Basis,
     tree: tree::Tree,
+    /// passender Public Key, für Verify nach Sign
+    vk: VerifyingKey,
 }
 
 impl SigningKey {
     /// Lädt einen Secret Key (Header 0101nnnn, f, g, F). Berechnet G aus
     /// der NTRU-Gleichung neu und baut Basis und Falcon-Baum auf.
     ///
+    /// Prüft dabei, dass es ein gültiger Falcon-Schlüssel ist: |G| ≤ 127,
+    /// fG − gF = q und alle Blätter des Baums in [σmin, σmax]. Ohne diese
+    /// Prüfung würde Sign mit einem erfundenen Schlüssel nie fertig. Die
+    /// Prüfungen laufen ohne Verzweigung auf den Werten; nur das Ergebnis
+    /// gültig/ungültig verzweigt.
+    ///
     /// Fehler: ungültige Kodierung, `UnsupportedLogN` (bisher nur 512 und
-    /// 1024), `NotInvertible` (f nicht invertierbar mod q, also kein
-    /// gültiger Falcon-Schlüssel).
+    /// 1024), `NotInvertible` (f nicht invertierbar mod q), `InvalidKey`.
     pub fn from_bytes(b: &[u8]) -> Result<Self, Error> {
         let sk = encoding::decode_sk(b)?;
         let params = sk.logn.params().ok_or(Error::UnsupportedLogN)?;
-        let big_g = falcon::recompute_g(&sk.f, &sk.g, &sk.big_f)?;
-        let basis = tree::build_basis_fft(&sk.f, &sk.g, &sk.big_f, &big_g);
+        Self::from_polys(params, &sk.f, &sk.g, &sk.big_f)
+    }
+
+    /// Gemeinsamer Weg von `from_bytes` und Keygen: G berechnen, Schlüssel
+    /// prüfen, Basis und Baum aufbauen.
+    fn from_polys(
+        params: &'static Params,
+        f: &[i8],
+        g: &[i8],
+        big_f: &[i8],
+    ) -> Result<Self, Error> {
+        let big_g = falcon::recompute_g(f, g, big_f)?;
+        if falcon::key_valid_mask(f, g, big_f, &big_g) == 0 {
+            return Err(Error::InvalidKey);
+        }
+        let basis = tree::build_basis_fft(f, g, big_f, &big_g);
         let tree = tree::build_falcon_tree(&basis, fpr::Fpr::from_bits(params.sigma.to_bits()));
+        // Toleranz wie in Python (_SIGMA_EPS): σmin ist in Tab. 3.3 auf neun
+        // Stellen gerundet, echte Blätter liegen bis zu 1e-10 darunter.
+        // Mit Fpr gerechnet, damit kein Befehl der Gleitkommaeinheit entsteht.
+        let fp = |x: f64| fpr::Fpr::from_bits(x.to_bits());
+        let eps = fp(1e-10);
+        let lo = fp(params.sigma_min) - eps;
+        let hi = fp(params.sigma_max) + eps;
+        if tree::leaves_in_range_mask(&tree, lo, hi) == 0 {
+            return Err(Error::InvalidKey);
+        }
+        // f ist invertierbar, das hat recompute_g geprüft.
+        let h = falcon::compute_public_key(f, g)?;
+        let mut h_ntt: Vec<u32> = h.iter().map(|&x| x as u32).collect();
+        modq::ntt(&mut h_ntt);
         Ok(SigningKey {
             params,
-            f: Zeroizing::new(sk.f.clone()),
-            g: Zeroizing::new(sk.g.clone()),
-            big_f: Zeroizing::new(sk.big_f.clone()),
+            f: Zeroizing::new(f.to_vec()),
+            g: Zeroizing::new(g.to_vec()),
+            big_f: Zeroizing::new(big_f.to_vec()),
             basis,
             tree,
+            vk: VerifyingKey { params, h, h_ntt },
         })
     }
 
@@ -186,31 +230,33 @@ impl SigningKey {
 
     /// Der passende Public Key h = g/f mod q.
     pub fn verifying_key(&self) -> VerifyingKey {
-        // f ist invertierbar, das hat `from_bytes` geprüft.
-        let h = falcon::compute_public_key(&self.f, &self.g).expect("f ist invertierbar");
-        let mut h_ntt: Vec<u32> = h.iter().map(|&x| x as u32).collect();
-        modq::ntt(&mut h_ntt);
-        VerifyingKey {
-            params: self.params,
-            h,
-            h_ntt,
-        }
+        self.vk.clone()
     }
 
     /// Signiert `msg` (Alg. 10). Aus `rng` kommen 40 Bytes Salt und 56
     /// Bytes Seed für den Zufall des Samplers (ChaCha20, PLAN.md L9).
+    ///
+    /// Schutz gegen Fehler im Rechner (Fault-Angriffe, PLAN.md 3.6): Jede
+    /// Signatur wird vor der Ausgabe mit Verify geprüft. Besteht sie nicht,
+    /// wird mit neuem Zufall neu signiert; nach drei Fehlschlägen bricht die
+    /// Funktion mit einer Panik ab, statt eine falsche Signatur auszugeben.
     pub fn sign(&self, msg: &[u8], rng: &mut impl rand_core::CryptoRngCore) -> Signature {
-        let mut salt = [0u8; 40];
-        rng.fill_bytes(&mut salt);
-        let mut seed = Zeroizing::new([0u8; 56]);
-        rng.fill_bytes(&mut seed[..]);
-        let mut prng = prng::Prng::new(&seed[..]);
-        let s2_enc = falcon::sign_core(&self.sign_key(), self.params, msg, &salt, &mut prng);
-        Signature {
-            logn: self.params.logn,
-            salt,
-            s2_enc,
+        for _ in 0..3 {
+            let mut salt = [0u8; 40];
+            rng.fill_bytes(&mut salt);
+            let mut seed = Zeroizing::new([0u8; 56]);
+            rng.fill_bytes(&mut seed[..]);
+            let mut prng = prng::Prng::new(&seed[..]);
+            let s2_enc = falcon::sign_core(&self.sign_key(), self.params, msg, &salt, &mut prng);
+            if falcon::verify(self.params, &self.vk.h_ntt, &salt, &s2_enc, msg) {
+                return Signature {
+                    logn: self.params.logn,
+                    salt,
+                    s2_enc,
+                };
+            }
         }
+        panic!("Signatur besteht Verify nicht: Fehler im Rechner?");
     }
 
     fn sign_key(&self) -> falcon::SignKey<'_> {
@@ -221,6 +267,38 @@ impl SigningKey {
             tree: &self.tree,
         }
     }
+}
+
+/// Schlüsselpaar erzeugen (Alg. 4). Aus `rng` kommen 48 Bytes Seed; der
+/// Rest ist `keygen_from_seed`. Fehler nur `UnsupportedLogN` (bisher nur
+/// Falcon-512 und Falcon-1024).
+pub fn keygen(
+    logn: LogN,
+    rng: &mut impl rand_core::CryptoRngCore,
+) -> Result<(SigningKey, VerifyingKey), Error> {
+    let mut seed = Zeroizing::new([0u8; 48]);
+    rng.fill_bytes(&mut seed[..]);
+    keygen_from_seed(logn, &seed)
+}
+
+/// Schlüsselpaar deterministisch aus einem Seed erzeugen: SHAKE256(seed)
+/// liefert allen Zufall, wie in der Referenz. Gleicher Seed ergibt
+/// denselben Schlüssel; mit den Seeds der NIST-KAT-Dateien (über deren
+/// AES-CTR-DRBG) entstehen byte-genau die KAT-Schlüssel (PLAN.md L10).
+///
+/// Konstante Laufzeit wie in der Referenz; erlaubte Verzweigungen nur beim
+/// Neuziehen und Verwerfen von Kandidaten (PLAN.md 3.1, §6).
+pub fn keygen_from_seed(logn: LogN, seed: &[u8; 48]) -> Result<(SigningKey, VerifyingKey), Error> {
+    let params = logn.params().ok_or(Error::UnsupportedLogN)?;
+    let k = ntrugen::keygen_from_seed(logn, seed);
+    // Keygen erfüllt alle Prüfungen von from_polys (|G| ≤ 127 wegen
+    // NTRUSolve, Blätter wegen der γ-Schranke); ein Fehler wäre ein
+    // Programmfehler.
+    let sk = SigningKey::from_polys(params, &k.f, &k.g, &k.big_f)
+        .expect("Keygen liefert einen gültigen Schlüssel");
+    debug_assert_eq!(sk.vk.h, k.h);
+    let vk = sk.verifying_key();
+    Ok((sk, vk))
 }
 
 /// Signatur (§3.11.3): Header 0011nnnn, 40 Bytes Salt, komprimiertes s₂.

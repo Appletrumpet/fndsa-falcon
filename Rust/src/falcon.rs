@@ -116,6 +116,40 @@ pub(crate) fn recompute_g(f: &[i8], g: &[i8], big_f: &[i8]) -> Result<Zeroizing<
     ))
 }
 
+/// Maske „f, g, F, G bilden einen gültigen Falcon-Schlüssel“ (alle Bits
+/// gesetzt = gültig):
+///
+/// - |Gᵢ| ≤ 127, damit G wie F in 8 Bit passt (L6);
+/// - fG − gF = q exakt in ℤ[x]/(xⁿ+1) (Gl. 3.15), nicht nur mod q.
+///
+/// Ohne diese Prüfung lädt `SigningKey::from_bytes` auch erfundene
+/// Schlüssel; deren Basis taugt nicht, und Sign findet nie eine Signatur.
+/// Konstante Laufzeit: Schulbuch-Multiplikation mit festen Schleifen, die
+/// Indizes hängen nur von n ab, das Ergebnis wird über Masken gesammelt.
+/// Kein Überlauf: |Σ| ≤ n · 2 · 127 · 6144 < 2³¹.
+pub(crate) fn key_valid_mask(f: &[i8], g: &[i8], big_f: &[i8], big_g: &[i16]) -> u32 {
+    let n = f.len();
+    let mut bad = 0u32;
+    for &x in big_g {
+        bad |= crate::encoding::out_of_range_mask(x as i32, 127);
+    }
+    let mut acc: Zeroizing<Vec<i32>> = Zeroizing::new(vec![0; n]);
+    for i in 0..n {
+        for j in 0..n {
+            let p = f[i] as i32 * big_g[j] as i32 - g[i] as i32 * big_f[j] as i32;
+            // xⁿ = −1: Überlauf des Index heisst Vorzeichenwechsel
+            let k = i + j;
+            let wrap = (k >= n) as i32; // öffentlich, hängt nur von i, j ab
+            acc[k & (n - 1)] += p * (1 - 2 * wrap);
+        }
+    }
+    bad |= !crate::ct::is_zero_mask((acc[0] - Q as i32) as u32);
+    for &a in &acc[1..] {
+        bad |= !crate::ct::is_zero_mask(a as u32);
+    }
+    !bad
+}
+
 fn fft_of_i8(a: &[i8]) -> Poly {
     let v: Zeroizing<Vec<Fpr>> = Zeroizing::new(a.iter().map(|&x| Fpr::of_i64(x as i64)).collect());
     fft(&v)
@@ -174,10 +208,15 @@ pub(crate) fn to_coefficients(
     (r(s0), r(s1))
 }
 
-/// Ganzzahlige Normprüfung wie in Verify (Alg. 16, Z. 6).
+/// Ganzzahlige Normprüfung wie in Verify (Alg. 16, Z. 6). Gesättigt, damit
+/// auch unsinnig grosse Werte keinen Überlauf auslösen.
 fn is_short(s1: &[i64], s2: &[i64], bound: u64) -> bool {
-    let norm: i64 = s1.iter().chain(s2).map(|&x| x * x).sum();
-    norm as u64 <= bound
+    let norm = s1
+        .iter()
+        .chain(s2)
+        .map(|&x| x.unsigned_abs().saturating_mul(x.unsigned_abs()))
+        .fold(0u64, u64::saturating_add);
+    norm <= bound
 }
 
 /// Teile des Secret Keys, die Sign braucht.

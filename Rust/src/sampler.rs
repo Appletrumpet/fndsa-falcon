@@ -18,7 +18,7 @@
 //! Gleitkomma über `Fpr` in derselben Reihenfolge wie Python; damit sind
 //! x und die Schwelle z bitgleich mit den Python-Testvektoren.
 
-use crate::ct::{mask64_from_msb, mask64_lt, mask64_nonzero, select64};
+use crate::ct::{mask64_from_bit, mask64_from_msb, mask64_lt, mask64_nonzero, select64};
 use crate::fpr::Fpr;
 use crate::params::Params;
 use crate::prng::RandomSource;
@@ -172,7 +172,7 @@ pub fn sampler_z(mu: Fpr, sigma_p: Fpr, params: &Params, rng: &mut impl RandomSo
         let z0 = base_sampler(rng) as i64;
         let mut b = [0u8; 1];
         rng.fill(&mut b);
-        let bm = 0u64.wrapping_sub((b[0] & 1) as u64);
+        let bm = mask64_from_bit(b[0] as u64);
         b.zeroize();
         // b = 0 → −z₀, b = 1 → z₀ + 1
         let z = select64(bm, (-z0) as u64, (z0 + 1) as u64) as i64;
