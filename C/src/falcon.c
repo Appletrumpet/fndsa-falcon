@@ -12,6 +12,35 @@
 #include "poly.h"
 #include "tree.h"
 
+int falcon_keygen(falcon_secret_key *sk, falcon_public_key *pk, const falcon_params *p,
+                  const falcon_rng *rng)
+{
+    int rc = falcon_generate_ntru_keys(sk->f, sk->g, sk->F, sk->G, p, rng);
+    if (rc != FALCON_OK) {
+        return rc;
+    }
+    size_t n = p->n;
+    sk->n = n;
+    falcon_build_basis_fft(sk->b00, sk->b01, sk->b10, sk->b11, sk->f, sk->g, sk->F, sk->G, n);
+    falcon_mat22 basis = {sk->b00, sk->b01, sk->b10, sk->b11};
+    rc = falcon_build_falcon_tree(&sk->tree, &basis, n, p);
+    if (rc != FALCON_OK) {
+        return rc;
+    }
+    pk->n = n;
+    return falcon_compute_public_key(pk->h, sk->f, sk->g, p);
+}
+
+int falcon_keygen_system(falcon_secret_key *sk, falcon_public_key *pk, const falcon_params *p)
+{
+    return falcon_keygen(sk, pk, p, &FALCON_SYSTEM_RNG);
+}
+
+int falcon_compute_public_key(int32_t *h, const int32_t *f, const int32_t *g, const falcon_params *p)
+{
+    return falcon_div_mod_q(h, g, f, p->n);
+}
+
 int falcon_load_secret_key(falcon_secret_key *sk, const uint8_t *b, size_t len,
                            const falcon_params *p)
 {

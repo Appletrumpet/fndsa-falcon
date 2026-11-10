@@ -1,13 +1,23 @@
 /*
  * Top-Level-Funktionen und interne Bausteine von Falcon.
  *
- * Spec-Referenz: §3.8 bis §3.10. Bisher die Schnitte Verify und Sign; keygen folgt.
+ * Spec-Referenz: §3.8 bis §3.10. Alle drei Schnitte: Verify, Sign, KeyGen.
  */
 #ifndef FALCON_FALCON_H
 #define FALCON_FALCON_H
 
 #include "datatypes.h"
 #include "sampler.h"
+
+/* Schlüsselerzeugung. Der Baum in *sk zeigt in dieselbe Struktur. Alg. 4. */
+int falcon_keygen(falcon_secret_key *sk, falcon_public_key *pk, const falcon_params *p,
+                  const falcon_rng *rng);
+
+/* Wie falcon_keygen mit Systemzufall (Python: Standardargument rng=SYSTEM_RNG). */
+int falcon_keygen_system(falcon_secret_key *sk, falcon_public_key *pk, const falcon_params *p);
+
+/* h = g * f^-1 mod q. FALCON_ERR_VALUE, wenn f nicht invertierbar ist. Alg. 4, Z. 9. */
+int falcon_compute_public_key(int32_t *h, const int32_t *f, const int32_t *g, const falcon_params *p);
 
 /* Secret Key aus Bytes laden: decode_sk, recompute_G, Basis, Baum. Der Baum zeigt in *sk.
  * §3.11.5, Alg. 4, Z. 2-7. */

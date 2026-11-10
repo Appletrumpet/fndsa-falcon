@@ -65,6 +65,51 @@ static void test_sign_building_blocks(void)
     vec_close(&v);
 }
 
+static void test_keygen(void)
+{
+    static falcon_public_key out_pk;
+    static uint8_t seed[256];
+    static int32_t ef[FALCON_MAX_N], eg[FALCON_MAX_N], eF[FALCON_MAX_N], eG[FALCON_MAX_N], eh[FALCON_MAX_N];
+    vec_file v;
+
+    vec_open(&v, "flow.keygen");
+    while (vec_next(&v)) {
+        size_t n = (size_t)vec_int(&v, "n");
+        falcon_params p = n == 1024 ? FALCON_1024 : FALCON_512;
+        p.n = n;
+        size_t seed_len = vec_bytes(&v, "seed", seed, sizeof seed);
+        vec_ints(&v, "key0", ef, FALCON_MAX_N);
+        vec_ints(&v, "key1", eg, FALCON_MAX_N);
+        vec_ints(&v, "key2", eF, FALCON_MAX_N);
+        vec_ints(&v, "key3", eG, FALCON_MAX_N);
+        vec_ints(&v, "h", eh, FALCON_MAX_N);
+        falcon_shake256_ctx ctx;
+        falcon_rng rng = shake_rng(&ctx, seed, seed_len);
+
+        CHECK(falcon_keygen(&sk, &out_pk, &p, &rng) == FALCON_OK, "keygen Fall %zu (n = %zu)", v.index, n);
+        CHECK(SAME_BITS(sk.f, ef, n) && SAME_BITS(sk.g, eg, n), "keygen Fall %zu: f, g", v.index);
+        CHECK(SAME_BITS(sk.F, eF, n) && SAME_BITS(sk.G, eG, n), "keygen Fall %zu: F, G", v.index);
+        CHECK(out_pk.n == n && SAME_BITS(out_pk.h, eh, n), "keygen Fall %zu: h", v.index);
+    }
+    vec_close(&v);
+
+    vec_open(&v, "falcon.compute_public_key");
+    while (vec_next(&v)) {
+        size_t n = vec_ints(&v, "f", ef, FALCON_MAX_N);
+        vec_ints(&v, "g", eg, FALCON_MAX_N);
+        falcon_params p = vec_params(&v);
+        p.n = n;
+        int rc = falcon_compute_public_key(eh, ef, eg, &p);
+        if (vec_status(&v) == VEC_STATUS_OK) {
+            vec_ints(&v, "out", eF, FALCON_MAX_N);
+            CHECK(rc == FALCON_OK && SAME_BITS(eh, eF, n), "compute_public_key Fall %zu", v.index);
+        } else {
+            CHECK(rc == FALCON_ERR_VALUE, "compute_public_key Fall %zu", v.index);
+        }
+    }
+    vec_close(&v);
+}
+
 static void test_sign_flow(const char *file, int with_limits)
 {
     static falcon_signature sig;
@@ -142,6 +187,7 @@ int main(void)
     }
     vec_close(&v);
 
+    test_keygen();
     test_sign_building_blocks();
     test_sign_flow("flow.sign", 0);
     test_sign_flow("flow.sign_restart", 1);
