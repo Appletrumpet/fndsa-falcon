@@ -126,6 +126,11 @@ pub fn ber_exp(x: Fpr, ccs: Fpr, rng: &mut impl RandomSource) -> u64 {
     mask64_lt(u, z)
 }
 
+/// Zahl der Runden von SamplerZ, nur für die Zeitmessung (Feature
+/// `dudect`), um die Zahl der Runden je Schlüssel zu vergleichen.
+#[cfg(feature = "dudect")]
+pub(crate) static ROUNDS: core::sync::atomic::AtomicU64 = core::sync::atomic::AtomicU64::new(0);
+
 /// Konstanten für SamplerZ zu einem Parametersatz und σ′.
 struct SamplerConsts {
     ccs: Fpr,
@@ -168,6 +173,8 @@ pub fn sampler_z(mu: Fpr, sigma_p: Fpr, params: &Params, rng: &mut impl RandomSo
     let r = mu - Fpr::of_i64(s);
     let k = SamplerConsts::new(sigma_p, params);
     loop {
+        #[cfg(feature = "dudect")]
+        ROUNDS.fetch_add(1, core::sync::atomic::Ordering::Relaxed);
         // Z. 4–6: z₀ aus BaseSampler, Vorzeichenbit b, z = b + (2b−1)·z₀
         let z0 = base_sampler(rng) as i64;
         let mut b = [0u8; 1];

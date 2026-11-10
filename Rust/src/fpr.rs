@@ -16,6 +16,13 @@
 //! subnormaler Eingabewert gilt als ±0. Überlauf wird nicht behandelt. In
 //! Falcon kommen diese Fälle nicht vor.
 //!
+//! **Feature `native-fpu`** (PLAN.md 3.3, Phase 8): Addition, Subtraktion,
+//! Multiplikation und Wurzel laufen dann über die Gleitkommaeinheit der
+//! Hardware (gleiche Ergebnisse für normale Zahlen), Division und Runden
+//! bleiben emuliert. Nur für Messungen und für Ziele, auf denen diese
+//! Befehle nachweislich konstante Laufzeit haben (x86-64 mit SSE2 für
+//! normale Zahlen; aarch64 nur mit DIT). Standard bleibt die Emulation.
+//!
 //! Darstellung beim Rechnen: Mantisse `m` als Ganzzahl und Exponent `e`, Wert
 //! = m · 2^e. Vor dem Runden liegt `m` in [2⁵⁴, 2⁵⁵): 53 Bits Mantisse, ein
 //! Rundungsbit und ein „Sticky“-Bit (ODER aller weggefallenen Bits).
@@ -105,7 +112,21 @@ impl Fpr {
     }
 
     /// √x, korrekt gerundet; x ≥ 0 (√−0 = −0 wie IEEE-754).
+    #[inline]
     pub fn sqrt(self) -> Fpr {
+        #[cfg(feature = "native-fpu")]
+        {
+            Fpr(f64::from_bits(self.0).sqrt().to_bits())
+        }
+        #[cfg(not(feature = "native-fpu"))]
+        {
+            self.sqrt_emu()
+        }
+    }
+
+    /// √x, emuliert (Bit für Bit, 54 Runden).
+    #[cfg_attr(feature = "native-fpu", allow(dead_code))] // mit native-fpu nur in Tests
+    pub(crate) fn sqrt_emu(self) -> Fpr {
         let (s, ex, m) = unpack(self.0);
         // Wert = m · 2^e; e gerade machen, damit sich die Wurzel teilen lässt.
         let mut e = ex - 1075;
@@ -191,7 +212,23 @@ impl Neg for Fpr {
 impl Add for Fpr {
     type Output = Fpr;
 
+    #[inline]
     fn add(self, y: Fpr) -> Fpr {
+        #[cfg(feature = "native-fpu")]
+        {
+            Fpr((f64::from_bits(self.0) + f64::from_bits(y.0)).to_bits())
+        }
+        #[cfg(not(feature = "native-fpu"))]
+        {
+            self.add_emu(y)
+        }
+    }
+}
+
+impl Fpr {
+    /// x + y, emuliert.
+    #[cfg_attr(feature = "native-fpu", allow(dead_code))] // mit native-fpu nur in Tests
+    pub(crate) fn add_emu(self, y: Fpr) -> Fpr {
         // x soll den grösseren Betrag haben.
         let (x, y) = (self.0, y.0);
         let sw = mask64_lt(x & !SIGN, y & !SIGN);
@@ -233,7 +270,23 @@ impl Sub for Fpr {
 impl Mul for Fpr {
     type Output = Fpr;
 
+    #[inline]
     fn mul(self, y: Fpr) -> Fpr {
+        #[cfg(feature = "native-fpu")]
+        {
+            Fpr((f64::from_bits(self.0) * f64::from_bits(y.0)).to_bits())
+        }
+        #[cfg(not(feature = "native-fpu"))]
+        {
+            self.mul_emu(y)
+        }
+    }
+}
+
+impl Fpr {
+    /// x · y, emuliert.
+    #[cfg_attr(feature = "native-fpu", allow(dead_code))] // mit native-fpu nur in Tests
+    pub(crate) fn mul_emu(self, y: Fpr) -> Fpr {
         let s = (self.0 ^ y.0) >> 63;
         let (_, ex, mx) = unpack(self.0);
         let (_, ey, my) = unpack(y.0);
@@ -326,6 +379,7 @@ fn make(s: u64, e: i32, m: u64) -> Fpr {
 }
 
 /// Maske „a < b“ für u128 (beide < 2¹²⁷).
+#[cfg_attr(feature = "native-fpu", allow(dead_code))] // mit native-fpu nur in Tests
 #[inline(always)]
 fn mask128_lt(a: u128, b: u128) -> u128 {
     let borrow = (a.wrapping_sub(b) >> 127) as u64;
@@ -549,6 +603,23 @@ mod tests {
         assert_eq!((-Fpr::ONE).lt_mask(n), u64::MAX);
     }
 
+    /// Die emulierten Fassungen auch dann prüfen, wenn die Operatoren über
+    /// die Hardware laufen (Feature `native-fpu`).
+    #[test]
+    fn emulated_ops_match_f64() {
+        let mut r = Rng(8);
+        for _ in 0..100_000 {
+            let (a, b) = (r.normal(200), r.normal(200));
+            let (fa, fb) = (Fpr::from_f64(a), Fpr::from_f64(b));
+            check("add_emu", a, b, fa.add_emu(fb), a + b);
+            check("mul_emu", a, b, fa.mul_emu(fb), a * b);
+            check("sqrt_emu", a, 0.0, fa.abs().sqrt_emu(), a.abs().sqrt());
+        }
+    }
+
+    // Unterlauf ergibt in der Emulation ±0; die Hardware liefert subnormale
+    // Zahlen (in Falcon kommen sie nicht vor).
+    #[cfg(not(feature = "native-fpu"))]
     #[test]
     fn underflow_gives_zero() {
         let tiny = Fpr::from_f64(1e-200);

@@ -1,13 +1,9 @@
 //! Phase 5 und 7: Keygen aus Sicht eines Nutzers.
 //!
-//! Byte-genau gegen alle 200 KAT-Schlüssel prüfen die Unit-Tests in
-//! `src/ntrugen.rs`; hier die öffentliche API: KAT-Seeds über den NIST-DRBG,
-//! zufällige Schlüssel, Speichern, Laden, Signieren, Prüfen.
+//! Alle 200 KAT-Fälle prüft `tests/kat_keygen.rs` (Phase 7); hier die
+//! übrige öffentliche API: zufällige Schlüssel, Speichern, Laden,
+//! Signieren, Prüfen, gleicher Seed, nicht unterstützter Grad.
 
-mod common;
-
-use common::drbg::Drbg;
-use common::load_kat;
 use fndsa::{keygen, keygen_from_seed, Error, LogN, Signature, SigningKey};
 use rand_core::{CryptoRng, RngCore};
 use sha3::digest::{ExtendableOutput, Update, XofReader};
@@ -41,26 +37,6 @@ impl RngCore for TestRng {
 }
 
 impl CryptoRng for TestRng {}
-
-/// Wie das NIST-Programm: DRBG mit dem Seed der KAT-Datei starten, daraus
-/// 48 Bytes für keygen_from_seed.
-#[test]
-fn kat_keys_through_public_api() {
-    for (n, logn) in [(512, LogN::FALCON_512), (1024, LogN::FALCON_1024)] {
-        for rec in load_kat(n).iter().take(5) {
-            let mut seed = [0u8; 48];
-            Drbg::new(&rec.seed).fill(&mut seed);
-            let (sk, pk) = keygen_from_seed(logn, &seed).unwrap();
-            assert_eq!(
-                &sk.to_bytes()[..],
-                &rec.sk[..],
-                "sk {n} count {}",
-                rec.count
-            );
-            assert_eq!(pk.to_bytes(), rec.pk, "pk {n} count {}", rec.count);
-        }
-    }
-}
 
 #[test]
 fn random_keys_sign_and_verify() {

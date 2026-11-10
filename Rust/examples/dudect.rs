@@ -228,29 +228,88 @@ fn main() {
     });
     report("Sampler: SamplerZ (μ, σ′)", ns, r);
 
-    // Signieren: fester Schlüssel gegen Schlüssel aus einem Vorrat
-    let keys: Vec<SigningKey> = (0..16u8)
-        .map(|i| keygen_from_seed(LogN::FALCON_512, &[i; 48]).unwrap().0)
+    // Signieren: fester Schlüssel gegen Schlüssel aus einem Vorrat von 16.
+    //
+    // Der Schlüssel wird vor jeder Messung (ausserhalb der Zeitnahme) neu
+    // geladen, und der Cache wird für beide Klassen gleich geleert. Ohne
+    // das Neuladen läge der feste Schlüssel immer an derselben Adresse, die
+    // anderen an verschiedenen; dann misst der Test auch die Lage im
+    // Speicher (Konflikte im Cache), nicht den Wert des Schlüssels. So
+    // ergab ein einzelner Sign-Versuch ohne Neuladen |t| = 5 bis 19, mit
+    // Neuladen |t| < 2.5 (PLAN.md 6.1).
+    let key_bytes: Vec<_> = (0..16u8)
+        .map(|i| {
+            keygen_from_seed(LogN::FALCON_512, &[i; 48])
+                .unwrap()
+                .0
+                .to_bytes()
+        })
         .collect();
-    let fixed = keygen_from_seed(LogN::FALCON_512, &[0xAA; 48]).unwrap().0;
-    let nsig = 3000;
-    // Vor jeder Messung den Cache für beide Klassen gleich leeren; sonst
-    // bliebe der feste Schlüssel im Cache, die Schlüssel aus dem Vorrat
-    // nicht (das misst, welcher Speicher benutzt wird, nicht die Werte).
+    let fixed_bytes = keygen_from_seed(LogN::FALCON_512, &[0xAA; 48])
+        .unwrap()
+        .0
+        .to_bytes();
     let mut evict = vec![0u8; 16 << 20];
-    let r = test(nsig, |c, x| {
-        let k = if c {
-            &keys[(x.next() % 16) as usize]
+    let mut prepare = |c: bool, x: &mut X| {
+        let b = if c {
+            &key_bytes[(x.next() % 16) as usize]
         } else {
-            &fixed
+            &fixed_bytes
         };
+        let k = SigningKey::from_bytes(b).unwrap();
         for i in (0..evict.len()).step_by(64) {
             evict[i] = evict[i].wrapping_add(1);
         }
         black_box(&evict);
+        k
+    };
+
+    let nsig = 3000;
+    let r = test(nsig, |c, x| {
+        let k = prepare(c, x);
         let t0 = now();
         black_box(k.sign(b"dudect", x));
         now() - t0
     });
     report("Sign (Schlüssel)", nsig, r);
+
+    // Ein Sign-Versuch ohne Neustarts (ffSampling und Signaturvektor).
+    let r = test(nsig, |c, x| {
+        let k = prepare(c, x);
+        let seed = x.next().to_le_bytes();
+        let t0 = now();
+        black_box(d::sign_attempt(&k, &seed));
+        now() - t0
+    });
+    report("Sign-Versuch ohne Neustart", nsig, r);
+
+    // Zahl der SamplerZ-Runden je Versuch. Die Runde ist eine freigegebene
+    // Verzweigung; ihre Zahl soll nicht vom Schlüssel abhängen.
+    let fixed = SigningKey::from_bytes(&fixed_bytes).unwrap();
+    let keys: Vec<SigningKey> = key_bytes
+        .iter()
+        .map(|b| SigningKey::from_bytes(b).unwrap())
+        .collect();
+    let rounds = |k: &SigningKey, rng: &mut X| {
+        d::take_sampler_rounds();
+        d::sign_attempt(k, &rng.next().to_le_bytes());
+        d::take_sampler_rounds() as f64
+    };
+    let mut rng = X(42);
+    let (mut a, mut b) = (Vec::new(), Vec::new());
+    for _ in 0..4000 {
+        if rng.next() & 1 == 1 {
+            let k = &keys[(rng.next() % 16) as usize];
+            b.push(rounds(k, &mut rng));
+        } else {
+            a.push(rounds(&fixed, &mut rng));
+        }
+    }
+    let mean = |v: &[f64]| v.iter().sum::<f64>() / v.len() as f64;
+    println!(
+        "SamplerZ-Runden je Versuch: fest {:.1}, andere {:.1}, |t| = {:.2}",
+        mean(&a),
+        mean(&b),
+        welch(&a, &b).abs()
+    );
 }

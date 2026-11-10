@@ -1090,30 +1090,6 @@ mod tests {
         }
     }
 
-    /// Alle 200 KAT-Seeds ergeben exakt f, g, F und h der KAT-Dateien
-    /// (Phase 7).
-    #[test]
-    fn all_kat_keys_from_seed() {
-        for (n, logn) in [(512, LogN::FALCON_512), (1024, LogN::FALCON_1024)] {
-            for rec in load_kat(n) {
-                let mut seed = [0u8; 48];
-                Drbg::new(&rec.seed).fill(&mut seed);
-                let k = keygen_from_seed(logn, &seed);
-                let sk = decode_sk(&rec.sk).unwrap();
-                assert_eq!(&k.f[..], &sk.f[..], "f, n = {n}, count {}", rec.count);
-                assert_eq!(&k.g[..], &sk.g[..], "g, n = {n}, count {}", rec.count);
-                assert_eq!(
-                    &k.big_f[..],
-                    &sk.big_f[..],
-                    "F, n = {n}, count {}",
-                    rec.count
-                );
-                let (_, h) = crate::encoding::decode_pk(&rec.pk).unwrap();
-                assert_eq!(k.h, h, "h, n = {n}, count {}", rec.count);
-            }
-        }
-    }
-
     /// Verkleinerte Grade (n = 2 … 256): Keygen liefert Schlüssel mit
     /// fG − gF = q und kleinen Koeffizienten.
     #[test]

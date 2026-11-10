@@ -28,6 +28,9 @@ fuzzing = []
 ctgrind = []
 # Zeitmessung nach dudect (PLAN.md §6): Bausteine für examples/dudect.rs.
 dudect = []
+# Addition, Multiplikation und Wurzel über die Gleitkommaeinheit der Hardware
+# statt emuliert (PLAN.md 3.3, Phase 8); nur für Messungen, nicht Standard.
+native-fpu = []
 
 [profile.test]
 # Die KAT-Tests rechnen viel; ohne Optimierung dauern sie unnötig lange.

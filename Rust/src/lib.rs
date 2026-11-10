@@ -88,6 +88,24 @@ pub mod dudect {
             &mut rng,
         )
     }
+    /// Ein einzelner Sign-Versuch ohne Neustarts: Ziel t für eine feste
+    /// Nachricht, dann ffSampling und Signaturvektor. Trennt in der
+    /// Zeitmessung die Arbeit je Versuch von der (erlaubten) Zahl der
+    /// Neustarts.
+    pub fn sign_attempt(sk: &crate::SigningKey, seed: &[u8]) -> u64 {
+        let c = crate::hashing::hash_to_point(&[0u8; 40], b"dudect", sk.params.n());
+        let (t0, t1) = crate::falcon::compute_target(&c, &sk.f, &sk.big_f);
+        let mut rng = crate::prng::Prng::new(seed);
+        let (z0, z1) = crate::ffsampling::ff_sampling(&t0, &t1, &sk.tree, sk.params, &mut rng);
+        let (s0, _) = crate::falcon::compute_signature_vector((&t0, &t1), (&z0, &z1), &sk.basis);
+        s0[0].re.to_bits()
+    }
+
+    /// Zahl der SamplerZ-Runden seit dem letzten Aufruf (setzt zurück).
+    pub fn take_sampler_rounds() -> u64 {
+        crate::sampler::ROUNDS.swap(0, core::sync::atomic::Ordering::Relaxed)
+    }
+
     /// BaseSampler mit 9 festen Zufallsbytes.
     pub fn base_sampler(bytes: [u8; 9]) -> u32 {
         struct Fixed([u8; 9]);

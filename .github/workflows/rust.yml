@@ -49,7 +49,7 @@ jobs:
         run: rustup toolchain install 1.87 --profile minimal
       - name: Tests mit Rust 1.87
         working-directory: Rust
-        run: cargo +1.87 test --all-features
+        run: cargo +1.87 test --features fuzzing,ctgrind,dudect
 
   fuzz:
     # Baut die Fuzz-Ziele (PLAN.md, Abschnitt 7) und lässt jedes kurz laufen.

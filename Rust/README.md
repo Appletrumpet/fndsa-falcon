@@ -15,9 +15,9 @@ der Python-Version (`../Python`) abweicht.
 | 3 | Zufallsquelle (`prng`), Sampler | fertig |
 | 4 | Falcon-Baum, ffSampling, Sign, Secret Key laden | fertig |
 | 5 | Keygen (NTRUSolve fester Länge, Portierung der Referenz) | fertig |
-| 6 | Seitenkanal-Prüfung (Valgrind, dudect, Assembler) | fertig für x86-64 (aarch64: Valgrind in der CI) |
+| 6 | Seitenkanal-Prüfung (Valgrind, dudect, Assembler) | fertig (dudect nur auf x86-64) |
 | 7 | KAT-Schlüssel byte-genau aus den Seeds | fertig (alle 200) |
-| 8 | Messungen, `native-fpu` | offen |
+| 8 | Messungen nach Messprotokoll, Feature `native-fpu` | fertig |
 
 Das Crate kann Schlüssel **erzeugen**, Signaturen **erzeugen** und
 **prüfen**, für Falcon-512 und Falcon-1024.
@@ -34,14 +34,30 @@ assert!(pk.verify(msg, &sig));
 Seed (48 Bytes); mit den Seeds der NIST-KAT-Dateien entstehen byte-genau
 die KAT-Schlüssel.
 
-Laufzeit (Release, ein Kern, x86-64-Laptop), alles mit emulierten
-Gleitkommazahlen:
+Laufzeit nach dem Messprotokoll aus PLAN.md 5.2 (Median, Release, ein
+Thread, AMD Zen 3 unter Windows 11; Faktor = Python / Rust):
 
-| | Falcon-512 | Falcon-1024 |
-|---|---|---|
-| Keygen | ≈ 25 ms | ≈ 61 ms |
-| Secret Key laden | ≈ 5 ms | ≈ 11 ms |
-| Signieren | ≈ 6 ms | ≈ 12 ms |
+| Operation | n | Python | Rust emuliert | Faktor | Rust `native-fpu` | Faktor |
+|---|---|---|---|---|---|---|
+| Keygen | 512 | 736 ms | 21,8 ms | 34 | 11,6 ms | 63 |
+| sk laden | 512 | 11,6 ms | 5,38 ms | 2,2 | 2,77 ms | 4,2 |
+| Sign | 512 | 17,2 ms | 6,66 ms | 2,6 | 3,39 ms | 5,1 |
+| Verify | 512 | 2,89 ms | 18,4 µs | 157 | 17,7 µs | 163 |
+| Keygen | 1024 | 2720 ms | 67,2 ms | 40 | 38,8 ms | 70 |
+| sk laden | 1024 | 29,3 ms | 12,5 ms | 2,4 | 6,51 ms | 4,5 |
+| Sign | 1024 | 48,8 ms | 14,3 ms | 3,4 | 7,33 ms | 6,7 |
+| Verify | 1024 | 8,16 ms | 36,8 µs | 222 | 36,8 µs | 222 |
+
+Standard sind emulierte Gleitkommazahlen. Das Feature `native-fpu` nutzt
+für Addition, Multiplikation und Wurzel die Gleitkommaeinheit (gleiche
+Ergebnisse, Division bleibt emuliert); es ist nur für Prozessoren gedacht,
+auf denen diese Befehle nachweislich konstante Laufzeit haben.
+
+```bash
+cargo run --release --example bench                        # emuliert
+cargo run --release --example bench --features native-fpu  # Hardware-FPU
+python scripts/bench_python.py                             # Python
+```
 
 ## Bauen und testen
 
@@ -53,12 +69,21 @@ bash ci.sh          # Formatierung, Clippy, Tests, Release-Build, Doku
 
 Kleinste unterstützte Rust-Version: 1.87 (`rust-version` in `Cargo.toml`).
 
-Die CI auf GitHub (`.github/workflows/rust.yml`) hat drei Jobs:
+Die CI auf GitHub (`.github/workflows/rust.yml`) hat vier Jobs:
 
 - `check`: `ci.sh` auf x86-64 und aarch64;
+- `ctgrind`: Valgrind-Prüfung der konstanten Laufzeit (`ctgrind.sh`) auf
+  x86-64 und aarch64;
 - `msrv`: Tests mit Rust 1.87;
 - `fuzz`: baut die Fuzz-Ziele, erzeugt den Start-Korpus und lässt jedes
   Ziel 60 Sekunden laufen.
+
+KAT-Dateien mit Rust erzeugen und mit den offiziellen vergleichen
+(PLAN.md 5.1):
+
+```bash
+cargo run --release --example kat_rsp      # schreibt nach target/kat
+```
 
 Konstante Laufzeit prüfen (PLAN.md §6):
 
@@ -118,10 +143,14 @@ mit Zufallsdaten und beschädigten KAT-Daten mitgeprüft.
 - mit den KAT-Schlüsseln: Laden und Speichern byte-genau, abgeleiteter
   Public Key gleich dem KAT-Public-Key, Signaturen mit fester Länge, die
   Verify annimmt und die bei veränderter Nachricht abgelehnt werden;
-- **Keygen byte-genau gegen alle 200 KAT-Schlüssel** (f, g, F und h): der
-  Seed der KAT-Datei geht wie im NIST-Programm durch den AES-256-CTR-DRBG
+- **alle 200 KAT-Fälle wie im NIST-Programm** (`tests/kat_keygen.rs`):
+  der Seed der KAT-Datei geht durch den AES-256-CTR-DRBG
   (`tests/common/drbg.rs`, prüft sich selbst an allen Seeds und
-  Nachrichten der KAT-Dateien), daraus 48 Bytes für `keygen_from_seed`;
+  Nachrichten der KAT-Dateien), daraus 48 Bytes für `keygen_from_seed` und
+  danach Salt und Zufall für `sign`. sk und pk sind byte-genau gleich, das
+  Salt der Signatur ebenfalls; die Signatur selbst weicht wegen L7/L9 ab
+  und besteht Verify mit dem KAT-pk. `examples/kat_rsp.rs` schreibt
+  daraus KAT-Dateien im NIST-Format und vergleicht Feld für Feld;
 - Keygen für verkleinerte Grade n = 2 … 256: fG − gF = q, kleine
   Koeffizienten; zufällige Schlüssel lassen sich speichern, laden,
   signieren und prüfen; gleicher Seed, gleicher Schlüssel;
@@ -214,19 +243,22 @@ Weg, den Stack nach einem Aufruf sicher zu löschen.
 **Nachweis (Phase 6, Einzelheiten in PLAN.md 6.1):**
 - **Valgrind** (Prinzip ctgrind): Keygen-Seed und Zufall des Samplers als
   geheim markiert; Keygen, Laden, Sign, Verify ohne jede Meldung auf
-  x86-64 (Release und opt-level 0). Ein Selbsttest und zwei Gegenproben
+  x86-64 und aarch64 (Release und opt-level 0; lokal in Docker und im
+  CI-Job `ctgrind`). Ein Selbsttest und zwei Gegenproben
   zeigen, dass die Prüfung greift. Sechs Befunde wurden dabei behoben,
   u. a. Sprünge, die LLVM im portierten Keygen aus Masken gebaut hatte,
   und Schiebungen mit geheimer Weite (jetzt `ct::shr64`/`shl64`).
 - **dudect** auf x86-64-Hardware: alle Bausteine |t| < 4.5 (Gleitkomma
-  ≤ 1.7, Sampler ≤ 1.0, Sign 3.7, erklärt durch die erlaubte,
-  schlüsselabhängige Zahl der Neustarts).
+  ≤ 1.6, Sampler ≤ 1.3, Sign 1.7, ein Sign-Versuch ohne Neustart 1.0);
+  die Zahl der SamplerZ-Runden ist für alle Schlüssel gleich. Zwei
+  Messfehler im Prüfprogramm (ungleiche Vorbereitung, feste Speicheradresse
+  des festen Schlüssels) sind in PLAN.md 6.1 beschrieben.
 - **Assembler:** keine Gleitkomma- oder Divisionsbefehle der Hardware,
   keine bedingten Sprünge in den Gleitkomma- und Sampler-Funktionen
   (x86-64 und aarch64).
 
-Offen: Valgrind auf aarch64 läuft im CI-Job `ctgrind`; dudect auf aarch64
-braucht echte Hardware. Gegen Power- und EM-Angriffe schützt die
+Offen: dudect auf aarch64 braucht echte Hardware (die GitHub-Runner sind
+für Zeitmessungen ungeeignet). Gegen Power- und EM-Angriffe schützt die
 Implementierung nicht (PLAN.md §1).
 
 ## Aufbau
@@ -254,9 +286,12 @@ src/
   keygen_tables.rs  Primzahlen und Wurzeln der Referenz (erzeugt)
   fuzzing.rs   Einstiegspunkte für cargo fuzz (Feature `fuzzing`)
 tests/         KAT-Tests, Leser für KAT- und Python-Testvektoren
-scripts/       Erzeugung von src/fft_table.rs und src/keygen_tables.rs
+scripts/       Erzeugung von src/fft_table.rs und src/keygen_tables.rs;
+               bench_python.py: Laufzeit der Python-Version
 examples/      seed_corpus: Start-Korpus für die Fuzz-Ziele;
-               ctgrind, dudect: Prüfung der konstanten Laufzeit
+               ctgrind, dudect: Prüfung der konstanten Laufzeit;
+               kat_rsp: KAT-Dateien im NIST-Format erzeugen;
+               bench: Laufzeitmessung nach Messprotokoll
 fuzz/          Fuzz-Ziele (cargo fuzz)
 ctgrind.sh     Valgrind-Prüfung (examples/ctgrind.rs)
 ```

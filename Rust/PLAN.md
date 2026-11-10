@@ -1,10 +1,12 @@
 # Plan: FN-DSA (Falcon) in Rust, seitenkanalresistent
 
-Stand: 10. November 2026, Branch `Rust`. Phase 0 bis 7 sind umgesetzt.
-Phase 6 (Seitenkanal-Prüfung): Valgrind ohne Befund auf x86-64 (Release
-und opt-level 0, lokal in Docker; aarch64 im CI-Job `ctgrind`), dudect
-ohne Befund auf x86-64-Hardware, Assembler-Stichprobe auf beiden Zielen.
-Ergebnisse und Befunde in Abschnitt 6. Offen ist Phase 8 (Messungen).
+Stand: 11. November 2026, Branch `Rust`. Alle Phasen 0 bis 8 sind
+umgesetzt (Phase 8: Messungen und Feature `native-fpu`, Abschnitt 5.2).
+Phase 6 (Seitenkanal-Prüfung): Valgrind ohne Befund auf x86-64 und
+aarch64 (Release und opt-level 0; lokal in Docker und im CI-Job `ctgrind`,
+erster grüner Lauf für Commit `c02768f`), dudect ohne Befund auf
+x86-64-Hardware, Assembler-Stichprobe auf beiden Zielen.
+Ergebnisse und Befunde in Abschnitt 6.
 Keygen ist eine Portierung der Referenz (PQClean, `keygen.c`, `fft.c`) und
 erzeugt aus allen 200 KAT-Seeds byte-genau die KAT-Schlüssel. Zuvor:
 Phase 0 bis 4 sind umgesetzt:
@@ -431,9 +433,78 @@ nur noch auf alle Seeds.
 | 3 | `prng`, `sampler` | BaseSampler und ApproxExp gegen alle Schritte der Sampler-Testvektoren; BerExp-Äquivalenztest; statistische Tests für SamplerZ (Abschnitt 7) (**erledigt**, gegen `Python/data/vectors/sampler.*`) | mittel |
 | 4 | `tree`, `ffsampling`, `sign` (mit KAT-sk, `load_secret_key` inkl. `recompute_G`) | Falcon-Baum und ffSampling bitgleich gegen `Python/data/vectors/tree.*` und `ffsampling.*` (Test-Generator wie beim SamplerZ); KAT-sk → sign → verify (**erledigt**; dazu `flow.sign` und `flow.sign_restart` byte-genau) | mittel |
 | 5 | `zint`, `ntrugen` (NTRUSolve fester Länge, Portierung der Referenz), `keygen`; AES-CTR-DRBG für Tests von Anfang an | fG − gF = q, γ-Schranke, sk-Format, keygen → sign → verify für 512/1024, reduzierte n; **KAT count 0 byte-genau** (f, g, dann F) für beide Varianten (**erledigt**; dazu `fft_ref.rs`, die FFT der Referenz, weil `reduce` mit ihr rundet) | **gross** |
-| 6 | Seitenkanal-Prüfung (Abschnitt 6) | dudect ohne Befund, Valgrind ohne Befund auf geheimen Daten (**erledigt** für x86-64; aarch64: Valgrind in der CI, dudect braucht Hardware) | mittel |
-| 7 | KAT-Schlüssel byte-genau (L10), alle Seeds | alle 200 KAT-Seeds ergeben exakt sk und pk der KAT-Dateien (Signaturen wegen L7 nicht) (**erledigt** zusammen mit Phase 5) | klein, wenn count 0 in Phase 5 stimmt |
-| 8 (optional) | Benchmarks gegen Python, `native-fpu` | Zahlen für die Arbeit | klein |
+| 6 | Seitenkanal-Prüfung (Abschnitt 6) | dudect ohne Befund, Valgrind ohne Befund auf geheimen Daten (**erledigt**: Valgrind auf x86-64 und aarch64, dudect auf x86-64; dudect auf aarch64 braucht Hardware) | mittel |
+| 7 | KAT-Schlüssel byte-genau (L10), alle Seeds | alle 200 KAT-Seeds ergeben exakt sk und pk der KAT-Dateien (Signaturen wegen L7 nicht) (**erledigt**, siehe 5.1) | klein, wenn count 0 in Phase 5 stimmt |
+| 8 (optional) | Benchmarks gegen Python, `native-fpu` | Zahlen für die Arbeit (**erledigt**, siehe 5.2) | klein |
+
+### 5.1 Ergebnis Phase 7 (10.11.2026)
+
+Der Test `tests/kat_keygen.rs` bildet für alle 200 KAT-Fälle den Ablauf von
+`PQCgenKAT_sign` nach: AES-256-CTR-DRBG mit dem `seed` der KAT-Datei,
+48 Bytes für `keygen_from_seed`, danach `sign` aus demselben Strom.
+`examples/kat_rsp.rs` schreibt daraus KAT-Dateien im NIST-Format und
+vergleicht sie Feld für Feld mit den offiziellen:
+
+| Datei | Fälle | pk, sk gleich | Salt gleich | sm gleich | Verify ok |
+|---|---|---|---|---|---|
+| falcon512 | 100 | 100 | 100 | 0 | 100 |
+| falcon1024 | 100 | 100 | 100 | 0 | 100 |
+
+Das Salt stimmt, weil Rust es wie die Referenz als erste 40 Bytes nach dem
+Keygen-Seed aus dem DRBG liest; damit ist auch die Reihenfolge der Aufrufe
+bestätigt. Die komprimierte Signatur weicht erwartungsgemäss ab (BerExp
+liest immer 8 Bytes, L7; Sampler mit ChaCha20, L9); ihre Länge stimmt nur
+zufällig (11 von 100). Jede Rust-Signatur besteht Verify mit dem
+offiziellen pk.
+
+### 5.2 Ergebnis Phase 8 (11.11.2026)
+
+**Messprotokoll** (gemeinsam für Rust, C und Python; `examples/bench.rs`,
+`scripts/bench_python.py`):
+- Operationen: Keygen aus einem Seed, sk laden, Sign, Verify, je für
+  Falcon-512 und Falcon-1024;
+- feste Eingaben: Seeds 0, 1, 2, … (48 gleiche Bytes), Nachricht 32 Bytes;
+  ein Thread, Release-Build;
+- Aufwärmen, dann N Läufe (Rust: Keygen 50/30, sk laden 200, Sign 500,
+  Verify 2000; Python: 8/4, 20, 50, 200); gemeldet werden Median sowie
+  10- und 90-%-Perzentil, in Rust zusätzlich in Zyklen (`rdtsc`);
+- Umgebung angeben: CPU, Betriebssystem, Compiler bzw. Python-Version.
+
+**Ergebnis** (Median; AMD Zen 3, „AMD64 Family 25 Model 97“, Windows 11;
+Rust 1.99.1, Python 3.13.14; Faktor = Python / Rust):
+
+| Operation | n | Python | Rust emuliert | Faktor | Rust `native-fpu` | Faktor |
+|---|---|---|---|---|---|---|
+| Keygen | 512 | 736 ms | 21,8 ms | 34 | 11,6 ms | 63 |
+| sk laden | 512 | 11,6 ms | 5,38 ms | 2,2 | 2,77 ms | 4,2 |
+| Sign | 512 | 17,2 ms | 6,66 ms | 2,6 | 3,39 ms | 5,1 |
+| Verify | 512 | 2,89 ms | 18,4 µs | 157 | 17,7 µs | 163 |
+| Keygen | 1024 | 2720 ms | 67,2 ms | 40 | 38,8 ms | 70 |
+| sk laden | 1024 | 29,3 ms | 12,5 ms | 2,4 | 6,51 ms | 4,5 |
+| Sign | 1024 | 48,8 ms | 14,3 ms | 3,4 | 7,33 ms | 6,7 |
+| Verify | 1024 | 8,16 ms | 36,8 µs | 222 | 36,8 µs | 222 |
+
+Einordnung:
+- Keygen schwankt stark (10/90 %: in Rust 14–49 ms für Falcon-512), weil
+  verworfene Kandidaten vom Seed abhängen; bei Python mit nur 8 bzw. 4
+  Läufen ist der Median entsprechend unsicher.
+- Verify kommt ohne Gleitkomma aus; der Unterschied zu Python stammt aus
+  Ganzzahlen fester Breite und der NTT statt Python-Listen.
+- Sign ist mit emulierten Gleitkommazahlen nur 2,6- bis 3,4-mal schneller
+  als Python, das die Gleitkommaeinheit der Hardware benutzt. Mit
+  `native-fpu` halbiert sich die Zeit; den Rest kostet vor allem die
+  weiterhin emulierte Division (rund 400 Zyklen je Division).
+
+**Feature `native-fpu`** (3.3, §10): Addition, Subtraktion, Multiplikation
+und Wurzel über die Gleitkommaeinheit, Division und Runden emuliert.
+Alle Tests einschliesslich der bitgleichen Vergleiche mit Python und der
+200 KAT-Schlüssel bestehen damit unverändert (keine subnormalen Zahlen in
+Falcon). dudect auf demselben Prozessor: alle Bausteine |t| ≤ 2,2 (Sign
+1,39, Sign-Versuch 1,11). Standard bleibt die Emulation: Ob `addsd`,
+`mulsd` und `sqrtsd` auf einer CPU konstante Laufzeit haben, hängt vom
+Modell ab und ist hier nur für diesen Prozessor gemessen; auf aarch64
+bräuchte es zusätzlich das DIT-Flag (§10). `ci.sh` testet beide
+Varianten.
 
 ---
 
@@ -486,7 +557,9 @@ erlaubten Stellen aus der Tabelle oben geben `ct::declassify` bzw.
 - Ergebnis: **keine Meldung** auf x86-64, im Release-Build und mit
   opt-level 0 ohne Überlaufprüfungen (die Überlaufprüfungen des
   Debug-Builds sind selbst Verzweigungen auf Werten und gehören nicht zum
-  Konstantzeit-Code). aarch64 prüft der CI-Job `ctgrind`.
+  Konstantzeit-Code). Ebenso **keine Meldung auf aarch64** im CI-Job
+  `ctgrind` (GitHub-Runner `ubuntu-24.04-arm`, beide Builds, Selbsttest
+  schlägt an; erster Lauf für Commit `c02768f`).
 - Wirksamkeit belegt: Selbsttest (absichtliche Verzweigung auf geheimem
   Byte wird gemeldet) und zwei Gegenproben (ohne die Freigabe in SamplerZ
   bzw. beim Neuziehen in Keygen meldet Valgrind sofort).
@@ -513,17 +586,27 @@ Windows, Zyklenzähler; fest gegen zufällig, |t| (Schwelle 4.5):
 
 | Baustein | Messungen | \|t\| |
 |---|---|---|
-| fpr Division, Multiplikation, Addition, Wurzel, Runden | je 10⁶ | 0.96 – 1.70 |
-| BaseSampler | 10⁶ | 1.01 |
+| fpr Division, Multiplikation, Addition, Wurzel, Runden | je 10⁶ | 0.76 – 1.56 |
+| BaseSampler | 10⁶ | 1.26 |
 | SamplerZ (μ, σ′) | 2·10⁵ | 0.75 |
-| Sign (fester Schlüssel gegen 16 andere) | 3000 | 3.74 |
+| Sign (fester Schlüssel gegen 16 andere) | 3000 | 1.71 |
+| ein Sign-Versuch ohne Neustart (ffSampling, Signaturvektor) | 3000 | 1.01 |
+| Zahl der SamplerZ-Runden je Versuch (1778.3 gegen 1778.1) | 4000 | 0.21 |
 
-Sign liegt näher an der Schwelle (Mediane 0.6 % auseinander). Erklärung:
-Die Zahl der Neustarts in Sign hängt leicht vom Schlüssel ab; das ist eine
-erlaubte Verzweigung (Tabelle oben). Der Cache wird vor jeder Messung für
-beide Klassen gleich geleert, sonst bliebe nur der feste Schlüssel im Cache
-(erster Lauf: |t| = 6.2, ebenso BaseSampler |t| = 13 durch ungleiche
-Vorbereitung der Eingaben; beides Fehler des Prüfprogramms, behoben).
+Messfehler im Prüfprogramm, gefunden und behoben:
+- BaseSampler zuerst |t| = 13: Die Eingaben beider Klassen wurden
+  unterschiedlich vorbereitet (nur Klasse 1 zog Zufallsbytes).
+- Sign zuerst |t| = 6.2, nach Leeren des Caches 3.7; ein einzelner
+  Sign-Versuch ohne Neustarts sogar 5 bis 19 (mit `native-fpu` höher, weil
+  das Rauschen kleiner ist). Die frühere Erklärung (schlüsselabhängige Zahl
+  der Neustarts) war **falsch**: Auch ohne Neustarts schlug der Test an,
+  und die Zahl der SamplerZ-Runden ist für alle Schlüssel gleich. Ursache
+  war die Lage im Speicher: Der feste Schlüssel lag immer an derselben
+  Adresse, die anderen an verschiedenen, und die Konflikte im Cache
+  unterschieden sich. Seit der Schlüssel vor jeder Messung neu geladen wird
+  (beide Klassen mit wechselnden Adressen), liegen alle Werte deutlich
+  unter der Schwelle. Gemessen wird damit der Wert des Schlüssels, nicht
+  seine Adresse; Adressen hängen nicht von geheimen Daten ab.
 Keygen wird nicht gemessen: Es verwirft Kandidaten absichtlich (erlaubte
 Verzweigung), seine Laufzeit hängt deshalb vom Seed ab.
 
@@ -538,8 +621,9 @@ Valgrind-Prüfung die Durchsicht von Hand.
 Bekannte Grenze: der Ausgabepuffer im XOF-Leser von `digest` und Werte in
 Registern und auf dem Stack.
 
-**Noch offen:** Valgrind auf aarch64 läuft erst nach dem nächsten Push in
-der CI; dudect auf aarch64 braucht echte Hardware (Abschnitt 10).
+**Noch offen:** dudect auf aarch64 braucht echte Hardware (Abschnitt 10);
+die GitHub-Runner sind geteilte virtuelle Maschinen und für Zeitmessungen
+ungeeignet. Valgrind auf aarch64 ist erledigt (CI-Job `ctgrind`).
 
 ---
 
@@ -610,8 +694,9 @@ Alle Designentscheidungen sind getroffen; der Plan ist bereit zur Umsetzung.
 
 Noch offen (blockiert erst Phase 6, nicht den Start):
 
-- aarch64-Hardware für Valgrind und dudect beschaffen bzw. klären
-  (Abschnitt 10).
+- aarch64-Hardware für dudect beschaffen bzw. klären (Abschnitt 10).
+  Valgrind auf aarch64 läuft inzwischen auf den GitHub-Runnern
+  (`ubuntu-24.04-arm`).
 - ~~Die Keygen-Details aus 3.5 … werden … nachgeprüft.~~ **Nachgeprüft
   (Phase 5, PQClean `keygen.c`):** Seed (48 Bytes) → SHAKE256 → alle
   Zufallswerte; 64-Bit-Werte little-endian (`get_rng_u64`); Tabellen-Gauss
