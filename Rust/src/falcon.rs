@@ -19,6 +19,12 @@ use crate::Error;
 /// Keygen verworfen.
 #[allow(dead_code)] // wird erst von Keygen benutzt (Phase 5)
 pub(crate) fn compute_public_key(f: &[i8], g: &[i8]) -> Result<Vec<u16>, Error> {
+    // Die Längen sind öffentlich. Ohne Prüfung würde `zip` still abschneiden
+    // und die NTT prüft die Länge nur im Debug-Build.
+    let n = f.len();
+    if g.len() != n || !n.is_power_of_two() || !(2..=1024).contains(&n) {
+        return Err(Error::InvalidEncoding("Länge von f, g"));
+    }
     let mut ft: Zeroizing<Vec<u32>> =
         Zeroizing::new(f.iter().map(|&x| modq::from_i32(x as i32)).collect());
     let mut gt: Zeroizing<Vec<u32>> =
@@ -146,6 +152,16 @@ mod tests {
             assert_eq!(lhs[0], crate::params::Q as i64);
             assert!(lhs[1..].iter().all(|&x| x == 0));
         }
+    }
+
+    #[test]
+    fn mismatched_lengths_are_rejected() {
+        let bad = Some(Error::InvalidEncoding("Länge von f, g"));
+        assert_eq!(compute_public_key(&[1; 8], &[1; 4]).err(), bad);
+        assert_eq!(compute_public_key(&[1; 6], &[1; 6]).err(), bad);
+        assert_eq!(compute_public_key(&[1; 1], &[1; 1]).err(), bad);
+        assert_eq!(compute_public_key(&[1; 2048], &[1; 2048]).err(), bad);
+        assert_eq!(compute_public_key(&[], &[]).err(), bad);
     }
 
     #[test]

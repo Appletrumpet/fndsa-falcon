@@ -29,15 +29,24 @@ Die CI auf GitHub (`.github/workflows/rust.yml`) hat drei Jobs:
 
 - `check`: `ci.sh` auf x86-64 und aarch64;
 - `msrv`: Tests mit Rust 1.87;
-- `fuzz`: baut die Fuzz-Ziele und lässt jedes 60 Sekunden laufen.
+- `fuzz`: baut die Fuzz-Ziele, erzeugt den Start-Korpus und lässt jedes
+  Ziel 60 Sekunden laufen.
 
 Fuzzing (nur Linux oder WSL, Nightly-Rust):
 
 ```bash
 cargo install cargo-fuzz
 cd Rust
+cargo run --example seed_corpus -- fuzz/corpus   # Start-Korpus aus den KATs
 cargo +nightly fuzz run verify      # auch: decode_pk, decode_sk, decompress
 ```
+
+Der Start-Korpus ist nötig: Ein zufälliger Public Key ist fast nie gültig
+(alle 512 Koeffizienten müssen unter q liegen, ≈ 0,75⁵¹²). Ohne gültige
+Startdaten käme der Fuzzer nicht bis Verify. `examples/seed_corpus.rs`
+legt je Ziel 20 Dateien aus den KAT-Daten an und prüft dabei, dass jede
+Verify-Eingabe gültig ist. `fuzz/Cargo.lock` ist eingecheckt, damit die CI
+immer dieselben Versionen baut.
 
 Die Logik der Fuzz-Ziele liegt in `src/fuzzing.rs` und wird von `cargo test`
 mit Zufallsdaten und beschädigten KAT-Daten mitgeprüft.
@@ -117,5 +126,6 @@ src/
   falcon.rs    Verify, h = g/f
   fuzzing.rs   Einstiegspunkte für cargo fuzz (Feature `fuzzing`)
 tests/         KAT-Tests, Parser für die Testdaten
+examples/      seed_corpus: Start-Korpus für die Fuzz-Ziele
 fuzz/          Fuzz-Ziele (cargo fuzz)
 ```

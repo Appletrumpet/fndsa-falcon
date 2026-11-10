@@ -47,6 +47,9 @@ jobs:
       - name: Fuzz-Ziele bauen
         working-directory: Rust
         run: cargo +nightly fuzz build
+      - name: Start-Korpus aus den KAT-Daten erzeugen
+        working-directory: Rust
+        run: cargo +nightly run --example seed_corpus -- fuzz/corpus
       - name: Fuzz-Ziele je 60 s ausführen
         working-directory: Rust
         run: |

@@ -11,6 +11,8 @@
 //! assert!(pk.verify(msg, &sig));
 //! ```
 
+#![warn(missing_docs)]
+
 // Bausteine, die erst Sign und Keygen (Phase 4/5) brauchen, tragen einzeln
 // `#[allow(dead_code)]`. Mit dem Aufruf in Phase 4/5 wird es entfernt.
 mod ct;
@@ -86,10 +88,12 @@ impl VerifyingKey {
         Ok(VerifyingKey { params, h, h_ntt })
     }
 
+    /// Kodiert den Public Key (§3.11.4); Umkehrung von `from_bytes`.
     pub fn to_bytes(&self) -> Vec<u8> {
         encoding::encode_pk(self.params.logn, &self.h)
     }
 
+    /// Grad des Schlüssels (log₂ n).
     pub fn logn(&self) -> LogN {
         self.params.logn
     }
@@ -140,6 +144,8 @@ impl Signature {
         })
     }
 
+    /// Kodiert die Signatur; gibt genau die Bytes zurück, aus denen sie
+    /// dekodiert wurde (gepolstert oder ungepolstert).
     pub fn to_bytes(&self) -> Vec<u8> {
         let mut out = Vec::with_capacity(41 + self.s2_enc.len());
         out.push(0x30 | self.logn.get() as u8);
@@ -148,10 +154,12 @@ impl Signature {
         out
     }
 
+    /// Grad aus dem Header der Signatur (log₂ n).
     pub fn logn(&self) -> LogN {
         self.logn
     }
 
+    /// Die 40 Bytes Salt r.
     pub fn salt(&self) -> &[u8; 40] {
         &self.salt
     }
