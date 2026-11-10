@@ -269,6 +269,75 @@ falcon_params vec_params(const vec_file *v)
     return p;
 }
 
+/* Liest eine Dezimalzahl ab *p und rückt *p dahinter. */
+static void parse_big(falcon_big *dst, const char **p)
+{
+    static const int64_t chunk_base[10] = {1, 10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000, 1000000000};
+    falcon_big base, digit;
+    const char *s = *p;
+    int neg = 0;
+
+    while (*s == ' ') {
+        s++;
+    }
+    if (*s == '-') {
+        neg = 1;
+        s++;
+    }
+    falcon_big_init(&base);
+    falcon_big_init(&digit);
+    falcon_big_set_i64(dst, 0);
+    while (*s >= '0' && *s <= '9') {
+        int64_t chunk = 0;
+        int count = 0;
+        while (count < 9 && s[count] >= '0' && s[count] <= '9') {
+            chunk = chunk * 10 + (s[count] - '0');
+            count++;
+        }
+        s += count;
+        falcon_big_set_i64(&base, chunk_base[count]);
+        falcon_big_set_i64(&digit, chunk);
+        falcon_big_mul(dst, dst, &base);
+        falcon_big_add(dst, dst, &digit);
+    }
+    if (neg && dst->len != 0) {
+        dst->neg = 1;
+    }
+    falcon_big_free(&base);
+    falcon_big_free(&digit);
+    *p = s;
+}
+
+void vec_big(const vec_file *v, const char *field, falcon_big *dst)
+{
+    const char *p = require(v, field);
+    parse_header(&p);
+    parse_big(dst, &p);
+}
+
+size_t vec_big_list(const vec_file *v, const char *field, falcon_big *dst, size_t cap)
+{
+    const char *p = require(v, field);
+    size_t count = parse_header(&p);
+    if (count > cap) {
+        die("Liste zu lang", field);
+    }
+    for (size_t i = 0; i < count; i++) {
+        parse_big(&dst[i], &p);
+    }
+    return count;
+}
+
+int big_list_equal(const falcon_big *a, const falcon_big *b, size_t n)
+{
+    for (size_t i = 0; i < n; i++) {
+        if (falcon_big_cmp(&a[i], &b[i]) != 0) {
+            return 0;
+        }
+    }
+    return 1;
+}
+
 static size_t tokens_for(size_t n)
 {
     return n == 1 ? 1 : 2 * n + 2 * tokens_for(n / 2);

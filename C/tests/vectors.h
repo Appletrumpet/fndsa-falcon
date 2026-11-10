@@ -10,6 +10,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "bigint.h"
 #include "datatypes.h"
 #include "sampler.h"
 #include "shake256.h"
@@ -49,6 +50,11 @@ size_t vec_cplx(const vec_file *v, const char *field, falcon_cplx *dst, size_t c
 unsigned __int128 vec_u128(const vec_file *v, const char *field);
 /* (n, sig_bytelen) aus dem Feld params auf Basis des passenden Parametersatzes. */
 falcon_params vec_params(const vec_file *v);
+
+/* Grosse Ganzzahlen dezimal einlesen; einzeln oder als Liste. */
+void vec_big(const vec_file *v, const char *field, falcon_big *dst);
+size_t vec_big_list(const vec_file *v, const char *field, falcon_big *dst, size_t cap);
+int big_list_equal(const falcon_big *a, const falcon_big *b, size_t n);
 
 /* Falcon-Baum aus den Token einer Vektordatei aufbauen; liefert n. */
 size_t vec_tree(const vec_file *v, const char *field, falcon_tree *t);
