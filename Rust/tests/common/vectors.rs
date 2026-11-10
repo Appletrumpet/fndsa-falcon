@@ -39,6 +39,11 @@ impl Case {
         self.field(key, "floats").iter().map(|h| hex64(h)).collect()
     }
 
+    /// Falcon-Baum, flach: ℓ-Werte als (re, im), dann links, dann rechts.
+    pub fn tree(&self, key: &str) -> Vec<u64> {
+        self.field(key, "tree").iter().map(|h| hex64(h)).collect()
+    }
+
     /// Eine Gleitkommazahl als Bits.
     pub fn float(&self, key: &str) -> u64 {
         hex64(&self.field(key, "float")[0])

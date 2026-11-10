@@ -19,18 +19,26 @@
 //! Konstante Laufzeit: keine Verzweigung auf Werten. Die Division nach Smith
 //! wählt ihren Zweig über Masken (`Cplx::div`).
 
-// Wird erst von Sign und Keygen benutzt (Phase 4/5); bis dahin nur in Tests.
-#![allow(dead_code)]
+use zeroize::Zeroizing;
 
 use crate::fft_table::ZETA_BITS;
 use crate::fpr::Fpr;
 
 /// Komplexe Zahl aus zwei emulierten Gleitkommazahlen. Kein `Debug`.
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq, Default)]
 pub struct Cplx {
     pub re: Fpr,
     pub im: Fpr,
 }
+
+impl zeroize::DefaultIsZeroes for Cplx {}
+
+/// Polynom in FFT-Form. Wird beim Verwerfen gelöscht, weil beim Signieren
+/// fast alle Zwischenwerte geheim sind (PLAN.md, 3.2 Regel 7).
+pub type Poly = Zeroizing<Vec<Cplx>>;
+
+/// Reelle Koeffizienten, ebenfalls gelöscht beim Verwerfen.
+pub type RealPoly = Zeroizing<Vec<Fpr>>;
 
 impl Cplx {
     pub const ZERO: Cplx = Cplx {
@@ -103,9 +111,9 @@ fn assert_len(n: usize) {
 
 /// FFT: rekursiv, Koeffizienten in gerade und ungerade trennen, beide
 /// Hälften transformieren, mit `merge_fft` zusammenführen. n = 1..=1024.
-pub fn fft(a: &[Fpr]) -> Vec<Cplx> {
+pub fn fft(a: &[Fpr]) -> Poly {
     assert_len(a.len());
-    let mut out = vec![Cplx::ZERO; a.len()];
+    let mut out = Zeroizing::new(vec![Cplx::ZERO; a.len()]);
     fft_rec(&mut out, a, 1);
     out
 }
@@ -125,9 +133,9 @@ fn fft_rec(out: &mut [Cplx], a: &[Fpr], stride: usize) {
 }
 
 /// Umkehrung von `fft`, rekursiv über `split_fft`.
-pub fn ifft(a: &[Cplx]) -> Vec<Fpr> {
+pub fn ifft(a: &[Cplx]) -> RealPoly {
     assert_len(a.len());
-    let mut out = vec![Fpr::ZERO; a.len()];
+    let mut out = Zeroizing::new(vec![Fpr::ZERO; a.len()]);
     ifft_rec(&mut out, 0, 1, a);
     out
 }
@@ -143,28 +151,28 @@ fn ifft_rec(out: &mut [Fpr], start: usize, stride: usize, a: &[Cplx]) {
 }
 
 /// Punktweise addieren.
-pub fn fft_add(a: &[Cplx], b: &[Cplx]) -> Vec<Cplx> {
-    a.iter().zip(b).map(|(x, y)| x.add(*y)).collect()
+pub fn fft_add(a: &[Cplx], b: &[Cplx]) -> Poly {
+    Zeroizing::new(a.iter().zip(b).map(|(x, y)| x.add(*y)).collect())
 }
 
 /// Punktweise subtrahieren.
-pub fn fft_sub(a: &[Cplx], b: &[Cplx]) -> Vec<Cplx> {
-    a.iter().zip(b).map(|(x, y)| x.sub(*y)).collect()
+pub fn fft_sub(a: &[Cplx], b: &[Cplx]) -> Poly {
+    Zeroizing::new(a.iter().zip(b).map(|(x, y)| x.sub(*y)).collect())
 }
 
 /// Punktweise multiplizieren.
-pub fn fft_mul(a: &[Cplx], b: &[Cplx]) -> Vec<Cplx> {
-    a.iter().zip(b).map(|(x, y)| x.mul(*y)).collect()
+pub fn fft_mul(a: &[Cplx], b: &[Cplx]) -> Poly {
+    Zeroizing::new(a.iter().zip(b).map(|(x, y)| x.mul(*y)).collect())
 }
 
 /// Punktweise dividieren; kein Wert von b darf 0 sein.
-pub fn fft_div(a: &[Cplx], b: &[Cplx]) -> Vec<Cplx> {
-    a.iter().zip(b).map(|(x, y)| x.div(*y)).collect()
+pub fn fft_div(a: &[Cplx], b: &[Cplx]) -> Poly {
+    Zeroizing::new(a.iter().zip(b).map(|(x, y)| x.div(*y)).collect())
 }
 
 /// Adjungierte: jeden Wert konjugieren.
-pub fn fft_adj(a: &[Cplx]) -> Vec<Cplx> {
-    a.iter().map(|x| x.adj()).collect()
+pub fn fft_adj(a: &[Cplx]) -> Poly {
+    Zeroizing::new(a.iter().map(|x| x.adj()).collect())
 }
 
 /// Quadrierte Norm in FFT-Form (Gl. 3.8): Σ (re² + im²) / n.
@@ -178,11 +186,11 @@ pub fn fft_norm_sq(a: &[Cplx]) -> Fpr {
 
 /// Ein Polynom in zwei halb so grosse aufteilen (Alg. 1), n ≥ 2:
 /// f₀[k] = (f[k] + f[k+h]) / 2, f₁[k] = (f[k] − f[k+h]) / (2ζ_k).
-pub fn split_fft(a: &[Cplx]) -> (Vec<Cplx>, Vec<Cplx>) {
+pub fn split_fft(a: &[Cplx]) -> (Poly, Poly) {
     assert_len(a.len());
     let h = a.len() / 2;
-    let mut f0 = Vec::with_capacity(h);
-    let mut f1 = Vec::with_capacity(h);
+    let mut f0 = Zeroizing::new(Vec::with_capacity(h));
+    let mut f1 = Zeroizing::new(Vec::with_capacity(h));
     for k in 0..h {
         let (x, y) = (a[k], a[k + h]);
         let sum = x.add(y);
@@ -197,11 +205,11 @@ pub fn split_fft(a: &[Cplx]) -> (Vec<Cplx>, Vec<Cplx>) {
 
 /// Umkehrung von `split_fft` (Alg. 2): f[k] = f₀[k] + ζ_k·f₁[k],
 /// f[k+h] = f₀[k] − ζ_k·f₁[k].
-pub fn merge_fft(a0: &[Cplx], a1: &[Cplx]) -> Vec<Cplx> {
+pub fn merge_fft(a0: &[Cplx], a1: &[Cplx]) -> Poly {
     let h = a0.len();
     debug_assert_eq!(a1.len(), h);
     assert_len(2 * h);
-    let mut out = vec![Cplx::ZERO; 2 * h];
+    let mut out = Zeroizing::new(vec![Cplx::ZERO; 2 * h]);
     for k in 0..h {
         let t = zeta(h, k).mul(a1[k]);
         out[k] = a0[k].add(t);
@@ -211,8 +219,9 @@ pub fn merge_fft(a0: &[Cplx], a1: &[Cplx]) -> Vec<Cplx> {
 }
 
 /// Ganzzahlige Koeffizienten → Fpr.
-pub fn ints_to_fpr(a: &[i32]) -> Vec<Fpr> {
-    a.iter().map(|&x| Fpr::of_i64(x as i64)).collect()
+#[cfg(test)]
+pub fn ints_to_fpr(a: &[i32]) -> RealPoly {
+    Zeroizing::new(a.iter().map(|&x| Fpr::of_i64(x as i64)).collect())
 }
 
 #[cfg(test)]
@@ -265,7 +274,7 @@ mod tests {
 
     #[test]
     fn pointwise_match_python() {
-        type Op = fn(&[Cplx], &[Cplx]) -> Vec<Cplx>;
+        type Op = fn(&[Cplx], &[Cplx]) -> Poly;
         let ops: [(&str, Op); 4] = [
             ("fft.fft_add", fft_add),
             ("fft.fft_sub", fft_sub),

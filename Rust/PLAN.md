@@ -1,8 +1,12 @@
 # Plan: FN-DSA (Falcon) in Rust, seitenkanalresistent
 
-Stand: 10. November 2026, Branch `Rust`. Phase 0 bis 3 sind umgesetzt:
-Phase 2 (`fpr`, FFT) und Phase 3 (`prng`, Sampler) rechnen **bitgleich**
-mit Python, geprüft gegen `Python/data/vectors/` (siehe Änderung zu 3.3).
+Stand: 10. November 2026, Branch `Rust`. Phase 0 bis 4 sind umgesetzt:
+Phase 2 (`fpr`, FFT), Phase 3 (`prng`, Sampler) und Phase 4 (Baum,
+ffSampling, Sign) rechnen **bitgleich** mit Python, geprüft gegen
+`Python/data/vectors/` (siehe Änderung zu 3.3); auch ganze Signaturen aus
+`flow.sign` stimmen Byte für Byte, wenn Rust denselben Zufall bekommt.
+Abweichung in Phase 4: Bei einem Neustart behält Sign das Salt (wie Alg. 10
+und Python), statt wie in 3.6 beschrieben ein neues zu ziehen.
 Phase 0 und 1 sind vollständig
 umgesetzt (Crate, `params`, `ct` in Grundform mit Optimierungsbarriere,
 `modq`, `hashing`, `encoding`, Verify, CI-Skript `ci.sh` und GitHub-Workflow
@@ -309,7 +313,8 @@ Division auf geheimen Daten). Standard bleibt die Emulation.
   verzweigen (Neustart).
 - Ab hier ist s₂ öffentlich: Kompression mit normalem Code.
 - Passt das komprimierte s₂ nicht in die feste Signaturlänge (Tab. 3.3), wird
-  neu signiert (neues Salt, neue Zufallswerte). Das Ergebnis ja/nein darf
+  neu signiert (neue Zufallswerte; das Salt bleibt wie in Alg. 10 und
+  Python gleich, umgesetzt in Phase 4). Das Ergebnis ja/nein darf
   verzweigen.
 - Optional (Fault-Schutz): nach dem Signieren `verify` aufrufen; das kostet
   wenig im Vergleich zum Signieren.
@@ -412,7 +417,7 @@ nur noch auf alle Seeds.
 | 1 | `modq` (konstant), `hashing`, `encoding`, `verify` | alle 200 KAT-Signaturen gültig, pk/sk-Formate gegen KAT | klein–mittel |
 | 2 | `ct`, `fpr` (emuliert), `fft` | `fpr` bitgleich gegen `f64` für Millionen Zufallswerte im normalen Zahlenbereich inkl. Grenzfälle; FFT **bitgleich** gegen `Python/data/vectors/fft.*` (**erledigt**) | mittel |
 | 3 | `prng`, `sampler` | BaseSampler und ApproxExp gegen alle Schritte der Sampler-Testvektoren; BerExp-Äquivalenztest; statistische Tests für SamplerZ (Abschnitt 7) (**erledigt**, gegen `Python/data/vectors/sampler.*`) | mittel |
-| 4 | `tree`, `ffsampling`, `sign` (mit KAT-sk, `load_secret_key` inkl. `recompute_G`) | Falcon-Baum und ffSampling bitgleich gegen `Python/data/vectors/tree.*` und `ffsampling.*` (Test-Generator wie beim SamplerZ); KAT-sk → sign → verify | mittel |
+| 4 | `tree`, `ffsampling`, `sign` (mit KAT-sk, `load_secret_key` inkl. `recompute_G`) | Falcon-Baum und ffSampling bitgleich gegen `Python/data/vectors/tree.*` und `ffsampling.*` (Test-Generator wie beim SamplerZ); KAT-sk → sign → verify (**erledigt**; dazu `flow.sign` und `flow.sign_restart` byte-genau) | mittel |
 | 5 | `zint`, `ntrugen` (NTRUSolve fester Länge, Portierung der Referenz), `keygen`; AES-CTR-DRBG für Tests von Anfang an | fG − gF = q, γ-Schranke, sk-Format, keygen → sign → verify für 512/1024, reduzierte n; **KAT count 0 byte-genau** (f, g, dann F) für beide Varianten | **gross** |
 | 6 | Seitenkanal-Prüfung (Abschnitt 6) | dudect ohne Befund, Valgrind ohne Befund auf geheimen Daten | mittel |
 | 7 | KAT-Schlüssel byte-genau (L10), alle Seeds | alle 200 KAT-Seeds ergeben exakt sk und pk der KAT-Dateien (Signaturen wegen L7 nicht) | klein, wenn count 0 in Phase 5 stimmt |

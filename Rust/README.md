@@ -13,11 +13,22 @@ der Python-Version (`../Python`) abweicht.
 | 1 | mod q (NTT), HashToPoint, Byteformate, Verify | fertig |
 | 2 | emulierte Gleitkommazahlen (`fpr`), FFT | fertig |
 | 3 | Zufallsquelle (`prng`), Sampler | fertig |
-| 4–8 | Sign, Keygen, Seitenkanal-Prüfung, KAT-Schlüssel | offen |
+| 4 | Falcon-Baum, ffSampling, Sign, Secret Key laden | fertig |
+| 5–8 | Keygen, Seitenkanal-Prüfung, KAT-Schlüssel, Messungen | offen |
 
-Bisher kann das Crate also Signaturen **prüfen**, aber noch nicht erzeugen.
-Die Bausteine für Sign (FFT, Sampler) sind fertig und getestet, aber noch
-nicht von aussen aufrufbar.
+Das Crate kann Signaturen **prüfen** und mit einem geladenen Secret Key
+**erzeugen**. Schlüssel erzeugen kann es noch nicht (Phase 5); bis dahin
+stammen die Secret Keys z. B. aus den NIST-KAT-Dateien.
+
+```rust
+let sk = SigningKey::from_bytes(&sk_bytes)?;   // berechnet G, Basis, Baum
+let sig = sk.sign(msg, &mut rng);              // rng: CryptoRngCore, z. B. OsRng
+assert!(sk.verifying_key().verify(msg, &sig));
+```
+
+Laufzeit (Release, ein Kern, x86-64-Laptop): Laden ≈ 4 ms / 10 ms,
+Signieren ≈ 6 ms / 12 ms für Falcon-512 / Falcon-1024, alles mit
+emulierten Gleitkommazahlen.
 
 ## Bauen und testen
 
@@ -76,7 +87,18 @@ mit Zufallsdaten und beschädigten KAT-Daten mitgeprüft.
 - Sampler bitgleich gegen `Python/data/vectors/sampler.*`: BaseSampler,
   ApproxExp, Schwelle z und Ergebnis von BerExp, x aus SamplerZ und SamplerZ
   selbst (mit einem Test-Generator, der den Byteverbrauch von Alg. 14
-  nachbildet); dazu Mittelwert, Varianz und χ²-Test der SamplerZ-Ausgabe.
+  nachbildet); dazu Mittelwert, Varianz und χ²-Test der SamplerZ-Ausgabe;
+- Basis, Gram-Matrix, LDL*, ffLDL*, Normalisierung, Falcon-Baum,
+  ffSampling, G aus dem Secret Key, Ziel t, Signaturvektor, Normprüfung und
+  Runden bitgleich gegen `Python/data/vectors/tree.*`, `ffsampling.*`,
+  `falcon.*`;
+- **ganze Signaturen byte-genau wie Python** (`flow.sign`, dazu
+  `flow.sign_restart` mit knappen Schranken, die beide Neustarts aus
+  Alg. 10 erzwingen), wenn Rust denselben SHAKE-Zufallsstrom bekommt;
+- mit den KAT-Schlüsseln: Laden und Speichern byte-genau, abgeleiteter
+  Public Key gleich dem KAT-Public-Key, Signaturen mit fester Länge, die
+  Verify annimmt und die bei veränderter Nachricht abgelehnt werden;
+- ungültige Secret Keys: f nicht invertierbar, Grad ohne Parametersatz.
 
 ## Unterschiede zur Python-Version
 
@@ -91,14 +113,15 @@ Python wird nicht angepasst (PLAN.md 2.2). Die Unterschiede sind gewollt:
 | Vergleich der Gleitkommawerte | – | bitgleich mit Python und C | gleiche Wurzeltabelle, gleiche Reihenfolge, korrekt gerundetes `fpr` (PLAN.md 3.3) |
 | FFT-Darstellung | alle n Werte | alle n Werte (nicht n/2 wie geplant) | sonst andere Rechenwege und andere Bits (PLAN.md L8) |
 | Zufall im Sampler | Bytes direkt aus der Quelle | Seed → SHAKE256 → ChaCha20 | L9 |
+| Sign: Zufall | alles aus einer Quelle | aus `rng` 40 Bytes Salt und 56 Bytes Seed, dann ChaCha20 | L9; Signaturen deshalb nicht byte-gleich mit Python oder den KAT-Dateien (bei gleichem Zufall aber schon, siehe Tests) |
 | BerExp | bricht nach dem ersten entscheidenden Byte ab | immer 8 Bytes | L7 |
 | Parametersätze | `Params` für 512/1024, Grad 1..10 erlaubt | `LogN` 1..=10 für Formate und NTT; Verify nur für 512/1024 (`UnsupportedLogN`) | verkleinerte Parameter kommen mit Phase 5 |
 
 ## Seitenkanal: was bisher gilt
 
 Geheime Daten sind f, g, F, G und alles daraus (PLAN.md 3.1). Davon berührt
-der bisherige Code das Secret-Key-Format, h = g/f und die Bausteine für
-Sign: `fpr`, FFT und Sampler.
+der bisherige Code das Secret-Key-Format, h = g/f, das Laden des Secret
+Keys (G, Basis, Baum) und Sign: `fpr`, FFT, Sampler, ffSampling.
 
 - keine Verzweigung und kein Speicherzugriff, der von geheimen Werten
   abhängt; Auswahl über Masken (`src/ct.rs`);
@@ -110,6 +133,9 @@ Sign: `fpr`, FFT und Sampler.
   zieht immer 8 Bytes (L7). Einzige Verzweigung ist „SamplerZ nimmt an“,
   deren Häufigkeit nicht von μ und σ′ abhängt (PLAN.md 3.4);
 - Zufall im Sampler aus ChaCha20, Puffer werden nach Gebrauch gelöscht;
+- Sign: erlaubte Verzweigungen nur bei „Norm zu gross“ und „s₂ passt nicht
+  in die Länge“ (Neustart, PLAN.md §6); `SigningKey` und alle
+  FFT-Zwischenwerte (`Poly`) werden beim Verwerfen gelöscht;
 - jede Maske läuft durch eine Optimierungsbarriere: auf x86-64 und aarch64
   eine leere Assembler-Anweisung, die den Wert im Register lässt, sonst
   `core::hint::black_box` (das den Wert über den Stack schickt);
@@ -141,7 +167,7 @@ die Implementierung nicht (PLAN.md §1).
 
 ```
 src/
-  lib.rs       öffentliche API: VerifyingKey, Signature, LogN, Params, Error
+  lib.rs       öffentliche API: SigningKey, VerifyingKey, Signature, LogN, Params, Error
   params.rs    Tab. 3.3, LogN
   ct.rs        Masken und Auswahl ohne Verzweigung (32 und 64 Bit)
   fpr.rs       emulierte IEEE-754-Gleitkommazahlen, konstante Laufzeit
@@ -149,10 +175,12 @@ src/
   fft_table.rs Wurzeln ζ (erzeugt mit scripts/gen_fft_table.py)
   prng.rs      Seed → SHAKE256 → ChaCha20
   sampler.rs   BaseSampler, ApproxExp, BerExp, SamplerZ
+  tree.rs      Basis, Gram-Matrix, ffLDL*, Falcon-Baum
+  ffsampling.rs ffSampling (Alg. 11)
   modq.rs      Arithmetik mod 12289, NTT
   hashing.rs   HashToPoint (öffentlich, variable Laufzeit erlaubt)
   encoding.rs  Kompression von s₂, pk- und sk-Format
-  falcon.rs    Verify, h = g/f
+  falcon.rs    Verify, h = g/f, G neu berechnen, Sign
   fuzzing.rs   Einstiegspunkte für cargo fuzz (Feature `fuzzing`)
 tests/         KAT-Tests, Leser für KAT- und Python-Testvektoren
 scripts/       Erzeugung von src/fft_table.rs

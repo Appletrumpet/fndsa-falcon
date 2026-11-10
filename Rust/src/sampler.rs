@@ -18,9 +18,6 @@
 //! Gleitkomma über `Fpr` in derselben Reihenfolge wie Python; damit sind
 //! x und die Schwelle z bitgleich mit den Python-Testvektoren.
 
-// Wird erst von Sign und Keygen benutzt (Phase 4/5); bis dahin nur in Tests.
-#![allow(dead_code)]
-
 use crate::ct::{mask64_from_msb, mask64_lt, mask64_nonzero, select64};
 use crate::fpr::Fpr;
 use crate::params::Params;
@@ -193,6 +190,7 @@ mod tests {
     use super::*;
     use crate::kat::vectors::{load, Case};
     use crate::params::{FALCON_1024, FALCON_512};
+    use crate::prng::testing::Replay;
     use crate::prng::Prng;
 
     fn fpr(c: &Case, key: &str) -> Fpr {
@@ -207,41 +205,8 @@ mod tests {
         }
     }
 
-    /// Liefert die Bytes eines Testvektors der Reihe nach.
-    struct Replay {
-        data: Vec<u8>,
-        pos: usize,
-    }
-
-    impl RandomSource for Replay {
-        fn fill(&mut self, out: &mut [u8]) {
-            let end = self.pos + out.len();
-            assert!(end <= self.data.len(), "Testvektor hat zu wenig Bytes");
-            out.copy_from_slice(&self.data[self.pos..end]);
-            self.pos = end;
-        }
-
-        /// Bildet Alg. 14 nach: Bytes einzeln lesen, bis eines von z
-        /// abweicht (höchstens 8), den Rest mit 0 auffüllen.
-        fn ber_u64(&mut self, z: u64) -> u64 {
-            let mut u = 0u64;
-            for i in 0..8 {
-                let b = self.data[self.pos];
-                self.pos += 1;
-                u |= (b as u64) << (56 - 8 * i);
-                if b as u64 != (z >> (56 - 8 * i)) & 0xFF {
-                    break;
-                }
-            }
-            u
-        }
-    }
-
     fn replay(c: &Case) -> Replay {
-        Replay {
-            data: c.bytes("random"),
-            pos: 0,
-        }
+        Replay::new(c.bytes("random"))
     }
 
     #[test]
@@ -290,10 +255,7 @@ mod tests {
             assert!(bytes.len() <= 8);
             multi_byte += (bytes.len() > 1) as usize;
             bytes.resize(8, 0);
-            let mut src = Replay {
-                data: bytes,
-                pos: 0,
-            };
+            let mut src = Replay::new(bytes);
             let got = ber_exp(fpr(&c, "x"), fpr(&c, "ccs"), &mut src) != 0;
             assert_eq!(got, c.bool("out"), "Fall {}", c.index);
             // Mit anderer Auffüllung gleich, wenn Alg. 14 vorher entschieden hat
@@ -327,7 +289,7 @@ mod tests {
             let mut src = replay(&c);
             let z = sampler_z(fpr(&c, "mu"), fpr(&c, "sigma"), params(&c), &mut src);
             assert_eq!(z as i128, c.int("out"), "Fall {}", c.index);
-            assert_eq!(src.pos, src.data.len(), "Fall {}: Bytes übrig", c.index);
+            assert_eq!(src.remaining(), 0, "Fall {}: Bytes übrig", c.index);
         }
     }
 

@@ -27,9 +27,6 @@
 //! Referenz: fpr.h / fpr.c (Technik: Mantisse mit drei Zusatzbits,
 //! Normalisierung in festen Schritten, Division und Wurzel Bit für Bit).
 
-// Wird erst von Sign und Keygen benutzt (Phase 4/5); bis dahin nur in Tests.
-#![allow(dead_code)]
-
 use core::ops::{Add, Div, Mul, Neg, Sub};
 
 use crate::ct::{mask64_from_msb, mask64_lt, mask64_nonzero, select64};
@@ -38,13 +35,17 @@ const SIGN: u64 = 1 << 63;
 const FRAC: u64 = (1 << 52) - 1;
 
 /// IEEE-754-Zahl doppelter Genauigkeit, emuliert. Kein `Debug`: die Werte
-/// sind beim Signieren geheim (PLAN.md, 3.2 Regel 8).
-#[derive(Clone, Copy, PartialEq, Eq)]
+/// sind beim Signieren geheim (PLAN.md, 3.2 Regel 8). `Default` ist +0;
+/// damit lässt sich `Fpr` löschen (`zeroize`).
+#[derive(Clone, Copy, PartialEq, Eq, Default)]
 pub struct Fpr(u64);
+
+impl zeroize::DefaultIsZeroes for Fpr {}
 
 impl Fpr {
     pub const ZERO: Fpr = Fpr(0);
     pub const ONE: Fpr = Fpr(0x3FF0_0000_0000_0000);
+    #[allow(dead_code)] // für Keygen (Phase 5)
     pub const TWO: Fpr = Fpr(0x4000_0000_0000_0000);
 
     /// Aus den IEEE-754-Bits.
@@ -93,11 +94,13 @@ impl Fpr {
     }
 
     /// x², korrekt gerundet.
+    #[allow(dead_code)] // für Keygen (Phase 5)
     pub fn sqr(self) -> Fpr {
         self * self
     }
 
     /// 1/x, korrekt gerundet; x ≠ 0.
+    #[allow(dead_code)] // für Keygen (Phase 5)
     pub fn inv(self) -> Fpr {
         Fpr::ONE / self
     }
@@ -146,6 +149,7 @@ impl Fpr {
     }
 
     /// Abschneiden (Richtung 0); |x| < 2⁶³.
+    #[allow(dead_code)] // für Keygen (Phase 5)
     pub fn trunc(self) -> i64 {
         let p = int_parts(self.0);
         apply_sign(p.s, p.int)

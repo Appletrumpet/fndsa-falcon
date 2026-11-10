@@ -73,6 +73,7 @@ name = "fndsa"
 version = "0.1.0"
 dependencies = [
  "chacha20",
+ "rand_core",
  "sha3",
  "zeroize",
 ]
@@ -128,6 +129,12 @@ checksum = "1fbf4db142a473a8d80c26bbf18454ed458bf8d26c8219c331daecfdbd079001"
 dependencies = [
  "proc-macro2",
 ]
+
+[[package]]
+name = "rand_core"
+version = "0.6.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ec0be4795e2f6a28069bec0b5ff3e2ac9bafc99e6a9a7dc3547996c5c816922c"
 
 [[package]]
 name = "sha3"

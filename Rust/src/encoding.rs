@@ -116,7 +116,6 @@ impl<'a> BitReader<'a> {
 /// Vorzeichen, 7 tiefe Bits, Rest unär; mit Nullen auf `padded_len` Bytes
 /// auffüllen. `None`, wenn die Kodierung nicht passt oder ein |sᵢ| > 2047
 /// ist. Alg. 17.
-#[allow(dead_code)] // wird erst von Sign benutzt (Phase 4)
 pub fn compress(s: &[i16], padded_len: usize) -> Option<Vec<u8>> {
     let slen = padded_len * 8;
     let mut w = BitWriter::with_capacity(padded_len);
@@ -237,12 +236,8 @@ pub fn decode_pk(b: &[u8]) -> Result<(LogN, Vec<u16>), Error> {
 // Secret Key (§3.11.5)
 // ---------------------------------------------------------------------------
 
-// Das Secret-Key-Format wird erst von Sign/Keygen benutzt (Phase 4/5);
-// bisher nur in Tests. Deshalb `allow(dead_code)` an den folgenden Items.
-
 /// Die gespeicherten Teile des Secret Keys: f, g, F. Wird beim Verwerfen
 /// gelöscht.
-#[allow(dead_code)]
 #[derive(Zeroize, ZeroizeOnDrop)]
 pub struct SecretPolys {
     #[zeroize(skip)]
@@ -253,7 +248,6 @@ pub struct SecretPolys {
 }
 
 /// Maske „x liegt nicht in [−lim, lim]“, ohne Verzweigung.
-#[allow(dead_code)]
 #[inline(always)]
 fn out_of_range_mask(x: i32, lim: i32) -> u32 {
     ct::mask_from_msb((lim - x) as u32) | ct::mask_from_msb((x + lim) as u32)
@@ -262,7 +256,6 @@ fn out_of_range_mask(x: i32, lim: i32) -> u32 {
 /// Header 0101nnnn, f und g mit `fg_bits` Bit, F mit 8 Bit, Zweierkomplement.
 /// Der kleinste Wert −2^(bits−1) ist verboten. Fehler nur, wenn ein Wert
 /// nicht passt (L6); welcher, bleibt verborgen.
-#[allow(dead_code)]
 pub fn encode_sk(sk: &SecretPolys) -> Result<Zeroizing<Vec<u8>>, Error> {
     let logn = sk.logn;
     let n = logn.n();
@@ -291,7 +284,6 @@ pub fn encode_sk(sk: &SecretPolys) -> Result<Zeroizing<Vec<u8>>, Error> {
 }
 
 /// Umkehrung von `encode_sk`.
-#[allow(dead_code)]
 pub fn decode_sk(b: &[u8]) -> Result<SecretPolys, Error> {
     let header = *b
         .first()

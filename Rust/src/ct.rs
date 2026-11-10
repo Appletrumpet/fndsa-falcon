@@ -54,7 +54,6 @@ pub fn mask_from_msb(x: u32) -> u32 {
 }
 
 /// Maske „x == 0“.
-#[allow(dead_code)] // nur vom Secret-Key-Format und Keygen benutzt (Phase 4/5)
 #[inline(always)]
 pub fn is_zero_mask(x: u32) -> u32 {
     // Das oberste Bit von x | −x ist genau dann 1, wenn x ≠ 0.

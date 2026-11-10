@@ -14,9 +14,6 @@
 //! hat damit konstante Laufzeit. Schlüssel und Puffer werden beim Verwerfen
 //! gelöscht.
 
-// Wird erst von Sign benutzt (Phase 4); bis dahin nur in Tests.
-#![allow(dead_code)]
-
 use chacha20::cipher::{KeyIvInit, StreamCipher};
 use chacha20::ChaCha20;
 use sha3::digest::{ExtendableOutput, Update, XofReader};
@@ -95,6 +92,81 @@ impl Drop for Prng {
     fn drop(&mut self) {
         // `cipher` löscht sich selbst (Feature `zeroize` von chacha20).
         self.buf.zeroize();
+    }
+}
+
+/// Test-Generatoren, die den Byteverbrauch von Python nachbilden.
+#[cfg(test)]
+pub(crate) mod testing {
+    use super::*;
+
+    /// Liefert feste Bytes (aus einem Testvektor) oder den fortlaufenden
+    /// SHAKE256-Strom über einem Startwert (`ShakeRNG` in
+    /// `Python/tests/support.py`, gemeinsame Testquelle von Python, C und
+    /// Rust). BerExp liest wie Alg. 14 Byte für Byte.
+    pub struct Replay {
+        data: Vec<u8>,
+        pos: usize,
+        xof: Option<<Shake256 as ExtendableOutput>::Reader>,
+    }
+
+    impl Replay {
+        pub fn new(data: Vec<u8>) -> Replay {
+            Replay {
+                data,
+                pos: 0,
+                xof: None,
+            }
+        }
+
+        pub fn shake(seed: &[u8]) -> Replay {
+            let mut h = Shake256::default();
+            h.update(seed);
+            Replay {
+                data: Vec::new(),
+                pos: 0,
+                xof: Some(h.finalize_xof()),
+            }
+        }
+
+        /// Noch nicht gelesene Bytes (nur für feste Bytes sinnvoll).
+        pub fn remaining(&self) -> usize {
+            self.data.len() - self.pos
+        }
+
+        fn next(&mut self) -> u8 {
+            if self.pos == self.data.len() {
+                let xof = self.xof.as_mut().expect("Testvektor hat zu wenig Bytes");
+                let mut more = [0u8; 4096];
+                xof.read(&mut more);
+                self.data.extend_from_slice(&more);
+            }
+            self.pos += 1;
+            self.data[self.pos - 1]
+        }
+    }
+
+    impl RandomSource for Replay {
+        fn fill(&mut self, out: &mut [u8]) {
+            for b in out.iter_mut() {
+                *b = self.next();
+            }
+        }
+
+        /// Bildet Alg. 14 nach: Bytes einzeln lesen, bis eines von z
+        /// abweicht (höchstens 8); der Rest bleibt 0. Bei gleichen Bytes
+        /// liefert der strenge Vergleich u < z dasselbe Ergebnis.
+        fn ber_u64(&mut self, z: u64) -> u64 {
+            let mut u = 0u64;
+            for i in 0..8 {
+                let b = self.next() as u64;
+                u |= b << (56 - 8 * i);
+                if b != (z >> (56 - 8 * i)) & 0xFF {
+                    break;
+                }
+            }
+            u
+        }
     }
 }
 
