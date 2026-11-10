@@ -17,6 +17,7 @@
 #define FALCON_OK 0
 #define FALCON_ERR_VALUE (-1) /* Python: ValueError */
 #define FALCON_ERR_NONE (-2)  /* Python: Rückgabe None */
+#define FALCON_ERR_KEYGEN (-3) /* Python: KeygenError, zu viele Fehlversuche */
 
 typedef struct {
     size_t n;
