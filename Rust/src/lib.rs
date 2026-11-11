@@ -590,7 +590,12 @@ pub struct Signature {
 impl Signature {
     /// Dekodiert eine Signatur. Ob s₂ gültig kodiert ist, prüft erst
     /// `verify`. Keine Obergrenze für die Länge: ungepolsterte Signaturen
-    /// dürfen länger als die feste Länge sein (§3.11.3).
+    /// dürfen länger als die feste Länge sein (§3.11.3); wer Eingaben aus
+    /// dem Netz liest, begrenzt die Länge vorher selbst.
+    ///
+    /// Achtung: Zu praktisch jeder gepolsterten Signatur gibt es eine ungepolsterte
+    /// (Nullbytes am Ende abgeschnitten), die ebenfalls gilt. Signaturbytes
+    /// taugen daher nicht als eindeutige Kennung (PLAN.md 5.4).
     pub fn from_bytes(b: &[u8]) -> Result<Self, Error> {
         if b.len() < 42 {
             return Err(Error::InvalidEncoding("Signatur zu kurz"));
