@@ -71,7 +71,9 @@ Kleinste unterstützte Rust-Version: 1.87 (`rust-version` in `Cargo.toml`).
 
 **Web-Oberfläche** (Vorführung im Browser, [UI-PLAN.md](UI-PLAN.md)):
 Signaturen prüfen mit den fünf Schritten von Verify, Bit kippen, eigene
-Daten, Schlüssel erzeugen und signieren. Bauen und starten (Linux oder WSL;
+Daten, Schlüssel erzeugen und signieren, dazu ein Chat, in dem jede
+Nachricht signiert und beim Empfänger geprüft wird (mit Prüfbericht und
+„Nachricht verfälschen“). Bauen und starten (Linux oder WSL;
 einmal vorher `rustup target add wasm32-unknown-unknown` und
 `cargo install wasm-bindgen-cli --version 0.2.100 --locked`):
 
@@ -317,7 +319,10 @@ dudect auf aarch64 läuft im CI-Job `dudect` auf dem ARM-Runner (echter
 Prozessor, aber geteilte Maschine, also nur ein Hinweis); ein eigenes
 ARM-Gerät wäre genauer. Gegen Power- und EM-Angriffe schützt die
 Implementierung nicht (PLAN.md §1). Die Laufzeiten oben sind vor dem
-Fault-Schutz gemessen.
+Fault-Schutz und vor der schnelleren Division gemessen. Seither (PLAN.md
+5.3): Sign 4,28 ms (Falcon-512) bzw. 9,12 ms (Falcon-1024) emuliert, mit
+Fault-Schutz, also gut 40 % schneller als in der Tabelle; Verify und Keygen
+im Wesentlichen unverändert.
 
 ## Aufbau
 

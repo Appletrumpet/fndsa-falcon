@@ -515,6 +515,61 @@ Modell ab und ist hier nur für diesen Prozessor gemessen; auf aarch64
 bräuchte es zusätzlich das DIT-Flag (§10). `ci.sh` testet beide
 Varianten.
 
+### 5.3 Sicherheitsdurchsicht und Beschleunigung (11.11.2026)
+
+**Durchsicht ohne neuen Befund:** Signierpfad, Laden des sk und Keygen
+noch einmal gelesen. Alle geheimen Zwischenwerte (auch verworfene
+Sign-Versuche) liegen in `Zeroizing`-Puffern; `unsafe` gibt es nur in
+`ct.rs` (Barriere, Valgrind-Anfragen, DIT); geheimabhängige Verzweigungen
+nur an den freigegebenen Stellen (§6). Bekannte Grenzen bleiben (Register
+und Stack nicht gelöscht, kein Schutz gegen Power-/EM-Analyse, Fault-Schutz
+ohne Doppelrechnung).
+
+**Profil (Callgrind, 20 × Sign Falcon-512):** 41 % der Befehle in der
+emulierten Addition, 31 % in der Division (fast alle aus der komplexen
+Division nach Smith in `split_fft` und der inversen FFT), 9 % Keccak
+(Prüfsumme des Schlüssels, HashToPoint), 7 % zwei FFTs in
+`compute_target`.
+
+**Umgesetzt, bitgleich und ohne neue Annahme zur konstanten Laufzeit:**
+
+| Änderung | Wirkung |
+|---|---|
+| f̂ und F̂ beim Laden einmal berechnen (`target_ffts`), nicht bei jedem Sign; in der Prüfsumme enthalten | zwei FFTs weniger je Signatur |
+| Mantissendivision über den Kehrwert (`div_mantissa`): Newton mit 4 festen Runden, Quotient per Multiplikation, je zwei Korrekturschritte mit Masken | Division 132 statt 396 Zyklen |
+
+Nicht aus der Basis genommen (dort steht FFT(−f)): Bei exakten Nullen in
+der FFT unterscheidet sich das Vorzeichen der Null, die Bitgleichheit mit
+Python ginge verloren. Die neue Division ist korrekt gerundet wie die alte,
+deshalb bitgleich; geprüft gegen die alte Schleife an allen Grenzwerten
+und 2 Millionen Zufallspaaren (`div_mantissa_matches_bitwise`), einmal mit
+500 Millionen Paaren (`--ignored`), dazu alle bisherigen Tests (auch
+`flow.sign` byte-genau). Konstante Laufzeit: im Maschinencode auf x86-64
+und aarch64 kein bedingter Sprung, kein Divisionsbefehl, kein Aufruf;
+Valgrind in allen 10 Varianten ohne Meldung; dudect Division |t| ≤ 0.65,
+alle Bausteine ≤ 2.48.
+
+| | vorher | nachher |
+|---|---|---|
+| Sign Falcon-512 | 7.10 ms | 4.28 ms (−40 %) |
+| Sign Falcon-1024 | 15.4 ms | 9.12 ms (−41 %) |
+| sk laden Falcon-512 | 5.55 ms | 4.55 ms |
+| sk laden Falcon-1024 | 12.7 ms | 10.1 ms |
+
+(emuliert, gleicher Rechner wie 5.2, mit Fault-Schutz.)
+
+**Entschieden (11.11.2026): so lassen.** Schiebungen mit geheimer Weite (`ct::shr64`,
+`ct::shl64`) laufen in sechs festen Schritten, damit die Laufzeit auch auf
+Prozessoren ohne Schiebebefehle konstanter Laufzeit nicht von der Weite
+abhängt. Die Referenz macht nur einen Schritt mit Maske (32) und schiebt
+dann nativ um `n & 31` (`fpr_ursh` in PQClean); sie setzt also voraus, dass
+der Schiebebefehl selbst konstant ist. Auf x86-64 und aarch64 trifft das zu
+(auf aarch64 mit DIT zugesichert). Ausprobiert: Sign weitere ≈ 15 %
+schneller (3.63 bzw. 7.62 ms), bitgleich. Nicht übernommen: Die bisherige
+Zusage, dass die Laufzeit auch auf Prozessoren ohne konstante
+Schiebebefehle nicht von der Weite abhängt, bleibt wichtiger als die
+15 %.
+
 ---
 
 ## 6. Wie wir die Seitenkanalresistenz prüfen

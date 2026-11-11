@@ -96,7 +96,7 @@ pub mod dudect {
     /// Neustarts.
     pub fn sign_attempt(sk: &crate::SigningKey, seed: &[u8]) -> u64 {
         let c = crate::hashing::hash_to_point(&[0u8; 40], b"dudect", sk.params.n());
-        let (t0, t1) = crate::falcon::compute_target(&c, &sk.f, &sk.big_f);
+        let (t0, t1) = crate::falcon::compute_target_fft(&c, &sk.f_hat, &sk.bigf_hat);
         let mut rng = crate::prng::Prng::new(seed);
         let (z0, z1) = crate::ffsampling::ff_sampling(&t0, &t1, &sk.tree, sk.params, &mut rng);
         let (s0, _) = crate::falcon::compute_signature_vector((&t0, &t1), (&z0, &z1), &sk.basis);
@@ -325,6 +325,9 @@ pub struct SigningKey {
     big_f: Zeroizing<Vec<i8>>,
     /// enthält Ĝ (G selbst wird nach dem Aufbau nicht mehr gebraucht)
     basis: tree::Basis,
+    /// f̂ und F̂ für das Ziel t in Sign (beim Laden berechnet)
+    f_hat: fft::Poly,
+    bigf_hat: fft::Poly,
     tree: tree::Tree,
     /// passender Public Key, für Verify nach Sign
     vk: VerifyingKey,
@@ -372,6 +375,7 @@ impl SigningKey {
         }
         // f ist invertierbar, das hat recompute_g geprüft.
         let h = falcon::compute_public_key(f, g)?;
+        let (f_hat, bigf_hat) = falcon::target_ffts(f, big_f);
         let mut h_ntt: Vec<u32> = h.iter().map(|&x| x as u32).collect();
         modq::ntt(&mut h_ntt);
         let mut sk = SigningKey {
@@ -380,6 +384,8 @@ impl SigningKey {
             g: Zeroizing::new(g.to_vec()),
             big_f: Zeroizing::new(big_f.to_vec()),
             basis,
+            f_hat,
+            bigf_hat,
             tree,
             vk: VerifyingKey { params, h, h_ntt },
             digest: Zeroizing::new([0u8; 32]),
@@ -389,7 +395,7 @@ impl SigningKey {
     }
 
     /// SHAKE256 über alle Teile des Schlüssels, die Sign benutzt: f, g, F,
-    /// Basis, Falcon-Baum und h (für Verify nach Sign). Beim Laden einmal
+    /// Basis, f̂ und F̂, Falcon-Baum und h (für Verify nach Sign). Beim Laden einmal
     /// berechnet und vor und nach jedem Signieren verglichen. Erkennt so
     /// Fehler, die den Schlüssel im Speicher verändern (Rowhammer, gekippte
     /// Bits, Fault-Angriffe auf gespeicherte Werte): Ein veränderter Baum
@@ -401,7 +407,7 @@ impl SigningKey {
         let n = self.params.n();
         // Alles in einen Puffer, Platz vorher reservieren: Beim Wachsen
         // bliebe sonst ein alter, nicht gelöschter Puffer im Speicher.
-        let mut values = 8 * n;
+        let mut values = 12 * n;
         self.tree.for_each_value(&mut |_| values += 1);
         let mut buf: Zeroizing<Vec<u8>> =
             Zeroizing::new(Vec::with_capacity(1 + 3 * n + 8 * values));
@@ -411,7 +417,7 @@ impl SigningKey {
         }
         let mut put = |x: fpr::Fpr| buf.extend_from_slice(&x.to_bits().to_le_bytes());
         let b = &self.basis;
-        for p in [&b.b00, &b.b01, &b.b10, &b.b11] {
+        for p in [&b.b00, &b.b01, &b.b10, &b.b11, &self.f_hat, &self.bigf_hat] {
             for c in p.iter() {
                 put(c.re);
                 put(c.im);
@@ -522,8 +528,8 @@ impl SigningKey {
 
     fn sign_key(&self) -> falcon::SignKey<'_> {
         falcon::SignKey {
-            f: &self.f,
-            big_f: &self.big_f,
+            f_hat: &self.f_hat,
+            bigf_hat: &self.bigf_hat,
             basis: &self.basis,
             tree: &self.tree,
         }
@@ -748,7 +754,7 @@ mod tests {
     #[test]
     fn modified_key_is_detected() {
         let mut rng = Rng(11);
-        let tamper: [fn(&mut SigningKey); 5] = [
+        let tamper: [fn(&mut SigningKey); 6] = [
             |k| k.f[0] ^= 1,
             |k| k.big_f[7] ^= 2,
             |k| k.basis.b11[3].re = fpr::Fpr::from_bits(k.basis.b11[3].re.to_bits() ^ 1),
@@ -757,6 +763,7 @@ mod tests {
                 *x = fpr::Fpr::from_bits(x.to_bits() ^ 1);
             },
             |k| k.vk.h[5] ^= 1,
+            |k| k.f_hat[9].im = fpr::Fpr::from_bits(k.f_hat[9].im.to_bits() ^ 4),
         ];
         for (i, t) in tamper.iter().enumerate() {
             let mut sk = key(LogN::FALCON_512, 3);

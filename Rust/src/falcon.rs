@@ -195,11 +195,28 @@ fn fft_of_i8(a: &[i8]) -> Poly {
 
 /// Ziel t = (c, 0)·B⁻¹ = (−c·F/q, c·f/q) in FFT-Form (Alg. 10, Z. 3).
 /// Wie Python: Produkt, dann jede Komponente durch q.
+/// (Nur noch in Tests; Sign nimmt `compute_target_fft` mit vorberechnetem f̂, F̂.)
+#[cfg(test)]
 pub(crate) fn compute_target(c: &[u16], f: &[i8], big_f: &[i8]) -> (Poly, Poly) {
+    let (f_hat, bigf_hat) = target_ffts(f, big_f);
+    compute_target_fft(c, &f_hat, &bigf_hat)
+}
+
+/// f̂ und F̂ für `compute_target_fft`; beim Laden des Secret Keys einmal
+/// berechnet statt bei jedem Signieren (spart zwei FFTs je Signatur).
+/// Bewusst nicht aus der Basis (−b₀₁, −b₁₁) genommen: Dort ist f negiert
+/// transformiert, und bei exakten Nullen in der FFT unterscheidet sich
+/// dann das Vorzeichen der Null; die Bitgleichheit mit Python ginge
+/// verloren.
+pub(crate) fn target_ffts(f: &[i8], big_f: &[i8]) -> (Poly, Poly) {
+    (fft_of_i8(f), fft_of_i8(big_f))
+}
+
+/// `compute_target` mit vorberechnetem f̂ und F̂.
+pub(crate) fn compute_target_fft(c: &[u16], f_hat: &[Cplx], bigf_hat: &[Cplx]) -> (Poly, Poly) {
     let cf: Zeroizing<Vec<Fpr>> =
         Zeroizing::new(c.iter().map(|&x| Fpr::of_i64(x as i64)).collect());
     let c_hat = fft(&cf);
-    let (f_hat, bigf_hat) = (fft_of_i8(f), fft_of_i8(big_f));
     let q = Fpr::of_i64(Q as i64);
     let div_q = |x: Cplx| Cplx::new(x.re / q, x.im / q);
     let t0 = c_hat
@@ -263,8 +280,9 @@ pub(crate) fn is_short(s1: &[i64], s2: &[i64], bound: u64) -> bool {
 
 /// Teile des Secret Keys, die Sign braucht.
 pub(crate) struct SignKey<'a> {
-    pub f: &'a [i8],
-    pub big_f: &'a [i8],
+    /// f̂ und F̂ (FFT von f und F), für das Ziel t
+    pub f_hat: &'a [Cplx],
+    pub bigf_hat: &'a [Cplx],
     pub basis: &'a Basis,
     pub tree: &'a Tree,
 }
@@ -283,7 +301,7 @@ pub(crate) fn sign_core(
     rng: &mut impl RandomSource,
 ) -> Vec<u8> {
     let c = hash_to_point(salt, msg, params.n());
-    let (t0, t1) = compute_target(&c, key.f, key.big_f);
+    let (t0, t1) = compute_target_fft(&c, key.f_hat, key.bigf_hat);
     loop {
         let (s0, s1) = loop {
             let (z0, z1) = ff_sampling(&t0, &t1, key.tree, params, rng);
