@@ -69,17 +69,37 @@ bash ci.sh          # Formatierung, Clippy, Tests, Release-Build, Doku
 
 Kleinste unterstützte Rust-Version: 1.87 (`rust-version` in `Cargo.toml`).
 
-Die CI auf GitHub (`.github/workflows/rust.yml`) hat fünf Jobs:
+**Web-Oberfläche** (Vorführung im Browser, [UI-PLAN.md](UI-PLAN.md)):
+Signaturen prüfen mit den fünf Schritten von Verify, Bit kippen, eigene
+Daten, Schlüssel erzeugen und signieren. Bauen und starten (Linux oder WSL;
+einmal vorher `rustup target add wasm32-unknown-unknown` und
+`cargo install wasm-bindgen-cli --version 0.2.100 --locked`):
+
+```bash
+bash web/build.sh
+python -m http.server -d web 8000     # http://localhost:8000
+```
+
+Für Erklärungen gibt es `VerifyingKey::verify_report`: Schritt, an dem
+Verify scheitert, Norm ‖(s₁, s₂)‖² und Schranke ⌊β²⌋.
+
+Die CI auf GitHub (`.github/workflows/rust.yml`) hat neun Jobs:
 
 - `check`: `ci.sh` auf x86-64 und aarch64;
-- `ctgrind`: Valgrind-Prüfung der konstanten Laufzeit (`ctgrind.sh`) auf
-  x86-64 und aarch64;
+- `ctgrind`: Valgrind-Prüfung der konstanten Laufzeit
+  (`ctgrind.sh --matrix`, zehn Compiler-Einstellungen) auf x86-64 und
+  aarch64;
+- `platforms`: alle Tests auf i686 (32 Bit) und s390x (Big-Endian, QEMU),
+  wasm32 übersetzen;
+- `sanitizer`: alle Tests mit AddressSanitizer;
+- `web`: Tests der WASM-Hülle, Web-Oberfläche bauen; `pages`
+  veröffentlicht sie auf `main` über GitHub Pages;
 - `dudect`: Zeitmessung auf x86-64 und aarch64, Tabelle in der
   Zusammenfassung des Laufs (geteilte Maschinen: nur ein Hinweis, der Job
   schlägt nicht fehl);
 - `msrv`: Tests mit Rust 1.87;
-- `fuzz`: baut die Fuzz-Ziele, erzeugt den Start-Korpus und lässt jedes
-  Ziel 60 Sekunden laufen.
+- `fuzz`: baut die acht Fuzz-Ziele, erzeugt den Start-Korpus und lässt
+  jedes Ziel 60 Sekunden laufen.
 
 KAT-Dateien mit Rust erzeugen und mit den offiziellen vergleichen
 (PLAN.md 5.1):
@@ -92,6 +112,7 @@ Konstante Laufzeit prüfen (PLAN.md §6):
 
 ```bash
 bash ctgrind.sh     # Valgrind, nur Linux (z. B. in Docker); CI-Job "ctgrind"
+bash ctgrind.sh --matrix   # zusätzlich opt-level 1/2/s/z, LTO, x86-64-v3, native-fpu, 1.87
 cargo run --release --example dudect --features dudect   # Zeitmessung
 ```
 
@@ -161,7 +182,32 @@ mit Zufallsdaten und beschädigten KAT-Daten mitgeprüft.
   CRT-Faktor s), Rechnen mod p, NTT, binärer GCD, FFT der Referenz;
 - ungültige Secret Keys: f nicht invertierbar, Grad ohne Parametersatz,
   erfundene Schlüssel (`InvalidKey`, siehe unten); alle 200 KAT-Schlüssel
-  bestehen die Schlüsselprüfung.
+  bestehen die Schlüsselprüfung; jede Teilprüfung von `key_valid_mask`
+  einzeln mit kleinen Beispielen (n = 2).
+
+Erweiterte Tests (Einzelheiten und Zahlen in PLAN.md 7.1):
+
+- **Mutationstests** mit `cargo-mutants`: absichtlich eingebaute Fehler
+  müssen einen Test scheitern lassen; überlebende Mutationen wurden
+  ausgewertet und die echten Lücken geschlossen;
+- **alle übrigen Python-Testvektoren** (`src/python_vectors.rs`):
+  Kodierung, mod q, HashToPoint, Bausteine von Verify, `flow.verify` und
+  die Schlüssel aus `flow.keygen` (n = 2 … 1024), 510 Fälle;
+- **Grenzfälle für Verify** (`tests/verify_edge.rs`): Norm genau auf β²
+  angenommen, β² + 1 abgelehnt; jedes einzelne gekippte Bit abgelehnt; nur
+  die gepolsterte und die ungepolsterte Länge gültig; nur das passende
+  Header-Byte; leere und 1 MiB lange Nachrichten;
+- **Statistik** (`tests/statistics.rs`): s₂ ist gaussverteilt mit dem σ
+  aus Tab. 3.3 (χ²-Test) und für verschiedene Schlüssel gleich verteilt;
+- **Fehlersimulation**: zufällig gekippte Bits im geladenen Schlüssel
+  werden alle erkannt;
+- **Löschtest** (`tests/zeroize.rs`): kein Stück von f, g, F bleibt in
+  freigegebenem Speicher;
+- **Valgrind** unter zehn Compiler-Einstellungen (`ctgrind.sh --matrix`);
+- **andere Plattformen**: 32 Bit und Big-Endian (alle Tests), wasm32
+  (übersetzt); **AddressSanitizer** ohne Meldung;
+- **Dauertest** (`cargo test --release --test soak -- --ignored`);
+- weitere **Fuzz-Ziele** für Sign, Keygen und die Gleitkomma-Emulation.
 
 ## Unterschiede zur Python-Version
 
@@ -297,13 +343,20 @@ src/
   fft_ref.rs   FFT der Referenz (n/2 Werte), nur für NTRUSolve
   keygen_tables.rs  Primzahlen und Wurzeln der Referenz (erzeugt)
   fuzzing.rs   Einstiegspunkte für cargo fuzz (Feature `fuzzing`)
-tests/         KAT-Tests, Leser für KAT- und Python-Testvektoren
+tests/         KAT-Tests, Leser für KAT- und Python-Testvektoren;
+               verify_edge (Grenzfälle Verify), statistics (Verteilung
+               von s₂), zeroize (Löschtest), soak (Dauertest, --ignored)
 scripts/       Erzeugung von src/fft_table.rs und src/keygen_tables.rs;
                bench_python.py: Laufzeit der Python-Version
 examples/      seed_corpus: Start-Korpus für die Fuzz-Ziele;
                ctgrind, dudect: Prüfung der konstanten Laufzeit;
                kat_rsp: KAT-Dateien im NIST-Format erzeugen;
+               export_kat_json: KAT-Fälle für die Web-Oberfläche;
                bench: Laufzeitmessung nach Messprotokoll
-fuzz/          Fuzz-Ziele (cargo fuzz)
+wasm/          WASM-Hülle für die Web-Oberfläche (eigenes Paket)
+web/           Web-Oberfläche: index.html, style.css, app.js, logo.svg,
+               build.sh (erzeugt pkg/ und kat.json)
+fuzz/          Fuzz-Ziele (cargo fuzz): decode_pk, decode_sk, decompress,
+               verify, signing_key, sign, keygen, fpr
 ctgrind.sh     Valgrind-Prüfung (examples/ctgrind.rs)
 ```

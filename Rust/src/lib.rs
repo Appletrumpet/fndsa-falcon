@@ -129,6 +129,9 @@ pub mod dudect {
 #[path = "../tests/common/mod.rs"]
 mod kat;
 
+#[cfg(test)]
+mod python_vectors;
+
 use std::fmt;
 
 use sha3::digest::{ExtendableOutput, Update};
@@ -216,9 +219,91 @@ impl VerifyingKey {
     /// Verify (Alg. 16). `false` bei anderem Grad als der Schlüssel,
     /// ungültiger Kodierung von s₂ oder zu grosser Norm.
     pub fn verify(&self, msg: &[u8], sig: &Signature) -> bool {
-        sig.logn == self.params.logn
-            && falcon::verify(self.params, &self.h_ntt, &sig.salt, &sig.s2_enc, msg)
+        self.verify_report(msg, sig).accepted
     }
+
+    /// Verify mit Zwischenergebnissen (UI-PLAN.md §4): an welchem Schritt
+    /// Verify scheitert, die Norm ‖(s₁, s₂)‖² und die Schranke ⌊β²⌋. Für
+    /// Erklärungen (Web-Oberfläche) und Tests; `verify` ruft diese Funktion
+    /// auf, es gibt also nur einen Rechenweg. Alles hier ist öffentlich.
+    pub fn verify_report(&self, msg: &[u8], sig: &Signature) -> VerifyReport {
+        let bound = self.params.sig_bound;
+        if sig.logn != self.params.logn {
+            return VerifyReport {
+                accepted: false,
+                failed_at: Some(VerifyStep::Decode),
+                norm: None,
+                bound,
+            };
+        }
+        match falcon::signature_norm_sq(self.params, &self.h_ntt, &sig.salt, &sig.s2_enc, msg) {
+            None => VerifyReport {
+                accepted: false,
+                failed_at: Some(VerifyStep::Decompress),
+                norm: None,
+                bound,
+            },
+            Some(norm) => VerifyReport {
+                accepted: norm <= bound,
+                failed_at: (norm > bound).then_some(VerifyStep::Norm),
+                norm: Some(norm),
+                bound,
+            },
+        }
+    }
+}
+
+/// Die fünf Schritte von Verify (Alg. 16), wie die Web-Oberfläche sie
+/// zeigt.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum VerifyStep {
+    /// Grad von Signatur und Schlüssel prüfen (scheitert, wenn er nicht passt).
+    Decode,
+    /// c = HashToPoint(Salt ‖ Nachricht); kann nicht scheitern.
+    HashToPoint,
+    /// s₂ dekomprimieren (scheitert bei ungültiger Kodierung).
+    Decompress,
+    /// s₁ = c − s₂·h mod q; kann nicht scheitern.
+    ComputeS1,
+    /// ‖(s₁, s₂)‖² ≤ ⌊β²⌋ (scheitert, wenn die Norm zu gross ist).
+    Norm,
+}
+
+impl VerifyStep {
+    /// Alle Schritte in der Reihenfolge von Alg. 16.
+    pub const ALL: [VerifyStep; 5] = [
+        VerifyStep::Decode,
+        VerifyStep::HashToPoint,
+        VerifyStep::Decompress,
+        VerifyStep::ComputeS1,
+        VerifyStep::Norm,
+    ];
+
+    /// Position in `ALL` (0 bis 4).
+    pub fn index(self) -> usize {
+        match self {
+            VerifyStep::Decode => 0,
+            VerifyStep::HashToPoint => 1,
+            VerifyStep::Decompress => 2,
+            VerifyStep::ComputeS1 => 3,
+            VerifyStep::Norm => 4,
+        }
+    }
+}
+
+/// Ergebnis von `VerifyingKey::verify_report`.
+#[derive(Clone, Debug, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct VerifyReport {
+    /// Signatur gültig.
+    pub accepted: bool,
+    /// Schritt, an dem Verify abgebrochen hat; `None`, wenn gültig.
+    pub failed_at: Option<VerifyStep>,
+    /// ‖(s₁, s₂)‖², falls bis zur Norm gerechnet wurde.
+    pub norm: Option<u64>,
+    /// ⌊β²⌋ des Parametersatzes.
+    pub bound: u64,
 }
 
 // Gleich, wenn Grad und h gleich sind (h_ntt folgt daraus).
@@ -281,13 +366,7 @@ impl SigningKey {
         }
         let basis = tree::build_basis_fft(f, g, big_f, &big_g);
         let tree = tree::build_falcon_tree(&basis, fpr::Fpr::from_bits(params.sigma.to_bits()));
-        // Toleranz wie in Python (_SIGMA_EPS): σmin ist in Tab. 3.3 auf neun
-        // Stellen gerundet, echte Blätter liegen bis zu 1e-10 darunter.
-        // Mit Fpr gerechnet, damit kein Befehl der Gleitkommaeinheit entsteht.
-        let fp = |x: f64| fpr::Fpr::from_bits(x.to_bits());
-        let eps = fp(1e-10);
-        let lo = fp(params.sigma_min) - eps;
-        let hi = fp(params.sigma_max) + eps;
+        let (lo, hi) = leaf_bounds(params);
         if ct::declassify(tree::leaves_in_range_mask(&tree, lo, hi)) == 0 {
             return Err(Error::InvalidKey);
         }
@@ -339,7 +418,9 @@ impl SigningKey {
             }
         }
         self.tree.for_each_value(&mut put);
-        debug_assert_eq!(buf.len(), buf.capacity());
+        // Sicherheitsprüfung, nicht nur im Debug-Build: Wäre der Puffer
+        // gewachsen, läge eine ungelöschte Kopie im Speicher.
+        assert_eq!(buf.len(), buf.capacity());
         let mut h = sha3::Shake256::default();
         h.update(&buf);
         for &x in &self.vk.h {
@@ -447,6 +528,16 @@ impl SigningKey {
             tree: &self.tree,
         }
     }
+}
+
+/// Erlaubter Bereich für die Blätter des Falcon-Baums: [σmin − ε, σmax + ε]
+/// mit ε = 10⁻¹⁰ wie in Python (`_SIGMA_EPS`). σmin ist in Tab. 3.3 auf
+/// neun Stellen gerundet, echte Blätter liegen bis zu 10⁻¹⁰ darunter. Mit
+/// Fpr gerechnet, damit kein Befehl der Gleitkommaeinheit entsteht.
+fn leaf_bounds(params: &Params) -> (fpr::Fpr, fpr::Fpr) {
+    let fp = |x: f64| fpr::Fpr::from_bits(x.to_bits());
+    let eps = fp(1e-10);
+    (fp(params.sigma_min) - eps, fp(params.sigma_max) + eps)
 }
 
 /// Schlüsselpaar erzeugen (Alg. 4). Aus `rng` kommen 48 Bytes Seed; der
@@ -679,6 +770,75 @@ mod tests {
         }
     }
 
+    /// Wert Nummer k im Baum (Reihenfolge wie `for_each_value`).
+    fn tree_value_mut<'a>(t: &'a mut tree::Tree, k: &mut usize) -> Option<&'a mut fpr::Fpr> {
+        match t {
+            tree::Tree::Leaf(x) => {
+                if *k == 0 {
+                    return Some(x);
+                }
+                *k -= 1;
+                None
+            }
+            tree::Tree::Node(l, a, b) => {
+                if *k < 2 * l.len() {
+                    let c = &mut l[*k / 2];
+                    return Some(if (*k).is_multiple_of(2) {
+                        &mut c.re
+                    } else {
+                        &mut c.im
+                    });
+                }
+                *k -= 2 * l.len();
+                if let Some(v) = tree_value_mut(a, k) {
+                    return Some(v);
+                }
+                tree_value_mut(b, k)
+            }
+        }
+    }
+
+    /// Fehlersimulation: 400 zufällige einzelne Bits in f, g, F, Basis,
+    /// Baum und h kippen. Die Prüfsumme muss jede Änderung erkennen und
+    /// nach dem Zurückkippen wieder passen.
+    #[test]
+    fn random_bit_flips_in_key_are_detected() {
+        let mut sk = key(LogN::FALCON_512, 6);
+        let n = sk.params.n();
+        let mut tree_len = 0;
+        sk.tree.for_each_value(&mut |_| tree_len += 1);
+        let mut r = Rng(0xB17F11B);
+        use rand_core::RngCore;
+        let flip = |sk: &mut SigningKey, part: u64, i: usize, bit: u32| match part {
+            0 => sk.f[i % n] ^= 1 << (bit % 8),
+            1 => sk.g[i % n] ^= 1 << (bit % 8),
+            2 => sk.big_f[i % n] ^= 1 << (bit % 8),
+            3 => {
+                let b = &mut sk.basis;
+                let p = match i % 4 {
+                    0 => &mut b.b00,
+                    1 => &mut b.b01,
+                    2 => &mut b.b10,
+                    _ => &mut b.b11,
+                };
+                let c = &mut p[(i / 4) % n];
+                c.im = fpr::Fpr::from_bits(c.im.to_bits() ^ (1 << (bit % 64)));
+            }
+            4 => {
+                let x = tree_value_mut(&mut sk.tree, &mut (i % tree_len)).unwrap();
+                *x = fpr::Fpr::from_bits(x.to_bits() ^ (1 << (bit % 64)));
+            }
+            _ => sk.vk.h[i % n] ^= 1 << (bit % 14),
+        };
+        for _ in 0..400 {
+            let (part, i, bit) = (r.next_u64() % 6, r.next_u64() as usize, r.next_u32());
+            flip(&mut sk, part, i, bit);
+            assert!(!sk.intact(), "Teil {part}, Stelle {i}, Bit {bit}");
+            flip(&mut sk, part, i, bit);
+            assert!(sk.intact());
+        }
+    }
+
     #[test]
     #[should_panic(expected = "Signieren abgebrochen")]
     fn sign_panics_on_fault() {
@@ -696,6 +856,51 @@ mod tests {
         let _ = SigningKey::from_bytes(&sk.to_bytes()).unwrap();
         let _ = sk.sign(b"x", &mut Rng(2));
         assert_eq!(ct::dit_enabled(), before);
+    }
+
+    /// Jeder Fehler hat einen eigenen, nicht leeren Text.
+    #[test]
+    fn error_messages() {
+        let all = [
+            Error::InvalidLogN,
+            Error::UnsupportedLogN,
+            Error::InvalidEncoding("x"),
+            Error::KeyOutOfRange,
+            Error::NotInvertible,
+            Error::InvalidKey,
+            Error::FaultDetected,
+        ];
+        let texts: Vec<String> = all.iter().map(|e| e.to_string()).collect();
+        for (i, t) in texts.iter().enumerate() {
+            assert!(t.len() > 10, "{t}");
+            assert!(!texts[..i].contains(t), "{t} doppelt");
+        }
+        assert!(Error::InvalidEncoding("Grund")
+            .to_string()
+            .contains("Grund"));
+    }
+
+    /// Kürzeste mögliche Signatur: Header, Salt und 1 Byte s₂ (42 Bytes).
+    #[test]
+    fn signature_length_limit() {
+        let mut b = vec![0x39u8; 42];
+        b[41] = 0x80;
+        let sig = Signature::from_bytes(&b).unwrap();
+        assert_eq!(sig.to_bytes(), b);
+        assert_eq!(sig.logn(), LogN::FALCON_512);
+        assert_eq!(sig.salt(), &[0x39; 40]);
+        assert!(Signature::from_bytes(&b[..41]).is_err());
+    }
+
+    /// Blätter dürfen bis zu 10⁻¹⁰ unter σmin und über σmax liegen.
+    #[test]
+    fn leaf_bounds_have_tolerance() {
+        for p in [&FALCON_512, &FALCON_1024] {
+            let (lo, hi) = leaf_bounds(p);
+            let (lo, hi) = (f64::from_bits(lo.to_bits()), f64::from_bits(hi.to_bits()));
+            assert!((p.sigma_min - lo - 1e-10).abs() < 1e-15, "{lo}");
+            assert!((hi - p.sigma_max - 1e-10).abs() < 1e-15, "{hi}");
+        }
     }
 
     /// Knappe Schranken erzwingen beide Neustarts aus Alg. 10 (Norm zu

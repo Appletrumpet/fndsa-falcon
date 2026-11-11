@@ -564,6 +564,20 @@ mod tests {
             big_f: vec![0; 256],
         };
         assert!(matches!(encode_sk(&sk), Err(Error::InvalidEncoding(_))));
+        // jede der drei Längen einzeln falsch
+        for wrong in 0..3 {
+            let len = |k: usize| if k == wrong { 511 } else { 512 };
+            let sk = SecretPolys {
+                logn: LogN::FALCON_512,
+                f: vec![0; len(0)],
+                g: vec![0; len(1)],
+                big_f: vec![0; len(2)],
+            };
+            assert!(
+                matches!(encode_sk(&sk), Err(Error::InvalidEncoding(_))),
+                "{wrong}"
+            );
+        }
     }
 
     #[test]

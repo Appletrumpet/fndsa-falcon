@@ -50,3 +50,21 @@ name = "signing_key"
 path = "fuzz_targets/signing_key.rs"
 test = false
 doc = false
+
+[[bin]]
+name = "sign"
+path = "fuzz_targets/sign.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "keygen"
+path = "fuzz_targets/keygen.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "fpr"
+path = "fuzz_targets/fpr.rs"
+test = false
+doc = false

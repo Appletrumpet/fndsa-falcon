@@ -13,8 +13,11 @@
 //!
 //! **Zahlenbereich:** Wie die Referenz kennt `Fpr` keine subnormalen Zahlen,
 //! kein ±∞ und kein NaN. Ein Ergebnis im subnormalen Bereich wird zu ±0, ein
-//! subnormaler Eingabewert gilt als ±0. Überlauf wird nicht behandelt. In
-//! Falcon kommen diese Fälle nicht vor.
+//! subnormaler Eingabewert gilt als ±0. Massgeblich ist der Wert **vor** dem
+//! Runden, wie in der Referenz (`FPR()` in `fpr.h`): Ein Ergebnis knapp unter
+//! 2⁻¹⁰²², das IEEE auf 2⁻¹⁰²² aufrunden würde, wird ebenfalls ±0 (gefunden
+//! mit dem Fuzz-Ziel `fpr`). Überlauf wird nicht behandelt. In Falcon kommen
+//! diese Fälle nicht vor.
 //!
 //! **Feature `native-fpu`** (PLAN.md 3.3, Phase 8): Addition, Subtraktion,
 //! Multiplikation und Wurzel laufen dann über die Gleitkommaeinheit der
@@ -628,5 +631,10 @@ mod tests {
         assert_eq!((tiny / Fpr::from_f64(1e200)).to_bits(), 0);
         // subnormale Eingabe gilt als 0
         assert_eq!((Fpr::from_bits(1) + Fpr::ONE).to_bits(), Fpr::ONE.to_bits());
+        // Grenzfall aus dem Fuzzing: Das genaue Produkt liegt knapp unter
+        // 2⁻¹⁰²²; IEEE rundet auf 2⁻¹⁰²² auf, Fpr (wie die Referenz) gibt −0.
+        let (a, b) = (2.999393627791262e-241, -7.418412301374842e-68);
+        assert_eq!(a * b, -f64::MIN_POSITIVE);
+        assert_eq!((Fpr::from_f64(a) * Fpr::from_f64(b)).to_bits(), SIGN);
     }
 }

@@ -72,8 +72,10 @@ impl Case {
 
     /// Bytes (Hex).
     pub fn bytes(&self, key: &str) -> Vec<u8> {
+        // leere Bytefolge steht als "-" in der Datei
         self.field(key, "bytes")
             .first()
+            .filter(|h| h.as_str() != "-")
             .map(|h| super::hex(h))
             .unwrap_or_default()
     }

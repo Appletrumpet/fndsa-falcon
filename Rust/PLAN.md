@@ -9,6 +9,10 @@ x86-64-Hardware, Assembler-Stichprobe auf beiden Zielen.
 Ergebnisse und Befunde in Abschnitt 6. Danach ergänzt (6.2): Fault-Schutz
 in Sign (`try_sign`: Prüfsumme des Schlüssels, untere Normschranke), DIT
 auf aarch64 und ein CI-Job `dudect` auf x86-64- und ARM-Runnern.
+Erweiterte Tests (7.1): Mutationstests, Grenzfälle für Verify, Statistik
+der Signaturen, Löschtest, Valgrind-Matrix, 32 Bit/Big-Endian, Sanitizer,
+Dauertest, drei neue Fuzz-Ziele. Web-Oberfläche nach UI-PLAN.md (W0–W5,
+W7; neue API `VerifyingKey::verify_report`).
 Keygen ist eine Portierung der Referenz (PQClean, `keygen.c`, `fft.c`) und
 erzeugt aus allen 200 KAT-Seeds byte-genau die KAT-Schlüssel. Zuvor:
 Phase 0 bis 4 sind umgesetzt:
@@ -697,7 +701,8 @@ bessere Prüfung. Ergebnis des ersten Laufs: steht aus.
   C-Portierung) erzeugt Vektoren für jede Funktion
   (`Python/data/vectors/*.txt`, Leser in `tests/common/vectors.rs`).
   **Geändert (10.11.2026):** Vergleich **bitgleich**, nicht mit Toleranz
-  (Begründung in 3.3). Umgesetzt für FFT und Sampler.
+  (Begründung in 3.3). Umgesetzt für FFT und Sampler. **Ergänzt
+  (11.11.2026):** auch die übrigen Vektoren, siehe 7.2.
 - **Nicht bitgleich zu erwarten:** (F, G) aus NTRUSolve (3.5) und wegen L7
   alles, was auf die Zufallsfolge nach dem ersten BerExp-Aufruf angewiesen ist
   (SamplerZ-Folgen, exakte Signatur aus dem Testvektor).
@@ -720,6 +725,120 @@ bessere Prüfung. Ergebnis des ersten Laufs: steht aus.
 - **Fuzzing** (`cargo fuzz`) für `decode_pk`, `decode_sk`, `decode_sig`,
   `decompress` und `verify`: diese verarbeiten Daten von aussen. Dazu
   `signing_key` (laden, signieren, prüfen).
+
+### 7.1 Erweiterte Tests (11.11.2026)
+
+Ziel: Fehler finden, die die Vergleiche mit Python und den KAT-Dateien
+nicht sehen können. Der Vergleich mit der C-Implementierung und PQClean
+(signieren hier, prüfen dort und umgekehrt; vergleichendes Fuzzing von
+Verify) ist zurückgestellt.
+
+| Test | Datei | Ergebnis |
+|---|---|---|
+| Mutationstests (`cargo-mutants`) | Linux-Container | siehe unten |
+| Normschranke genau auf ⌊β²⌋ und eins darüber (eigens gebauter Public Key: s₂ = (1, 0, …), h = c − t, also s₁ = t) | `tests/verify_edge.rs` | β² angenommen, β² + 1 abgelehnt |
+| jedes einzelne gekippte Bit einer Signatur (5 Signaturen, alle Bits) | `tests/verify_edge.rs` | alle abgelehnt |
+| Längen: nur gepolstert und ungepolstert gültig, wie PQClean `do_verify` | `tests/verify_edge.rs` | ja, genau diese zwei |
+| alle 256 Header-Bytes; Public Key mit Koeffizient q, falscher Länge, anderem Grad | `tests/verify_edge.rs` | nur 0x30 \| logn |
+| leere Nachricht und 1 MiB | `tests/verify_edge.rs` | ok |
+| Verteilung von s₂: Mittel, σ, Wölbung, χ² gegen N(0, σ²); zwei Schlüssel gleich verteilt | `tests/statistics.rs` | 512: σ̂ = 165.64 (σ = 165.74), Wölbung 3.000, χ² = 16.6; 1024: σ̂ = 168.03 (168.39), χ² = 12.9; zwei Schlüssel χ² = 13.8 (Schranke jeweils 40.8, p = 0.001) |
+| Fehlersimulation: 400 zufällige Bits in f, g, F, Basis, Baum, h | `lib.rs` | alle von der Prüfsumme erkannt |
+| Löschtest: eigener Speicherverwalter sucht in freigegebenem Speicher nach Stücken von f, g, F (als `i8`) und f mod q (`u32`); Gegenprobe mit absichtlich ungelöschtem Puffer | `tests/zeroize.rs` | keine Kopie gefunden, Gegenprobe erkannt |
+| Valgrind über Compiler-Einstellungen: opt-level 0/1/2/3/s/z, LTO, x86-64-v3, native-fpu, Rust 1.87 (`ctgrind.sh --matrix`) | `ctgrind.sh` | 10 Varianten ohne Meldung (x86-64; aarch64 im CI-Job) |
+| 32 Bit (i686) und Big-Endian (s390x unter QEMU), alle Tests | CI-Job `platforms` | alle bestehen, auch die 200 KAT-Schlüssel byte-genau |
+| wasm32 (für die Web-Oberfläche) | CI-Job `platforms` | übersetzt; Tests nicht ausgeführt (keine Laufzeitumgebung) |
+| AddressSanitizer, alle Tests | CI-Job `sanitizer` | keine Meldung |
+| Dauertest (`--ignored`) | `tests/soak.rs` | 5000 Schlüssel / 100 000 Signaturen (512) und 1250 / 25 000 (1024) ohne Fehler, 34 min |
+| neue Fuzz-Ziele `sign` (beliebiger Zufall und Nachricht), `keygen` (beliebiger Seed), `fpr` (gegen `f64`) | `fuzz/` | `fpr` fand einen Grenzfall, siehe unten |
+| zurückgestellte Abdeckungslücken: `Display` aller Fehler, Getter, gültiges s₂ im Fuzz-Ziel, `FuzzRng` | `lib.rs`, `fuzzing.rs`, `tests/keygen.rs` | geschlossen |
+| restliche Python-Testvektoren (21 Dateien) | `src/python_vectors.rs` | 510 Fälle bestehen, siehe 7.2 |
+
+**Befund durch Fuzzing (`fpr`):** Liegt das genaue Ergebnis einer
+Multiplikation knapp unter 2⁻¹⁰²², rundet IEEE auf 2⁻¹⁰²² auf; `Fpr` gibt
+±0. Die Referenz macht dasselbe (`FPR()` in PQClean `fpr.h`: Der Exponent
+vor dem Runden entscheidet). Kein Fehler, aber die Beschreibung des
+Zahlenbereichs war ungenau; jetzt in `fpr.rs` präzisiert und als
+Regressionstest festgehalten. In Falcon kommen solche Werte nicht vor.
+
+**Mutationstests** (`cargo-mutants` 27.1, im Linux-Container): Das
+Werkzeug baut kleine Fehler ein (Operator getauscht, Rückgabewert fest,
+Funktion leer) und prüft, ob ein Test scheitert. Lauf über alle Dateien
+ausser dem portierten Keygen (`ntrugen.rs`, `zint.rs`, `fft_ref.rs` und den
+erzeugten Tabellen, zusammen rund 2000 Mutationen; diesen Code prüfen die
+200 byte-genauen KAT-Schlüssel streng) und ohne den Code, der nur mit den
+Features `dudect`/`ctgrind` oder auf aarch64 wirkt. Wartezeit 30 s je
+Mutation, der Test der 200 KAT-Schlüssel übersprungen (prüft den Keygen).
+
+| Ergebnis | Anzahl |
+|---|---|
+| erkannt (Test scheitert) | 606 |
+| erkannt durch Zeitüberschreitung (z. B. Sign startet endlos neu) | 439 |
+| nicht übersetzbar | 177 |
+| überlebt | 60 |
+
+Die 60 Überlebenden:
+
+| Gruppe | Anzahl | Bewertung |
+|---|---|---|
+| `fuzzing.rs` (Einstiege der Fuzz-Ziele, Test-Zufallsquellen) | 35 | Testcode |
+| `ct.rs`: Konstanten der Valgrind-Anfragen, DIT | 8 | wirken nur unter Valgrind bzw. auf aarch64 |
+| gleichwertig (`find_psi`: (q ± 1)/2048 = 6; `bitrev10`: Bit 10 ist 0; `decompress`: Endprüfung schon durch `rest_is_zero` abgedeckt; p/(±1) = p·(±1); `0x50 \| logn` = `0x50 ^ logn`; in den Blattgrenzen sind „unter“ und „über“ nie beide wahr) | 9 | keine Änderung |
+| **echte Lücken:** `key_valid_mask` (G-Schranke, konstanter Term, übrige Terme, ganze Funktion), `leaves_in_range_mask` (ganze Funktion, beide Verknüpfungen), Längenprüfung in `encode_sk` | 8 | neue Tests, siehe unten |
+
+Aus den Teilläufen davor kamen sechs weitere Lücken in `lib.rs`: Texte der
+Fehler (`Display`), Mindestlänge 42 Bytes in `Signature::from_bytes`,
+Vorzeichen der Toleranz um σmin/σmax, Platzberechnung in `key_digest`
+(nur `debug_assert`, jetzt `assert`, weil ein gewachsener Puffer eine
+ungelöschte Kopie hinterliesse). Neue Tests: `key_valid_mask_each_condition`
+(kleine Schlüssel mit n = 2, z. B. f = 1, g = −97, F = 127, G = −30, also
+fG − gF = q, und jede Bedingung einzeln verletzt),
+`leaves_in_range_mask_bounds` (Grenzen genau auf dem kleinsten und
+grössten Blatt eines KAT-Schlüssels und eine Stufe enger),
+`error_messages`, `signature_length_limit`, `leaf_bounds_have_tolerance`,
+Längenfälle in `encode_sk_rejects_mismatched_lengths`. Nachlauf über
+diese Funktionen: 91 Mutationen, 79 erkannt, 9 nicht übersetzbar, 3
+überlebt, alle drei gleichwertig.
+
+
+### 7.2 Restliche Python-Testvektoren (11.11.2026)
+
+Nach dem Vergleich mit der C-Implementierung, die alle Dateien in
+`Python/data/vectors/` prüft, nutzt Rust jetzt auch die übrigen 21
+(`src/python_vectors.rs`, dafür `falcon::compute_s1` als eigene Funktion
+wie in C):
+
+| Dateien | geprüft | übersprungen | bekannte Unterschiede |
+|---|---|---|---|
+| `encoding.*` (9) | 162 | 21 | 2 |
+| `modq.*` (6) | 242 | 11 | 15 |
+| `hashing.hash_to_point` | 31 | 0 | 0 |
+| `falcon.compute_public_key`, `compute_s1`, `is_short` | 33 | 0 | 0 |
+| `flow.verify` | 12 | 0 | 0 |
+| `flow.keygen` (n = 2 … 1024) | 30 | 0 | 0 |
+| **zusammen** | **510** | **32** | **17** |
+
+- **Übersprungen** heisst: Rust kann die Eingabe durch seine Typen gar
+  nicht darstellen (Salt ≠ 40 Bytes, Koeffizient ausserhalb von i8, Länge
+  keine Zweierpotenz); in Python sind all diese Fälle Fehler. Bei
+  `decode_kat_message` prüft die Testhilfe `split_kat_sm` das Format nicht,
+  dort zählen nur die gültigen Fälle.
+- **Bekannte Unterschiede:** Python erlaubt für mod q auch n = 1 (Falcon
+  beginnt bei n = 2), und Python dekomprimiert |sᵢ| > 2047, Rust lehnt das
+  wie die Referenz ab (L5).
+- **Darstellung der NTT:** Rust legt die Werte in bitumgekehrter
+  Reihenfolge ab, Python in natürlicher; die Werte sind dieselben.
+- **`decode_sig`:** `Signature::from_bytes` kennt den Parametersatz nicht
+  und nimmt jeden gültigen Grad an; ein fremder Grad fällt erst in Verify
+  auf (Schritt `Decode`). Eine Obergrenze für die Länge hat Python so wenig
+  wie Rust; nur die C-Implementierung lehnt mehr als `sig_bytelen` + 1
+  Bytes ab.
+- **`flow.keygen`:** Rust erzeugt mit dem Keygen der Referenz andere
+  Schlüssel (L10). Geprüft wird, dass Rust die Python-Schlüssel für alle
+  Grade als gültig erkennt: fG − gF = q exakt, h = g/f, G aus f, g, F (wo
+  |G| ≤ 127), für 512/1024 auch Laden über das Secret-Key-Format.
+- Nicht übertragbar: `bigint`, `poly.*`, die übrigen `ntrugen.*`
+  (anderer Keygen), `shake256` (Crate `sha3`), `sampler.uniform_bits`
+  (in Rust Teil von BaseSampler).
 
 ---
 

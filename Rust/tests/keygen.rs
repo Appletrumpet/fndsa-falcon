@@ -73,3 +73,21 @@ fn unsupported_degree() {
         Err(Error::UnsupportedLogN)
     ));
 }
+
+/// Grad und Länge der Schlüssel und Signaturen passen zum Parametersatz.
+#[test]
+fn degrees_and_lengths() {
+    use fndsa::{FALCON_1024, FALCON_512};
+    for (logn, p) in [
+        (LogN::FALCON_512, &FALCON_512),
+        (LogN::FALCON_1024, &FALCON_1024),
+    ] {
+        let (sk, pk) = fndsa::keygen_from_seed(logn, &[3; 48]).unwrap();
+        assert_eq!(sk.logn(), logn);
+        assert_eq!(pk.logn(), logn);
+        assert_eq!(p.logn(), logn);
+        assert_eq!(p.n(), logn.n());
+        assert_eq!(pk.to_bytes().len(), logn.pk_bytes());
+        assert_eq!(sk.to_bytes().len(), logn.sk_bytes());
+    }
+}

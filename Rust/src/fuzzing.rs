@@ -7,8 +7,11 @@
 //! unten rufen sie mit Zufallsdaten und beschädigten KAT-Daten auf, damit
 //! sie auch ohne `cargo fuzz` (Linux/WSL, Nightly) geprüft sind.
 
+use std::sync::OnceLock;
+
 use crate::encoding;
-use crate::params::{FALCON_1024, FALCON_512};
+use crate::fpr::Fpr;
+use crate::params::{LogN, FALCON_1024, FALCON_512};
 use crate::prng::{Prng, RandomSource};
 use crate::{Signature, SigningKey, VerifyingKey};
 
@@ -108,10 +111,183 @@ pub fn verify(data: &[u8]) {
     }
 }
 
+/// Zufallsquelle aus den Fuzz-Daten: liefert deren Bytes der Reihe nach,
+/// danach Nullen. So steuert der Fuzzer Salt und Zufall des Samplers.
+struct DataRng<'a>(&'a [u8]);
+
+impl rand_core::RngCore for DataRng<'_> {
+    fn next_u32(&mut self) -> u32 {
+        let mut b = [0; 4];
+        self.fill_bytes(&mut b);
+        u32::from_le_bytes(b)
+    }
+    fn next_u64(&mut self) -> u64 {
+        let mut b = [0; 8];
+        self.fill_bytes(&mut b);
+        u64::from_le_bytes(b)
+    }
+    fn fill_bytes(&mut self, dest: &mut [u8]) {
+        let k = dest.len().min(self.0.len());
+        dest[..k].copy_from_slice(&self.0[..k]);
+        dest[k..].fill(0);
+        self.0 = &self.0[k..];
+    }
+    fn try_fill_bytes(&mut self, dest: &mut [u8]) -> Result<(), rand_core::Error> {
+        self.fill_bytes(dest);
+        Ok(())
+    }
+}
+
+impl rand_core::CryptoRng for DataRng<'_> {}
+
+/// Zwei feste Schlüssel (Falcon-512 und -1024), einmal erzeugt.
+fn fixed_keys() -> &'static [SigningKey; 2] {
+    static KEYS: OnceLock<[SigningKey; 2]> = OnceLock::new();
+    KEYS.get_or_init(|| {
+        [LogN::FALCON_512, LogN::FALCON_1024]
+            .map(|l| crate::keygen_from_seed(l, &[0xF0; 48]).unwrap().0)
+    })
+}
+
+/// Sign mit beliebigem Zufall und beliebiger Nachricht. Aufbau: 1 Byte
+/// Auswahl des Schlüssels, bis zu 96 Bytes Zufall (Salt und Seed, fehlende
+/// Bytes sind 0), Rest = Nachricht. Die Signatur muss ohne Fehler entstehen,
+/// die feste Länge haben und Verify bestehen.
+pub fn sign(data: &[u8]) {
+    let Some((&sel, rest)) = data.split_first() else {
+        return;
+    };
+    let sk = &fixed_keys()[(sel & 1) as usize];
+    let (rnd, msg) = rest.split_at(rest.len().min(96));
+    let sig = sk
+        .try_sign(msg, &mut DataRng(rnd))
+        .expect("Sign ohne Fehler im Rechner");
+    let bytes = sig.to_bytes();
+    assert_eq!(bytes.len(), sk.params.sig_bytelen());
+    assert!(sk
+        .verifying_key()
+        .verify(msg, &Signature::from_bytes(&bytes).unwrap()));
+}
+
+/// Keygen aus beliebigem Seed (die ersten 48 Bytes, fehlende sind 0; Bit 0
+/// von Byte 48 wählt Falcon-1024). Der Schlüssel muss sich speichern und
+/// wieder laden lassen und denselben Public Key ergeben.
+pub fn keygen(data: &[u8]) {
+    let mut seed = [0u8; 48];
+    let k = data.len().min(48);
+    seed[..k].copy_from_slice(&data[..k]);
+    let logn = if data.get(48).is_some_and(|b| b & 1 == 1) {
+        LogN::FALCON_1024
+    } else {
+        LogN::FALCON_512
+    };
+    let (sk, pk) = crate::keygen_from_seed(logn, &seed).unwrap();
+    let loaded = SigningKey::from_bytes(&sk.to_bytes()).expect("Keygen-Schlüssel lädt");
+    assert!(loaded.verifying_key() == pk);
+    assert!(VerifyingKey::from_bytes(&pk.to_bytes()).unwrap() == pk);
+}
+
+/// Emulierte Gleitkommazahlen gegen die Hardware (`f64`) für zwei
+/// beliebige Werte (je 8 Bytes little-endian). Geprüft wird nur im
+/// Zahlenbereich von `Fpr` (PLAN.md 3.3): Eingaben normal oder ±0;
+/// Ergebnisse normal oder ±0 müssen bitgleich sein, subnormale werden zu
+/// ±0, Überlauf ist nicht Teil des Bereichs.
+pub fn fpr(data: &[u8]) {
+    if data.len() < 16 {
+        return;
+    }
+    let a = u64::from_le_bytes(data[..8].try_into().unwrap());
+    let b = u64::from_le_bytes(data[8..16].try_into().unwrap());
+    let in_range = |x: u64| {
+        let e = (x >> 52) & 0x7FF;
+        e != 0x7FF && (e != 0 || x << 1 == 0)
+    };
+    if !in_range(a) || !in_range(b) {
+        return;
+    }
+    let (fa, fb) = (Fpr::from_bits(a), Fpr::from_bits(b));
+    let (xa, xb) = (f64::from_bits(a), f64::from_bits(b));
+    let check = |op: &str, got: Fpr, want: f64| {
+        if !want.is_finite() {
+            return;
+        }
+        let flushed = got.to_bits() << 1 == 0;
+        if want.abs() == f64::MIN_POSITIVE && flushed && !cfg!(feature = "native-fpu") {
+            // Genaues Ergebnis knapp unter 2⁻¹⁰²², IEEE rundet auf; Fpr wie
+            // die Referenz: ±0 (siehe Zahlenbereich in fpr.rs).
+        } else if want == 0.0 || want.is_normal() {
+            assert_eq!(got.to_bits(), want.to_bits(), "{op}({xa:e}, {xb:e})");
+        } else if !cfg!(feature = "native-fpu") {
+            // subnormal: Fpr liefert ±0 (mit native-fpu bleibt es subnormal)
+            assert!(flushed, "{op}({xa:e}, {xb:e})");
+        }
+    };
+    check("add", fa + fb, xa + xb);
+    check("sub", fa - fb, xa - xb);
+    check("mul", fa * fb, xa * xb);
+    if xb != 0.0 {
+        check("div", fa / fb, xa / xb);
+    }
+    check("sqrt", fa.abs().sqrt(), xa.abs().sqrt());
+    if xa.abs() < 9.0e18 {
+        assert_eq!(fa.rint(), xa.round_ties_even() as i64, "rint({xa:e})");
+        assert_eq!(fa.floor(), xa.floor() as i64, "floor({xa:e})");
+        assert_eq!(fa.trunc(), xa.trunc() as i64, "trunc({xa:e})");
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::kat;
+
+    /// Neue Ziele mit Zufallsdaten; `fpr` mit Exponenten nahe beieinander,
+    /// damit Rundung, Auslöschung und Unterlauf vorkommen.
+    #[test]
+    fn new_targets_random() {
+        let mut r = Rng(0xA11CE);
+        for i in 0..40 {
+            let len = (r.next() % 300) as usize;
+            sign(&r.bytes(len));
+            if i < 2 {
+                keygen(&r.bytes(49));
+            }
+        }
+        sign(&[]);
+        sign(&[1]);
+        for i in 0..200_000u64 {
+            let mut d = r.bytes(16);
+            if i % 2 == 0 {
+                // Exponenten in einen kleinen Bereich legen (Bits 52..62)
+                let lim = [1022u64, 30, 1][(i % 3) as usize];
+                for half in [0usize, 8] {
+                    let x = u64::from_le_bytes(d[half..half + 8].try_into().unwrap());
+                    let e = 1023 - lim + (x >> 52 & 0x7FF) % (2 * lim + 1);
+                    let x = (x & !(0x7FF << 52)) | (e << 52);
+                    d[half..half + 8].copy_from_slice(&x.to_le_bytes());
+                }
+            }
+            fpr(&d);
+        }
+        fpr(&[0; 16]);
+        fpr(&[0; 3]);
+    }
+
+    /// Restliche Wege: gültiges s₂ dekodieren, FuzzRng direkt.
+    #[test]
+    fn remaining_paths() {
+        let rec = &kat::load_kat(512)[0];
+        let (_, sig) = kat::split_kat_sm(&rec.sm, rec.msg.len());
+        decompress(&sig[41..]);
+        let mut rng = FuzzRng(Prng::new(b"x"));
+        use rand_core::RngCore;
+        let (a, b) = (rng.next_u32(), rng.next_u64());
+        assert!(a != 0 || b != 0);
+        let mut d = DataRng(&[1, 2, 3]);
+        assert_eq!(d.next_u32(), 0x0003_0201);
+        assert_eq!(d.next_u64(), 0);
+        assert!(d.try_fill_bytes(&mut [0; 4]).is_ok());
+    }
 
     struct Rng(u64);
     impl Rng {

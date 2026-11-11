@@ -54,7 +54,10 @@ pub(crate) fn compute_public_key(f: &[i8], g: &[i8]) -> Result<Vec<u16>, Error> 
 
 /// Verify (Alg. 16). Alles hier ist öffentlich, normaler Code erlaubt.
 ///
-/// `h_ntt` ist h in NTT-Form (im `VerifyingKey` vorberechnet).
+/// `h_ntt` ist h in NTT-Form (im `VerifyingKey` vorberechnet). Die
+/// öffentliche API geht über `VerifyingKey::verify_report`; diese Form
+/// bleibt für die Tests der Bausteine.
+#[cfg(test)]
 pub(crate) fn verify(
     params: &Params,
     h_ntt: &[u32],
@@ -77,24 +80,31 @@ pub(crate) fn signature_norm_sq(
     let n = params.n();
     let c = hash_to_point(salt, msg, n);
     let s2 = decompress(s2_enc, n, params.s2_padded_len())?;
+    let s1 = compute_s1(&c, &s2, h_ntt);
 
-    // s₁ = c − s₂·h mod q, zentriert (Alg. 16, Z. 5)
+    // ‖(s₁, s₂)‖² ≤ ⌊β²⌋ (Alg. 16, Z. 6). Kein Überlauf: höchstens
+    // 1024 · (6144² + 2047²) < 2⁴⁶.
+    let mut norm = 0u64;
+    for (&a, &b) in s1.iter().zip(&s2) {
+        let (a, b) = (a as i64, b as i64);
+        norm += (a * a + b * b) as u64;
+    }
+    Some(norm)
+}
+
+/// s₁ = c − s₂·h mod q, zentriert nach (−q/2, q/2] (Alg. 16, Z. 5).
+/// `c` mit Werten in [0, q), `h_ntt` ist h in NTT-Form. Öffentlich.
+pub(crate) fn compute_s1(c: &[u16], s2: &[i16], h_ntt: &[u32]) -> Vec<i32> {
     let mut t: Vec<u32> = s2.iter().map(|&x| modq::from_i32(x as i32)).collect();
     modq::ntt(&mut t);
     for (ti, &hi) in t.iter_mut().zip(h_ntt) {
         *ti = modq::mul(*ti, hi);
     }
     modq::intt(&mut t);
-
-    // ‖(s₁, s₂)‖² ≤ ⌊β²⌋ (Alg. 16, Z. 6). Kein Überlauf: höchstens
-    // 1024 · (6144² + 2047²) < 2⁴⁶.
-    let mut norm = 0u64;
-    for i in 0..n {
-        let s1 = modq::center(modq::sub(c[i] as u32, t[i])) as i64;
-        let s2i = s2[i] as i64;
-        norm += (s1 * s1 + s2i * s2i) as u64;
-    }
-    Some(norm)
+    c.iter()
+        .zip(&t)
+        .map(|(&ci, &ti)| modq::center(modq::sub(ci as u32, ti)))
+        .collect()
 }
 
 /// Untere Schranke für ‖(s₁, s₂)‖² einer ehrlich erzeugten Signatur
@@ -239,7 +249,7 @@ pub(crate) fn to_coefficients(
 /// Ganzzahlige Normprüfung wie in Verify (Alg. 16, Z. 6). s₁ ist geheim:
 /// ohne Verzweigung. Beträge werden auf 2³¹ begrenzt (über Maske), damit
 /// auch unsinnig grosse Werte nicht überlaufen; die Summe läuft in u128.
-fn is_short(s1: &[i64], s2: &[i64], bound: u64) -> bool {
+pub(crate) fn is_short(s1: &[i64], s2: &[i64], bound: u64) -> bool {
     use crate::ct::{cond_neg64, mask64_lt, select64};
     let mut norm: u128 = 0;
     for &x in s1.iter().chain(s2) {
@@ -301,6 +311,72 @@ mod tests {
     use super::*;
     use crate::encoding::{decode_pk, decode_sk};
     use crate::kat;
+
+    /// Kleiner gültiger Schlüssel für n = 2: f = 1, g = −97, F = 127,
+    /// G = −30, denn fG − gF = −30 + 97·127 = 12289 = q.
+    #[test]
+    fn key_valid_mask_each_condition() {
+        let ok = |f: [i8; 2], g: [i8; 2], bf: [i8; 2], bg: [i16; 2]| {
+            let m = key_valid_mask(&f, &g, &bf, &bg);
+            assert!(m == 0 || m == u32::MAX, "keine Maske: {m:#x}");
+            m == u32::MAX
+        };
+        assert!(ok([1, 0], [-97, 0], [127, 0], [-30, 0]));
+        // konstanter Term ≠ q
+        assert!(!ok([1, 0], [-97, 0], [127, 0], [-29, 0]));
+        // anderer Koeffizient ≠ 0
+        assert!(!ok([1, 0], [-97, 0], [127, 0], [-30, 1]));
+        // Gleichung erfüllt (fG − gF = G = q), aber |G| > 127
+        assert!(!ok([1, 0], [0, 0], [0, 0], [Q as i16, 0]));
+        assert!(!ok([1, 0], [0, 0], [0, 0], [128, 0]));
+        // x² = −1: f = x, G = −q·x ergibt fG = q
+        assert!(!ok([0, 1], [0, 0], [0, 0], [0, -(Q as i16)]));
+    }
+
+    /// Blattprüfung auf dem Baum eines KAT-Schlüssels: Grenzen genau auf
+    /// dem kleinsten und grössten Blatt gültig, eine Stufe enger ungültig.
+    #[test]
+    fn leaves_in_range_mask_bounds() {
+        use crate::tree::{build_basis_fft, build_falcon_tree, leaves_in_range_mask, Tree};
+        fn leaves(t: &Tree, out: &mut Vec<Fpr>) {
+            match t {
+                Tree::Leaf(x) => out.push(*x),
+                Tree::Node(_, l, r) => {
+                    leaves(l, out);
+                    leaves(r, out);
+                }
+            }
+        }
+        let rec = &kat::load_kat(512)[0];
+        let sk = decode_sk(&rec.sk).unwrap();
+        let g = recompute_g(&sk.f, &sk.g, &sk.big_f).unwrap();
+        let basis = build_basis_fft(&sk.f, &sk.g, &sk.big_f, &g);
+        let sigma = Fpr::from_bits(crate::params::FALCON_512.sigma.to_bits());
+        let tree = build_falcon_tree(&basis, sigma);
+        let mut v = Vec::new();
+        leaves(&tree, &mut v);
+        // positive Zahlen: Bits wachsen mit dem Wert
+        let lo = v.iter().map(|x| x.to_bits()).min().unwrap();
+        let hi = v.iter().map(|x| x.to_bits()).max().unwrap();
+        assert!(lo < hi);
+        let m = |a: u64, b: u64| leaves_in_range_mask(&tree, Fpr::from_bits(a), Fpr::from_bits(b));
+        assert_eq!(m(lo, hi), u64::MAX);
+        assert_eq!(m(lo + 1, hi), 0, "kleinstes Blatt unter der Grenze");
+        assert_eq!(m(lo, hi - 1), 0, "grösstes Blatt über der Grenze");
+        assert_eq!(m(hi, hi), 0);
+    }
+
+    /// Echter KAT-Schlüssel gültig; F verändert (G neu berechnet) ungültig.
+    #[test]
+    fn key_valid_mask_kat_and_modified() {
+        let rec = &kat::load_kat(512)[0];
+        let mut sk = decode_sk(&rec.sk).unwrap();
+        let g = recompute_g(&sk.f, &sk.g, &sk.big_f).unwrap();
+        assert_eq!(key_valid_mask(&sk.f, &sk.g, &sk.big_f, &g), u32::MAX);
+        sk.big_f[0] = sk.big_f[0].wrapping_add(1);
+        let g = recompute_g(&sk.f, &sk.g, &sk.big_f).unwrap();
+        assert_eq!(key_valid_mask(&sk.f, &sk.g, &sk.big_f, &g), 0);
+    }
 
     #[test]
     fn kat_public_key_from_secret_key() {

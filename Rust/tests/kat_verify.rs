@@ -102,3 +102,50 @@ fn reduced_degrees_are_unsupported() {
         assert!(VerifyingKey::from_bytes(&[l; 897]).is_err());
     }
 }
+
+/// verify_report: alle 200 KAT-Fälle gültig mit Norm ≤ Schranke;
+/// manipulierte Fälle scheitern am erwarteten Schritt (UI-PLAN.md §4).
+#[test]
+fn verify_report_steps() {
+    use fndsa::VerifyStep;
+    for n in [512, 1024] {
+        let recs = load_kat(n);
+        for rec in &recs {
+            let (msg, sig_bytes) = split_kat_sm(&rec.sm, rec.msg.len());
+            let pk = VerifyingKey::from_bytes(&rec.pk).unwrap();
+            let r = pk.verify_report(&msg, &Signature::from_bytes(&sig_bytes).unwrap());
+            assert!(r.accepted && r.failed_at.is_none(), "count {}", rec.count);
+            assert!(r.norm.unwrap() <= r.bound);
+            assert_eq!(
+                r.bound,
+                pk.verify_report(&msg, &Signature::from_bytes(&sig_bytes).unwrap())
+                    .bound
+            );
+        }
+        let rec = &recs[0];
+        let (msg, sig_bytes) = split_kat_sm(&rec.sm, rec.msg.len());
+        let pk = VerifyingKey::from_bytes(&rec.pk).unwrap();
+
+        // gekipptes Bit im Salt: andere Nachricht für den Hash, Norm zu gross
+        let mut bad = sig_bytes.clone();
+        bad[5] ^= 0x10;
+        let r = pk.verify_report(&msg, &Signature::from_bytes(&bad).unwrap());
+        assert_eq!(r.failed_at, Some(VerifyStep::Norm));
+        assert!(!r.accepted && r.norm.unwrap() > r.bound);
+
+        // kaputte Kodierung: letztes Byte von s₂ weg (ungepolstert zu kurz)
+        let end = sig_bytes.iter().rposition(|&b| b != 0).unwrap();
+        let r = pk.verify_report(&msg, &Signature::from_bytes(&sig_bytes[..end]).unwrap());
+        assert_eq!(r.failed_at, Some(VerifyStep::Decompress));
+        assert_eq!(r.norm, None);
+
+        // fremder Grad
+        let mut other = sig_bytes.clone();
+        other[0] = if n == 512 { 0x3A } else { 0x39 };
+        let r = pk.verify_report(&msg, &Signature::from_bytes(&other).unwrap());
+        assert_eq!(r.failed_at, Some(VerifyStep::Decode));
+    }
+    for (i, s) in VerifyStep::ALL.iter().enumerate() {
+        assert_eq!(s.index(), i);
+    }
+}

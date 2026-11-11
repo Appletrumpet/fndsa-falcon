@@ -28,4 +28,7 @@ cargo build --release
 echo "== Doku"
 RUSTDOCFLAGS="-D warnings" cargo doc --no-deps
 
+echo "== WASM-Hülle der Web-Oberfläche (wasm/, nativ getestet)"
+(cd wasm && cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test)
+
 echo "Alles in Ordnung."

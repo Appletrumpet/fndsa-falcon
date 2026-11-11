@@ -1,7 +1,11 @@
 # Plan: Web-Oberfläche für die Rust-Implementierung
 
-Stand: 10. November 2026, Branch `Rust`. Ergänzt [PLAN.md](PLAN.md); die
+Stand: 11. November 2026, Branch `Rust`. Ergänzt [PLAN.md](PLAN.md); die
 Implementierung selbst (Phasen 0–8) bleibt dort beschrieben.
+
+**Umgesetzt (11.11.2026): W0 bis W5 und W7**, W6 vorbereitet (CI-Job
+`pages`, wartet auf die Pages-Einstellung und einen Merge nach `main`).
+Ergebnis und Abweichungen in Abschnitt 10.
 
 ## 1. Ziel
 
@@ -267,3 +271,49 @@ später als eigene Ansicht dazukommen.
 - Gibt es am Präsentationsort Internet? Wenn nicht, die App lokal mit
   `python -m http.server` starten (alle Dateien liegen im Ordner `web/`,
   ohne Abhängigkeiten aus dem Netz).
+
+## 10. Ergebnis der Umsetzung (11.11.2026)
+
+| Phase | Stand |
+|---|---|
+| W0 | Paket `wasm/` (`fndsa-wasm`, `cdylib` + `rlib`), Ziel `wasm32-unknown-unknown`; CI-Job `web` |
+| W1 | `VerifyingKey::verify_report`, `VerifyReport`, `VerifyStep` im Crate; `verify` ruft es auf. Test `verify_report_steps`: alle 200 KAT-Fälle gültig mit Norm ≤ Schranke; gekipptes Bit im Salt → `Norm`, gekürztes s₂ → `Decompress`, fremder Grad → `Decode` |
+| W2 | Hülle mit `verify`, `version` und `Signer`; 4 Tests (`cargo test` in `wasm/`, auch in `ci.sh`) |
+| W3 | Seite nach §3 (`web/index.html`, `style.css`, `logo.svg`); geprüft in 1920 × 1080, 1280 × 800 und 375 px (einspaltig, ohne seitliches Scrollen) |
+| W4 | KAT-Auswahl (10 je Parametersatz), Prüfen mit Animation, Bit kippen mit markiertem Byte, Original, 512/1024, Tastatur (Enter, B, R, 1, 2); alle Zustände aus §3.3 erreicht |
+| W5 | Dialog „Eigene Daten“: Hex oder Datei für pk, Signatur, Nachricht (Text oder Hex). Ungültiges Hex: Meldung im Dialog; ungültiges Format: Zustand „Eingabe ungültig“ mit dem Grund aus `Error` |
+| W6 | CI-Job `pages` (nur bei Push auf `main`); offen: Pages in den Einstellungen auf „GitHub Actions“ stellen und die Frage aus §9, ob die Seite öffentlich sein soll |
+| W7 | Ansicht „Signieren“: Schlüssel erzeugen, signieren, „In Prüfen übernehmen“ |
+
+Gemessen im Browser der Vorschau (Chromium, gleicher Rechner wie
+PLAN.md 5.2): Verify Falcon-512 42–75 µs, Falcon-1024 133–141 µs;
+Signieren Falcon-1024 30 ms. Eine durchgängige Probe (Keygen 1024 →
+Sign → Prüfen) ergab „gültig“.
+
+**Abweichungen vom Plan:**
+
+- **`wasm-bindgen-cli` statt `wasm-pack`:** `wasm-pack` lädt beim Bauen
+  Werkzeuge aus dem Netz nach; `cargo build` plus `wasm-bindgen` (von
+  crates.io, Version 0.2.100 wie in `wasm/Cargo.toml`) ergibt dasselbe.
+  Bauen mit `web/build.sh`.
+- **Tests der Hülle nativ** statt `wasm-pack test --node`: Die Logik steht
+  in Funktionen ohne `wasm-bindgen` (`verify_bytes`, `Signer::generate`,
+  `sign_bytes`), die `cargo test` prüft. Die Seite selbst ist von Hand im
+  Browser geprüft (Chromium); Firefox, Safari und der Beamer stehen noch
+  aus.
+- **Grösse 236 kB** statt < 200 kB: ohne `wasm-opt` (müsste ebenfalls aus
+  dem Netz geladen werden). Für eine lokale Vorführung unkritisch.
+- **Zufall für Sign** kommt aus `crypto.getRandomValues` und wird als
+  Bytes übergeben (48 für Keygen, 40 je Sign, daraus SHAKE256); kein
+  `getrandom` nötig.
+- **`kat.json`** wird erzeugt (`web/build.sh`) und nicht eingecheckt, wie
+  `web/pkg/`.
+- **Beamer-Grössen:** ab 1600 × 900 grössere Schrift (Ergebnis 56 px,
+  Beschriftungen 18 px), damit die Fläche genutzt wird.
+
+**Sicherheitshinweis in der App:** Auf `wasm32` gibt es keine
+Optimierungsbarriere in Assembler, und die Prüfungen der konstanten
+Laufzeit (PLAN.md §6) gelten nur für x86-64 und aarch64. Die Ansicht
+„Signieren“ sagt deshalb „nur zur Vorführung, keine echten Schlüssel“. Der
+Secret Key verlässt den WASM-Speicher nicht und wird beim Verwerfen
+gelöscht (`zeroize` im Crate).
