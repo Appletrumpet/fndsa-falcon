@@ -252,9 +252,120 @@ pub fn declassify<T: Copy>(x: T) -> T {
     x
 }
 
+// ---------------------------------------------------------------------------
+// DIT-Flag auf aarch64 (PLAN.md §10)
+// ---------------------------------------------------------------------------
+
+/// Setzt auf aarch64 das DIT-Flag (Data Independent Timing, ab ARMv8.4)
+/// für die Lebensdauer des Wächters und stellt danach den alten Wert
+/// wieder her. Mit DIT garantiert die CPU für die Ganzzahl- und
+/// Ladebefehle aus der ARM-Liste eine Laufzeit unabhängig von den Werten;
+/// ohne DIT ist das nur übliches Verhalten, keine Zusage.
+///
+/// Auf CPUs ohne DIT und auf anderen Plattformen tut der Wächter nichts.
+/// Das Flag gehört zum Prozessorzustand des Threads; Linux und macOS
+/// sichern es beim Thread-Wechsel.
+pub(crate) struct DitGuard {
+    #[cfg(target_arch = "aarch64")]
+    old: Option<u64>,
+}
+
+#[cfg(target_arch = "aarch64")]
+mod dit {
+    /// Systemregister DIT (op0=3, op1=3, CRn=4, CRm=2, op2=5) in der
+    /// generischen Schreibweise, damit kein `+dit` für den Assembler nötig
+    /// ist. Das Flag ist Bit 24.
+    pub const BIT: u64 = 1 << 24;
+
+    pub fn available() -> bool {
+        std::arch::is_aarch64_feature_detected!("dit")
+    }
+
+    /// SAFETY für beide: nur aufrufen, wenn `available()` wahr ist.
+    pub unsafe fn read() -> u64 {
+        let v: u64;
+        core::arch::asm!("mrs {}, s3_3_c4_c2_5", out(reg) v, options(nostack, preserves_flags));
+        v
+    }
+
+    pub unsafe fn write(v: u64) {
+        // Ohne `nomem`: wirkt zugleich als Compiler-Barriere, damit keine
+        // Speicherzugriffe über das Setzen des Flags hinweg wandern.
+        core::arch::asm!("msr s3_3_c4_c2_5, {}", in(reg) v, options(nostack, preserves_flags));
+    }
+}
+
+impl DitGuard {
+    /// DIT setzen, falls die CPU es kann.
+    #[inline]
+    pub(crate) fn new() -> Self {
+        #[cfg(target_arch = "aarch64")]
+        {
+            if dit::available() {
+                // SAFETY: DIT ist laut Laufzeiterkennung vorhanden.
+                let old = unsafe { dit::read() };
+                unsafe { dit::write(dit::BIT) };
+                return DitGuard { old: Some(old) };
+            }
+            DitGuard { old: None }
+        }
+        #[cfg(not(target_arch = "aarch64"))]
+        DitGuard {}
+    }
+}
+
+impl Drop for DitGuard {
+    fn drop(&mut self) {
+        #[cfg(target_arch = "aarch64")]
+        if let Some(old) = self.old {
+            // SAFETY: wie in `new`; alter Wert war 0 oder BIT.
+            unsafe { dit::write(old & dit::BIT) };
+        }
+    }
+}
+
+/// Ob die CPU DIT kennt und es während Keygen, Laden und Sign gesetzt
+/// wird. Auf anderen Plattformen als aarch64 immer `false`.
+pub fn dit_available() -> bool {
+    #[cfg(target_arch = "aarch64")]
+    {
+        dit::available()
+    }
+    #[cfg(not(target_arch = "aarch64"))]
+    false
+}
+
+/// Aktueller Wert des DIT-Flags (für Tests).
+#[cfg(test)]
+pub(crate) fn dit_enabled() -> bool {
+    #[cfg(target_arch = "aarch64")]
+    {
+        // SAFETY: nur gelesen, wenn vorhanden.
+        dit::available() && unsafe { dit::read() } & dit::BIT != 0
+    }
+    #[cfg(not(target_arch = "aarch64"))]
+    false
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn dit_guard_sets_and_restores() {
+        let before = dit_enabled();
+        {
+            let _g = DitGuard::new();
+            assert_eq!(dit_enabled(), dit_available());
+            {
+                let _inner = DitGuard::new();
+                assert_eq!(dit_enabled(), dit_available());
+            }
+            // der innere Wächter stellt den Zustand des äusseren her
+            assert_eq!(dit_enabled(), dit_available());
+        }
+        assert_eq!(dit_enabled(), before);
+    }
 
     #[test]
     fn masks() {

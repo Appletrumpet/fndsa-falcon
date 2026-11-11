@@ -168,6 +168,12 @@ impl SamplerConsts {
 /// SamplerZ (Alg. 15): ganze Zahl, verteilt nach der diskreten Gaussschen
 /// Verteilung mit Mittelwert μ und Standardabweichung σ′ ∈ [σmin, σmax].
 pub fn sampler_z(mu: Fpr, sigma_p: Fpr, params: &Params, rng: &mut impl RandomSource) -> i64 {
+    // Eingeschleuster Fehler für Tests (Fault-Schutz in lib.rs): der
+    // Sampler fällt aus und rundet nur noch auf μ.
+    #[cfg(test)]
+    if testing::FAULT_ROUND.with(|f| f.get()) {
+        return mu.rint();
+    }
     // Alg. 15 Z. 1: r ← μ − ⌊μ⌋
     let s = mu.floor();
     let r = mu - Fpr::of_i64(s);
@@ -189,6 +195,18 @@ pub fn sampler_z(mu: Fpr, sigma_p: Fpr, params: &Params, rng: &mut impl RandomSo
         if crate::ct::declassify(ber_exp(x, k.ccs, rng)) != 0 {
             return s + z;
         }
+    }
+}
+
+/// Fehler für Tests einschleusen (nur im Test-Build).
+#[cfg(test)]
+pub(crate) mod testing {
+    use std::cell::Cell;
+
+    thread_local! {
+        /// Wenn wahr, liefert `sampler_z` nur noch ⌊μ⌉ (Ausfall des
+        /// Samplers, wie durch einen Fault-Angriff).
+        pub static FAULT_ROUND: Cell<bool> = const { Cell::new(false) };
     }
 }
 

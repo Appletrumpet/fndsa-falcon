@@ -12,6 +12,12 @@
 //! ```text
 //! cargo run --release --example dudect --features dudect
 //! ```
+//!
+//! Zeitquelle: auf x86-64 der Zyklenzähler (`rdtsc`), auf aarch64 der
+//! Systemzähler `cntvct_el0` (feste Frequenz, meist 24 MHz bis 1 GHz; wird
+//! ausgegeben). Bei niedriger Frequenz sind kurze Bausteine nur wenige
+//! Takte lang; der t-Test bleibt gültig, erkennt aber nur grössere
+//! Unterschiede. Auf aarch64 wird zusätzlich gemeldet, ob DIT gesetzt wird.
 
 use fndsa::dudect as d;
 use fndsa::{keygen_from_seed, LogN, SigningKey};
@@ -60,7 +66,8 @@ impl RngCore for X {
 
 impl CryptoRng for X {}
 
-/// Zeitstempel in Zyklen (x86-64) bzw. Nanosekunden (sonst).
+/// Zeitstempel in Zyklen (x86-64), Takten des Systemzählers (aarch64)
+/// bzw. Nanosekunden (sonst).
 #[inline(always)]
 fn now() -> u64 {
     #[cfg(target_arch = "x86_64")]
@@ -72,7 +79,15 @@ fn now() -> u64 {
         _mm_lfence();
         t
     }
-    #[cfg(not(target_arch = "x86_64"))]
+    #[cfg(target_arch = "aarch64")]
+    // SAFETY: cntvct_el0 ist unter Linux und macOS aus dem Userspace
+    // lesbar; isb verhindert, dass der Befehl vorgezogen wird.
+    unsafe {
+        let t: u64;
+        core::arch::asm!("isb", "mrs {}, cntvct_el0", "isb", out(reg) t, options(nostack, preserves_flags));
+        t
+    }
+    #[cfg(not(any(target_arch = "x86_64", target_arch = "aarch64")))]
     {
         use std::sync::OnceLock;
         static START: OnceLock<std::time::Instant> = OnceLock::new();
@@ -81,6 +96,20 @@ fn now() -> u64 {
             .elapsed()
             .as_nanos() as u64
     }
+}
+
+/// Frequenz des Systemzählers in MHz (nur aarch64).
+#[allow(dead_code)]
+fn counter_mhz() -> u64 {
+    #[cfg(target_arch = "aarch64")]
+    // SAFETY: cntfrq_el0 ist aus dem Userspace lesbar.
+    unsafe {
+        let f: u64;
+        core::arch::asm!("mrs {}, cntfrq_el0", out(reg) f, options(nomem, nostack, preserves_flags));
+        f / 1_000_000
+    }
+    #[cfg(not(target_arch = "aarch64"))]
+    0
 }
 
 /// Welch-t-Statistik zweier Stichproben.
@@ -145,10 +174,18 @@ fn report(name: &str, n: usize, (t, m0, m1): (f64, u64, u64)) {
 
 fn main() {
     let unit = if cfg!(target_arch = "x86_64") {
-        "Zyklen"
+        "Zyklen".to_string()
+    } else if cfg!(target_arch = "aarch64") {
+        format!("Takten des Systemzählers, {} MHz", counter_mhz())
     } else {
-        "ns"
+        "ns".to_string()
     };
+    println!(
+        "Ziel: {}-{}, DIT gesetzt: {}",
+        std::env::consts::ARCH,
+        std::env::consts::OS,
+        if d::dit_available() { "ja" } else { "nein" }
+    );
     println!(
         "{:<34} {:>9} {:>10} {:>10} {:>8}",
         "Baustein (fest gegen zufällig)", "Messungen", "Median 0", "Median 1", "|t|"
@@ -165,11 +202,9 @@ fn main() {
         let one = 1.0f64.to_bits();
         let three = 3.0f64.to_bits();
         let r = test(n, |c, x| {
-            let (a, b) = if c {
-                (x.normal(60), x.normal(60))
-            } else {
-                (one, three)
-            };
+            // gleiche Vorbereitung für beide Klassen, erst danach wählen
+            let (ra, rb) = (x.normal(60), x.normal(60));
+            let (a, b) = [(one, three), (ra, rb)][c as usize];
             let (a, b) = (black_box(a), black_box(b));
             let t0 = now();
             black_box(op(a, b));
@@ -178,11 +213,8 @@ fn main() {
         report(name, n, r);
     }
     let r = test(n, |c, x| {
-        let a = if c {
-            x.normal(300) & !(1 << 63)
-        } else {
-            2.0f64.to_bits()
-        };
+        let r = x.normal(300) & !(1 << 63);
+        let a = [2.0f64.to_bits(), r][c as usize];
         let a = black_box(a);
         let t0 = now();
         black_box(d::fpr_sqrt(a));
@@ -190,7 +222,8 @@ fn main() {
     });
     report("fpr: Wurzel", n, r);
     let r = test(n, |c, x| {
-        let a = if c { x.normal(40) } else { 0.5f64.to_bits() };
+        let r = x.normal(40);
+        let a = [0.5f64.to_bits(), r][c as usize];
         let a = black_box(a);
         let t0 = now();
         black_box(d::fpr_rint(a));
@@ -214,11 +247,8 @@ fn main() {
 
     let ns = 200_000;
     let r = test(ns, |c, x| {
-        let (mu, sigma) = if c {
-            (x.uniform(-100.0, 100.0), x.uniform(1.2778337, 1.8205))
-        } else {
-            (0.0f64.to_bits(), 1.5f64.to_bits())
-        };
+        let r = (x.uniform(-100.0, 100.0), x.uniform(1.2778337, 1.8205));
+        let (mu, sigma) = [(0.0f64.to_bits(), 1.5f64.to_bits()), r][c as usize];
         // Zufall des Samplers in beiden Klassen gleich verteilt
         let seed = x.next().to_le_bytes();
         let (mu, sigma) = (black_box(mu), black_box(sigma));

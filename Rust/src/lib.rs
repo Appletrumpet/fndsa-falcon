@@ -1,9 +1,11 @@
 //! FN-DSA (Falcon) in Rust, mit konstanter Laufzeit auf geheimen Daten.
 //!
-//! Stand: Phase 0 bis 5 und 7 aus `PLAN.md` – Keygen, Sign, Verify und
+//! Stand: alle Phasen 0 bis 8 aus `PLAN.md` – Keygen, Sign, Verify und
 //! alle Byteformate für Falcon-512 und Falcon-1024. Keygen ist eine
 //! Portierung der Referenz und erzeugt aus den NIST-KAT-Seeds byte-genau
-//! die KAT-Schlüssel.
+//! die KAT-Schlüssel. Sign prüft sich gegen eingeschleuste Fehler
+//! (`SigningKey::try_sign`); auf aarch64 wird das DIT-Flag gesetzt
+//! (`dit_available`).
 //!
 //! ```no_run
 //! use fndsa::{keygen, LogN, Signature, SigningKey, VerifyingKey};
@@ -101,6 +103,11 @@ pub mod dudect {
         s0[0].re.to_bits()
     }
 
+    /// Ob auf dieser CPU das DIT-Flag gesetzt wird (nur aarch64).
+    pub fn dit_available() -> bool {
+        crate::ct::dit_available()
+    }
+
     /// Zahl der SamplerZ-Runden seit dem letzten Aufruf (setzt zurück).
     pub fn take_sampler_rounds() -> u64 {
         crate::sampler::ROUNDS.swap(0, core::sync::atomic::Ordering::Relaxed)
@@ -124,8 +131,10 @@ mod kat;
 
 use std::fmt;
 
+use sha3::digest::{ExtendableOutput, Update};
 use zeroize::Zeroizing;
 
+pub use ct::dit_available;
 pub use params::{LogN, Params, FALCON_1024, FALCON_512, Q};
 
 /// Fehler beim Dekodieren oder Erzeugen von Schlüsseln und Signaturen.
@@ -148,6 +157,11 @@ pub enum Error {
     /// Kein gültiger Falcon-Schlüssel: G passt nicht in 8 Bit, fG − gF ≠ q
     /// oder die Basis ist zu schlecht (σ′ ausserhalb von [σmin, σmax]).
     InvalidKey,
+    /// Sign hat einen Fehler im Rechner erkannt (Fault-Schutz): der
+    /// Schlüssel im Speicher ist verändert, oder dreimal hintereinander
+    /// bestand die Signatur Verify nicht bzw. war unplausibel kurz. Es
+    /// wurde keine Signatur ausgegeben.
+    FaultDetected,
 }
 
 impl fmt::Display for Error {
@@ -159,6 +173,9 @@ impl fmt::Display for Error {
             Error::KeyOutOfRange => write!(f, "Schlüssel passt nicht ins Secret-Key-Format"),
             Error::NotInvertible => write!(f, "f ist modulo q nicht invertierbar"),
             Error::InvalidKey => write!(f, "kein gültiger Falcon-Schlüssel"),
+            Error::FaultDetected => {
+                write!(f, "Fehler im Rechner erkannt, keine Signatur ausgegeben")
+            }
         }
     }
 }
@@ -226,6 +243,8 @@ pub struct SigningKey {
     tree: tree::Tree,
     /// passender Public Key, für Verify nach Sign
     vk: VerifyingKey,
+    /// Prüfsumme über alles oben (Fault-Schutz, `key_digest`)
+    digest: Zeroizing<[u8; 32]>,
 }
 
 impl SigningKey {
@@ -241,6 +260,7 @@ impl SigningKey {
     /// Fehler: ungültige Kodierung, `UnsupportedLogN` (bisher nur 512 und
     /// 1024), `NotInvertible` (f nicht invertierbar mod q), `InvalidKey`.
     pub fn from_bytes(b: &[u8]) -> Result<Self, Error> {
+        let _dit = ct::DitGuard::new();
         let sk = encoding::decode_sk(b)?;
         let params = sk.logn.params().ok_or(Error::UnsupportedLogN)?;
         Self::from_polys(params, &sk.f, &sk.g, &sk.big_f)
@@ -254,6 +274,7 @@ impl SigningKey {
         g: &[i8],
         big_f: &[i8],
     ) -> Result<Self, Error> {
+        let _dit = ct::DitGuard::new();
         let big_g = falcon::recompute_g(f, g, big_f)?;
         if ct::declassify(falcon::key_valid_mask(f, g, big_f, &big_g)) == 0 {
             return Err(Error::InvalidKey);
@@ -274,7 +295,7 @@ impl SigningKey {
         let h = falcon::compute_public_key(f, g)?;
         let mut h_ntt: Vec<u32> = h.iter().map(|&x| x as u32).collect();
         modq::ntt(&mut h_ntt);
-        Ok(SigningKey {
+        let mut sk = SigningKey {
             params,
             f: Zeroizing::new(f.to_vec()),
             g: Zeroizing::new(g.to_vec()),
@@ -282,7 +303,62 @@ impl SigningKey {
             basis,
             tree,
             vk: VerifyingKey { params, h, h_ntt },
-        })
+            digest: Zeroizing::new([0u8; 32]),
+        };
+        sk.digest = sk.key_digest();
+        Ok(sk)
+    }
+
+    /// SHAKE256 über alle Teile des Schlüssels, die Sign benutzt: f, g, F,
+    /// Basis, Falcon-Baum und h (für Verify nach Sign). Beim Laden einmal
+    /// berechnet und vor und nach jedem Signieren verglichen. Erkennt so
+    /// Fehler, die den Schlüssel im Speicher verändern (Rowhammer, gekippte
+    /// Bits, Fault-Angriffe auf gespeicherte Werte): Ein veränderter Baum
+    /// liefert sonst Signaturen, die Verify bestehen, aber falsch verteilt
+    /// sind und den Schlüssel verraten können.
+    ///
+    /// Konstante Laufzeit: Keccak arbeitet ohne Verzweigung auf den Daten.
+    fn key_digest(&self) -> Zeroizing<[u8; 32]> {
+        let n = self.params.n();
+        // Alles in einen Puffer, Platz vorher reservieren: Beim Wachsen
+        // bliebe sonst ein alter, nicht gelöschter Puffer im Speicher.
+        let mut values = 8 * n;
+        self.tree.for_each_value(&mut |_| values += 1);
+        let mut buf: Zeroizing<Vec<u8>> =
+            Zeroizing::new(Vec::with_capacity(1 + 3 * n + 8 * values));
+        buf.push(self.params.logn.get() as u8);
+        for p in [&self.f, &self.g, &self.big_f] {
+            buf.extend(p.iter().map(|&x| x as u8));
+        }
+        let mut put = |x: fpr::Fpr| buf.extend_from_slice(&x.to_bits().to_le_bytes());
+        let b = &self.basis;
+        for p in [&b.b00, &b.b01, &b.b10, &b.b11] {
+            for c in p.iter() {
+                put(c.re);
+                put(c.im);
+            }
+        }
+        self.tree.for_each_value(&mut put);
+        debug_assert_eq!(buf.len(), buf.capacity());
+        let mut h = sha3::Shake256::default();
+        h.update(&buf);
+        for &x in &self.vk.h {
+            h.update(&x.to_le_bytes());
+        }
+        let mut out = Zeroizing::new([0u8; 32]);
+        h.finalize_xof_into(&mut out[..]);
+        out
+    }
+
+    /// Vergleicht die Prüfsumme ohne Verzweigung; nur das Ergebnis
+    /// gleich/ungleich verzweigt (Fehler erkannt).
+    fn intact(&self) -> bool {
+        let now = self.key_digest();
+        let mut d = 0u8;
+        for (a, b) in now.iter().zip(self.digest.iter()) {
+            d |= a ^ b;
+        }
+        ct::declassify(ct::is_zero_mask(d as u32)) != 0
     }
 
     /// Kodiert den Secret Key (§3.11.5); Umkehrung von `from_bytes`.
@@ -307,14 +383,39 @@ impl SigningKey {
         self.vk.clone()
     }
 
+    /// Signiert `msg` (Alg. 10) wie `try_sign`, bricht aber bei einem
+    /// erkannten Fehler im Rechner mit einer Panik ab, statt eine
+    /// Signatur auszugeben. Ohne Fehler im Rechner kommt das nicht vor.
+    pub fn sign(&self, msg: &[u8], rng: &mut impl rand_core::CryptoRngCore) -> Signature {
+        self.try_sign(msg, rng)
+            .unwrap_or_else(|e| panic!("Signieren abgebrochen: {e}"))
+    }
+
     /// Signiert `msg` (Alg. 10). Aus `rng` kommen 40 Bytes Salt und 56
     /// Bytes Seed für den Zufall des Samplers (ChaCha20, PLAN.md L9).
     ///
-    /// Schutz gegen Fehler im Rechner (Fault-Angriffe, PLAN.md 3.6): Jede
-    /// Signatur wird vor der Ausgabe mit Verify geprüft. Besteht sie nicht,
-    /// wird mit neuem Zufall neu signiert; nach drei Fehlschlägen bricht die
-    /// Funktion mit einer Panik ab, statt eine falsche Signatur auszugeben.
-    pub fn sign(&self, msg: &[u8], rng: &mut impl rand_core::CryptoRngCore) -> Signature {
+    /// Schutz gegen Fehler im Rechner (Fault-Angriffe, PLAN.md 3.6):
+    /// - Vor und nach dem Signieren wird die Prüfsumme des Schlüssels
+    ///   verglichen (`key_digest`); ist er im Speicher verändert, gibt es
+    ///   sofort `FaultDetected`.
+    /// - Jede Signatur muss Verify bestehen **und** eine Norm² von
+    ///   mindestens ⌊β²⌋/2 haben (`falcon::min_norm_sq`). Die untere
+    ///   Schranke erkennt einen ausgefallenen Sampler, dessen Signaturen
+    ///   Verify bestehen, aber den Schlüssel verraten.
+    /// - Sonst wird mit neuem Zufall neu signiert; nach drei Fehlschlägen
+    ///   `FaultDetected`.
+    ///
+    /// Auf aarch64 läuft das Signieren mit gesetztem DIT-Flag.
+    pub fn try_sign(
+        &self,
+        msg: &[u8],
+        rng: &mut impl rand_core::CryptoRngCore,
+    ) -> Result<Signature, Error> {
+        let _dit = ct::DitGuard::new();
+        if !self.intact() {
+            return Err(Error::FaultDetected);
+        }
+        let plausible = falcon::min_norm_sq(self.params)..=self.params.sig_bound;
         for _ in 0..3 {
             let mut salt = [0u8; 40];
             rng.fill_bytes(&mut salt);
@@ -322,15 +423,20 @@ impl SigningKey {
             rng.fill_bytes(&mut seed[..]);
             let mut prng = prng::Prng::new(&seed[..]);
             let s2_enc = falcon::sign_core(&self.sign_key(), self.params, msg, &salt, &mut prng);
-            if falcon::verify(self.params, &self.vk.h_ntt, &salt, &s2_enc, msg) {
-                return Signature {
+            // Die Signatur ist ab hier öffentlich; die Norm darf verzweigen.
+            let norm = falcon::signature_norm_sq(self.params, &self.vk.h_ntt, &salt, &s2_enc, msg);
+            if norm.is_some_and(|x| plausible.contains(&x)) {
+                if !self.intact() {
+                    return Err(Error::FaultDetected);
+                }
+                return Ok(Signature {
                     logn: self.params.logn,
                     salt,
                     s2_enc,
-                };
+                });
             }
         }
-        panic!("Signatur besteht Verify nicht: Fehler im Rechner?");
+        Err(Error::FaultDetected)
     }
 
     fn sign_key(&self) -> falcon::SignKey<'_> {
@@ -364,6 +470,7 @@ pub fn keygen(
 /// Neuziehen und Verwerfen von Kandidaten (PLAN.md 3.1, §6).
 pub fn keygen_from_seed(logn: LogN, seed: &[u8; 48]) -> Result<(SigningKey, VerifyingKey), Error> {
     let params = logn.params().ok_or(Error::UnsupportedLogN)?;
+    let _dit = ct::DitGuard::new();
     let k = ntrugen::keygen_from_seed(logn, seed);
     // Keygen erfüllt alle Prüfungen von from_polys (|G| ≤ 127 wegen
     // NTRUSolve, Blätter wegen der γ-Schranke); ein Fehler wäre ein
@@ -456,6 +563,139 @@ mod tests {
             let sig = sign_like_python(&sk, sk.params, &c.bytes("msg"), &c.bytes("seed"));
             assert_eq!(sig, c.bytes("sig"), "Fall {}", c.index);
         }
+    }
+
+    fn key(logn: LogN, i: u8) -> SigningKey {
+        keygen_from_seed(logn, &[i; 48]).unwrap().0
+    }
+
+    struct Rng(u64);
+    impl rand_core::RngCore for Rng {
+        fn next_u32(&mut self) -> u32 {
+            self.next_u64() as u32
+        }
+        fn next_u64(&mut self) -> u64 {
+            self.0 ^= self.0 << 13;
+            self.0 ^= self.0 >> 7;
+            self.0 ^= self.0 << 17;
+            self.0
+        }
+        fn fill_bytes(&mut self, d: &mut [u8]) {
+            d.iter_mut().for_each(|b| *b = self.next_u64() as u8);
+        }
+        fn try_fill_bytes(&mut self, d: &mut [u8]) -> Result<(), rand_core::Error> {
+            self.fill_bytes(d);
+            Ok(())
+        }
+    }
+    impl rand_core::CryptoRng for Rng {}
+
+    /// Ehrliche Signaturen liegen weit über der unteren Schranke β²/2.
+    #[test]
+    fn honest_signatures_are_plausible() {
+        for (logn, count) in [(LogN::FALCON_512, 300), (LogN::FALCON_1024, 150)] {
+            let sk = key(logn, 1);
+            let mut rng = Rng(7);
+            let (mut lo, mut hi) = (f64::MAX, 0f64);
+            for i in 0..count {
+                let msg = (i as u32).to_le_bytes();
+                let sig = sk.try_sign(&msg, &mut rng).unwrap();
+                let norm = falcon::signature_norm_sq(
+                    sk.params,
+                    &sk.vk.h_ntt,
+                    &sig.salt,
+                    &sig.s2_enc,
+                    &msg,
+                )
+                .unwrap();
+                let r = norm as f64 / sk.params.sig_bound as f64;
+                lo = lo.min(r);
+                hi = hi.max(r);
+            }
+            eprintln!("n = {}: Norm²/β² in [{lo:.3}, {hi:.3}]", logn.n());
+            assert!(lo > 0.65 && hi <= 1.0, "{lo} {hi}");
+        }
+    }
+
+    /// Fällt der Sampler aus (rundet nur noch auf μ), bestehen die
+    /// Signaturen Verify trotzdem: Verify nach Sign allein reicht also
+    /// nicht. Die untere Normschranke erkennt den Fehler.
+    #[test]
+    fn faulty_sampler_is_detected() {
+        for logn in [LogN::FALCON_512, LogN::FALCON_1024] {
+            let sk = key(logn, 2);
+            sampler::testing::FAULT_ROUND.with(|f| f.set(true));
+            let msg = b"fault";
+            let salt = [3u8; 40];
+            let mut prng = prng::Prng::new(&[0u8; 56]);
+            let enc = falcon::sign_core(&sk.sign_key(), sk.params, msg, &salt, &mut prng);
+            let norm =
+                falcon::signature_norm_sq(sk.params, &sk.vk.h_ntt, &salt, &enc, msg).unwrap();
+            eprintln!(
+                "n = {}: Norm²/β² mit ausgefallenem Sampler {:.3}",
+                logn.n(),
+                norm as f64 / sk.params.sig_bound as f64
+            );
+            assert!(falcon::verify(sk.params, &sk.vk.h_ntt, &salt, &enc, msg));
+            assert!(norm < falcon::min_norm_sq(sk.params));
+            let r = sk.try_sign(msg, &mut Rng(9));
+            sampler::testing::FAULT_ROUND.with(|f| f.set(false));
+            assert_eq!(r.unwrap_err(), Error::FaultDetected);
+            // danach wieder normal
+            assert!(sk.try_sign(msg, &mut Rng(9)).is_ok());
+        }
+    }
+
+    fn first_leaf(t: &mut tree::Tree) -> &mut fpr::Fpr {
+        match t {
+            tree::Tree::Leaf(x) => x,
+            tree::Tree::Node(_, a, _) => first_leaf(a),
+        }
+    }
+
+    /// Jede Änderung am geladenen Schlüssel fällt vor dem Signieren auf.
+    #[test]
+    fn modified_key_is_detected() {
+        let mut rng = Rng(11);
+        let tamper: [fn(&mut SigningKey); 5] = [
+            |k| k.f[0] ^= 1,
+            |k| k.big_f[7] ^= 2,
+            |k| k.basis.b11[3].re = fpr::Fpr::from_bits(k.basis.b11[3].re.to_bits() ^ 1),
+            |k| {
+                let x = first_leaf(&mut k.tree);
+                *x = fpr::Fpr::from_bits(x.to_bits() ^ 1);
+            },
+            |k| k.vk.h[5] ^= 1,
+        ];
+        for (i, t) in tamper.iter().enumerate() {
+            let mut sk = key(LogN::FALCON_512, 3);
+            assert!(sk.try_sign(b"x", &mut rng).is_ok());
+            t(&mut sk);
+            assert_eq!(
+                sk.try_sign(b"x", &mut rng).unwrap_err(),
+                Error::FaultDetected,
+                "Fall {i}"
+            );
+        }
+    }
+
+    #[test]
+    #[should_panic(expected = "Signieren abgebrochen")]
+    fn sign_panics_on_fault() {
+        let mut sk = key(LogN::FALCON_512, 4);
+        sk.g[0] ^= 1;
+        sk.sign(b"x", &mut Rng(1));
+    }
+
+    /// Während Keygen, Laden und Sign ist DIT gesetzt (falls vorhanden),
+    /// danach wieder im alten Zustand.
+    #[test]
+    fn dit_restored_after_api_calls() {
+        let before = ct::dit_enabled();
+        let sk = key(LogN::FALCON_512, 5);
+        let _ = SigningKey::from_bytes(&sk.to_bytes()).unwrap();
+        let _ = sk.sign(b"x", &mut Rng(2));
+        assert_eq!(ct::dit_enabled(), before);
     }
 
     /// Knappe Schranken erzwingen beide Neustarts aus Alg. 10 (Norm zu

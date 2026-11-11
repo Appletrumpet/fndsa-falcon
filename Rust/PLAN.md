@@ -6,7 +6,9 @@ Phase 6 (Seitenkanal-Prüfung): Valgrind ohne Befund auf x86-64 und
 aarch64 (Release und opt-level 0; lokal in Docker und im CI-Job `ctgrind`,
 erster grüner Lauf für Commit `c02768f`), dudect ohne Befund auf
 x86-64-Hardware, Assembler-Stichprobe auf beiden Zielen.
-Ergebnisse und Befunde in Abschnitt 6.
+Ergebnisse und Befunde in Abschnitt 6. Danach ergänzt (6.2): Fault-Schutz
+in Sign (`try_sign`: Prüfsumme des Schlüssels, untere Normschranke), DIT
+auf aarch64 und ein CI-Job `dudect` auf x86-64- und ARM-Runnern.
 Keygen ist eine Portierung der Referenz (PQClean, `keygen.c`, `fft.c`) und
 erzeugt aus allen 200 KAT-Seeds byte-genau die KAT-Schlüssel. Zuvor:
 Phase 0 bis 4 sind umgesetzt:
@@ -54,7 +56,7 @@ werden, weil der Begriff sonst unerfüllbar ist):
 | Branch-Prediction / Spectre-artige Leaks über Kontrollfluss | **ja** (Kontrollfluss) | wie Timing |
 | Reste im Speicher (Schlüssel bleibt nach Gebrauch im RAM) | **ja** | `zeroize` für alle geheimen Puffer |
 | Leistungsaufnahme / EM (DPA, z. B. „FALCON Down“, 2021) | **nein**, nur benennen | bräuchte Masking; Forschungsstand, nicht Kernumfang |
-| Fault-Angriffe (Fehler einschleusen) | **teilweise** | optional Verify-nach-Sign, Plausibilitätsprüfungen |
+| Fault-Angriffe (Fehler einschleusen) | **teilweise** (Erkennung) | Verify nach Sign, untere Normschranke, Prüfsumme des Schlüssels vor und nach Sign (6.2); keine Doppelrechnung |
 
 Konstante Laufzeit schützt gegen Angreifer, die Zeit messen (auch über das
 Netz) und Cache-Zustände beobachten. Gegen jemanden mit Oszilloskop am Gerät
@@ -332,6 +334,9 @@ Division auf geheimen Daten). Standard bleibt die Emulation.
 - Optional (Fault-Schutz): nach dem Signieren `verify` aufrufen; das kostet
   wenig im Vergleich zum Signieren. **Umgesetzt (Phase 4):** bei Fehlschlag
   neu signieren, nach drei Fehlschlägen Panik statt falscher Signatur.
+  **Erweitert (6.2):** `try_sign` mit Fehler `FaultDetected`, untere
+  Normschranke und Prüfsumme des Schlüssels; `sign` ruft `try_sign` auf
+  und bricht bei einem Fehler mit einer Panik ab.
 
 ### 3.7 Modulare Arithmetik (mod q)
 
@@ -433,7 +438,7 @@ nur noch auf alle Seeds.
 | 3 | `prng`, `sampler` | BaseSampler und ApproxExp gegen alle Schritte der Sampler-Testvektoren; BerExp-Äquivalenztest; statistische Tests für SamplerZ (Abschnitt 7) (**erledigt**, gegen `Python/data/vectors/sampler.*`) | mittel |
 | 4 | `tree`, `ffsampling`, `sign` (mit KAT-sk, `load_secret_key` inkl. `recompute_G`) | Falcon-Baum und ffSampling bitgleich gegen `Python/data/vectors/tree.*` und `ffsampling.*` (Test-Generator wie beim SamplerZ); KAT-sk → sign → verify (**erledigt**; dazu `flow.sign` und `flow.sign_restart` byte-genau) | mittel |
 | 5 | `zint`, `ntrugen` (NTRUSolve fester Länge, Portierung der Referenz), `keygen`; AES-CTR-DRBG für Tests von Anfang an | fG − gF = q, γ-Schranke, sk-Format, keygen → sign → verify für 512/1024, reduzierte n; **KAT count 0 byte-genau** (f, g, dann F) für beide Varianten (**erledigt**; dazu `fft_ref.rs`, die FFT der Referenz, weil `reduce` mit ihr rundet) | **gross** |
-| 6 | Seitenkanal-Prüfung (Abschnitt 6) | dudect ohne Befund, Valgrind ohne Befund auf geheimen Daten (**erledigt**: Valgrind auf x86-64 und aarch64, dudect auf x86-64; dudect auf aarch64 braucht Hardware) | mittel |
+| 6 | Seitenkanal-Prüfung (Abschnitt 6) | dudect ohne Befund, Valgrind ohne Befund auf geheimen Daten (**erledigt**: Valgrind auf x86-64 und aarch64, dudect auf x86-64; dudect auf aarch64 als CI-Job auf dem ARM-Runner, 6.2) | mittel |
 | 7 | KAT-Schlüssel byte-genau (L10), alle Seeds | alle 200 KAT-Seeds ergeben exakt sk und pk der KAT-Dateien (Signaturen wegen L7 nicht) (**erledigt**, siehe 5.1) | klein, wenn count 0 in Phase 5 stimmt |
 | 8 (optional) | Benchmarks gegen Python, `native-fpu` | Zahlen für die Arbeit (**erledigt**, siehe 5.2) | klein |
 
@@ -621,9 +626,65 @@ Valgrind-Prüfung die Durchsicht von Hand.
 Bekannte Grenze: der Ausgabepuffer im XOF-Leser von `digest` und Werte in
 Registern und auf dem Stack.
 
-**Noch offen:** dudect auf aarch64 braucht echte Hardware (Abschnitt 10);
-die GitHub-Runner sind geteilte virtuelle Maschinen und für Zeitmessungen
-ungeeignet. Valgrind auf aarch64 ist erledigt (CI-Job `ctgrind`).
+**dudect auf aarch64:** siehe 6.2 (CI-Job `dudect`). Valgrind auf aarch64
+ist erledigt (CI-Job `ctgrind`).
+
+### 6.2 Nachträge: Fault-Schutz, DIT, dudect auf aarch64 (11.11.2026)
+
+**Fault-Schutz in Sign** (`SigningKey::try_sign`, Fehler `FaultDetected`;
+`sign` bricht dann mit einer Panik ab). Drei Prüfungen, alle auf Daten,
+die entweder öffentlich werden oder nur ja/nein verraten:
+
+| Prüfung | erkennt | Kosten |
+|---|---|---|
+| Verify nach Sign (seit Phase 4) | Fehler, die eine ungültige Signatur ergeben | ≈ 20 µs |
+| untere Schranke ‖(s₁, s₂)‖² ≥ ⌊β²⌋/2 | Ausfall des Samplers (Zufall null, Schleife übersprungen): Die Signatur besteht Verify, ist aber nur auf den Mittelwert gerundet und verrät über viele Signaturen die Basis (wie bei NTRUSign) | vernachlässigbar |
+| Prüfsumme SHAKE256 über f, g, F, Basis, Baum und h, beim Laden berechnet, vor und nach jedem Sign verglichen | dauerhaft veränderter Schlüssel im Speicher (gekippte Bits, Rowhammer); ein veränderter Baum liefert sonst gültige, aber falsch verteilte Signaturen | ≈ 7 % von Sign |
+
+Begründung der Schranke: β = 1.1·σ·√(2n), die Norm² liegt im Mittel bei
+2nσ² ≈ 0.83·β² und streut um 4.4 % (n = 512) bzw. 3.1 % (n = 1024); β²/2
+liegt 9 bzw. 13 Standardabweichungen darunter. Gemessen (Tests in
+`lib.rs`): ehrliche Signaturen 0.72–0.94·β² (512) bzw. 0.75–0.89·β²
+(1024); mit eingeschleustem Ausfall des Samplers (nur im Test-Build,
+`sampler::testing::FAULT_ROUND`) 0.03·β², und diese Signaturen bestehen
+Verify. Weitere Tests verändern f, F, die Basis, ein Blatt des Baums und h
+und erwarten `FaultDetected`. Valgrind meldet nach der Änderung nichts.
+
+dudect nach der Änderung (x86-64, zwei Läufe): fpr ≤ 1.97, BaseSampler
+≤ 1.88, SamplerZ ≤ 0.84, Sign ≤ 1.73, Sign-Versuch ≤ 1.73, Runden 0.21.
+Dabei ein dritter Messfehler im Prüfprogramm: Die Addition stieg ohne
+jede Änderung an `fpr` auf |t| = 4.2 bis 5.6 (der Maschinencode von
+`fpr_add` ist mit dem alten Stand identisch und hat keinen Sprung). Ursache
+war wie beim BaseSampler die ungleiche Vorbereitung: Nur Klasse 1 zog
+Zufallszahlen, Klasse 0 nahm Konstanten; ob das vor der Zeitnahme
+sichtbar wird, hängt von der Lage des Codes ab. Jetzt ziehen beide
+Klassen für alle Bausteine dieselben Zufallszahlen, erst danach wird der
+feste Wert gewählt; die Addition liegt wieder bei 0.3 bis 1.1.
+
+Grenze: Ein einzelner Fehler mitten in einer Rechnung, der eine gültige
+**und** plausible Signatur ergibt, wird nicht erkannt; dafür bräuchte es
+eine Doppelrechnung (Sign zweimal mit demselben Zufall, doppelte Kosten).
+Fehler in der Zufallsquelle selbst (z. B. immer derselbe Seed) erkennt
+Sign ebenfalls nicht. Die Laufzeiten in 5.2 sind vor dem Fault-Schutz
+gemessen.
+
+**DIT auf aarch64** (§10): `ct::DitGuard` setzt das Flag (Register
+`S3_3_C4_C2_5`, Bit 24) während Keygen, Laden und Sign, wenn die CPU es
+kennt (`is_aarch64_feature_detected!("dit")`), und stellt danach den
+alten Wert her. Öffentlich abfragbar mit `fndsa::dit_available()`.
+Geprüft: Assembler für aarch64, Test `dit_guard_sets_and_restores` in
+der CI auf dem ARM-Runner.
+
+**dudect auf aarch64:** Der neue CI-Job `dudect` lässt `examples/dudect.rs`
+auf `ubuntu-24.04` und `ubuntu-24.04-arm` laufen und schreibt die Tabelle
+in die Zusammenfassung des Laufs. Zeitquelle auf aarch64 ist der
+Systemzähler `cntvct_el0` (Frequenz wird ausgegeben); das Programm meldet
+auch, ob DIT gesetzt wird. Die Runner sind echte Prozessoren (kein QEMU),
+aber geteilte virtuelle Maschinen: Ein Wert unter 4.5 ist ein Hinweis,
+kein Nachweis, und ein einzelner Ausreisser kann vom Nachbarn auf der
+Maschine kommen. Der Job schlägt deshalb nicht fehl. Eine Messung auf
+einem eigenen ARM-Gerät (Raspberry Pi 5, Apple Silicon) bleibt die
+bessere Prüfung. Ergebnis des ersten Laufs: steht aus.
 
 ---
 
@@ -694,8 +755,9 @@ Alle Designentscheidungen sind getroffen; der Plan ist bereit zur Umsetzung.
 
 Noch offen (blockiert erst Phase 6, nicht den Start):
 
-- aarch64-Hardware für dudect beschaffen bzw. klären (Abschnitt 10).
-  Valgrind auf aarch64 läuft inzwischen auf den GitHub-Runnern
+- ~~aarch64-Hardware für dudect beschaffen bzw. klären (Abschnitt 10).~~
+  dudect läuft als CI-Job auf dem ARM-Runner (6.2); ein eigenes Gerät
+  wäre genauer. Valgrind auf aarch64 läuft ebenfalls auf den GitHub-Runnern
   (`ubuntu-24.04-arm`).
 - ~~Die Keygen-Details aus 3.5 … werden … nachgeprüft.~~ **Nachgeprüft
   (Phase 5, PQClean `keygen.c`):** Seed (48 Bytes) → SHAKE256 → alle
@@ -717,10 +779,10 @@ Noch offen (blockiert erst Phase 6, nicht den Start):
 | Thema | x86-64 | aarch64 |
 |---|---|---|
 | 64×64→128-Multiplikation (ApproxExp, `fpr`, `zint`) | `mul` nativ | `mul`/`umulh` nativ |
-| Hardware-Hilfe für konstante Laufzeit | keine allgemeine Garantie; Intel DOITM auf neueren CPUs (vom Betriebssystem gesteuert) | DIT-Flag (Data Independent Timing, ab ARMv8.4): beim Signieren und im Keygen setzen, wo verfügbar |
+| Hardware-Hilfe für konstante Laufzeit | keine allgemeine Garantie; Intel DOITM auf neueren CPUs (vom Betriebssystem gesteuert) | DIT-Flag (Data Independent Timing, ab ARMv8.4): beim Signieren, Laden und im Keygen setzen, wo verfügbar (**umgesetzt**, 6.2) |
 | `native-fpu` | add/mul/sqrt in SSE2 gelten als konstant für normale Zahlen; Division nicht verwenden | nur mit DIT zulassen; welche FP-Befehle DIT abdeckt, in der ARM-Doku nachprüfen |
 | Valgrind-Prüfung (Abschnitt 6) | Linux x86-64 | Linux aarch64 (z. B. Raspberry Pi 5, AWS Graviton); macOS wird von Valgrind nicht unterstützt |
-| dudect-Messungen | echte Hardware | echte Hardware (z. B. Apple-Silicon-Mac oder Raspberry Pi 5); **nicht** unter QEMU, dort sind Zeiten bedeutungslos |
+| dudect-Messungen | echte Hardware | echte Hardware (z. B. Apple-Silicon-Mac oder Raspberry Pi 5); **nicht** unter QEMU, dort sind Zeiten bedeutungslos. CI-Job auf dem ARM-Runner als Hinweis (6.2) |
 | Assembler-Kontrolle | `cargo asm` für x86-64 | `cargo asm --target aarch64-unknown-linux-gnu`; bedingte Sprünge (`b.cond`, `cbz`, `tbz`) und `csel` prüfen |
 | Funktionstests | nativ | nativ oder per `cross`/QEMU (nur Korrektheit, keine Zeiten) |
 
@@ -736,5 +798,6 @@ Folgen für den Plan:
   x86-64-Linux und aarch64-Linux, Assembler-Kontrolle für beide.
 - `no_std` ist nicht nötig; das Crate nutzt `std` (`alloc` würde reichen,
   ist aber kein Ziel).
-- Hardware für aarch64-Messungen muss beschafft bzw. geklärt werden
-  (eigenes Gerät, Hochschul-Server oder Cloud-Instanz).
+- Hardware für aarch64-Messungen: vorerst der GitHub-ARM-Runner (6.2);
+  ein eigenes Gerät, ein Hochschul-Server oder eine Cloud-Instanz ohne
+  Nachbarn wäre genauer.

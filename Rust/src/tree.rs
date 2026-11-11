@@ -26,6 +26,24 @@ pub enum Tree {
     Node(Poly, Box<Tree>, Box<Tree>),
 }
 
+impl Tree {
+    /// Ruft `f` für jede Zahl im Baum auf (ℓ-Werte und Blätter, feste
+    /// Reihenfolge). Für die Prüfsumme des Schlüssels (Fault-Schutz).
+    pub fn for_each_value(&self, f: &mut impl FnMut(Fpr)) {
+        match self {
+            Tree::Leaf(x) => f(*x),
+            Tree::Node(l, a, b) => {
+                for c in l.iter() {
+                    f(c.re);
+                    f(c.im);
+                }
+                a.for_each_value(f);
+                b.for_each_value(f);
+            }
+        }
+    }
+}
+
 impl Drop for Tree {
     fn drop(&mut self) {
         // ℓ löscht sich selbst (Poly), das Blatt hier.

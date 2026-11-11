@@ -62,12 +62,21 @@ pub(crate) fn verify(
     s2_enc: &[u8],
     msg: &[u8],
 ) -> bool {
+    signature_norm_sq(params, h_ntt, salt, s2_enc, msg).is_some_and(|x| x <= params.sig_bound)
+}
+
+/// ‖(s₁, s₂)‖² einer Signatur (Alg. 16, Z. 1–6 ohne den Vergleich);
+/// `None`, wenn s₂ nicht gültig kodiert ist. Öffentlich wie Verify.
+pub(crate) fn signature_norm_sq(
+    params: &Params,
+    h_ntt: &[u32],
+    salt: &[u8],
+    s2_enc: &[u8],
+    msg: &[u8],
+) -> Option<u64> {
     let n = params.n();
     let c = hash_to_point(salt, msg, n);
-    let s2 = match decompress(s2_enc, n, params.s2_padded_len()) {
-        Some(s) => s,
-        None => return false,
-    };
+    let s2 = decompress(s2_enc, n, params.s2_padded_len())?;
 
     // s₁ = c − s₂·h mod q, zentriert (Alg. 16, Z. 5)
     let mut t: Vec<u32> = s2.iter().map(|&x| modq::from_i32(x as i32)).collect();
@@ -85,7 +94,23 @@ pub(crate) fn verify(
         let s2i = s2[i] as i64;
         norm += (s1 * s1 + s2i * s2i) as u64;
     }
-    norm <= params.sig_bound
+    Some(norm)
+}
+
+/// Untere Schranke für ‖(s₁, s₂)‖² einer ehrlich erzeugten Signatur
+/// (Fault-Schutz, PLAN.md 3.6): ⌊β²⌋ / 2.
+///
+/// Mit β = 1.1·σ·√(2n) liegt die Norm² im Mittel bei 2nσ² ≈ 0.83·β² und
+/// streut um 4.4 % (n = 512) bzw. 3.1 % (n = 1024); β²/2 liegt 9 bzw. 13
+/// Standardabweichungen darunter und wird ohne Fehler praktisch nie
+/// unterschritten. Fällt der Sampler dagegen aus (Zufall null, Schleife
+/// übersprungen) und rundet nur noch auf den Mittelwert, ist die Norm²
+/// etwa 25-mal kleiner (gleichverteilter statt Gaussscher Rest; gemessen 0.03·β²), die
+/// Signatur besteht Verify aber weiterhin. Solche Signaturen verraten über
+/// viele Nachrichten die Basis (Angriff wie auf NTRUSign); sie dürfen nicht
+/// ausgegeben werden.
+pub(crate) fn min_norm_sq(params: &Params) -> u64 {
+    params.sig_bound / 2
 }
 
 // ---------------------------------------------------------------------------

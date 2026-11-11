@@ -15,7 +15,7 @@ der Python-Version (`../Python`) abweicht.
 | 3 | Zufallsquelle (`prng`), Sampler | fertig |
 | 4 | Falcon-Baum, ffSampling, Sign, Secret Key laden | fertig |
 | 5 | Keygen (NTRUSolve fester Länge, Portierung der Referenz) | fertig |
-| 6 | Seitenkanal-Prüfung (Valgrind, dudect, Assembler) | fertig (dudect nur auf x86-64) |
+| 6 | Seitenkanal-Prüfung (Valgrind, dudect, Assembler) | fertig (dudect auf aarch64 nur im CI-Job) |
 | 7 | KAT-Schlüssel byte-genau aus den Seeds | fertig (alle 200) |
 | 8 | Messungen nach Messprotokoll, Feature `native-fpu` | fertig |
 
@@ -26,7 +26,7 @@ Das Crate kann Schlüssel **erzeugen**, Signaturen **erzeugen** und
 let (sk, pk) = fndsa::keygen(LogN::FALCON_512, &mut rng)?; // rng: z. B. OsRng
 let sk_bytes = sk.to_bytes();                // speichern (Zeroizing)
 let sk = SigningKey::from_bytes(&sk_bytes)?; // laden: G, Basis, Baum, Prüfung
-let sig = sk.sign(msg, &mut rng);
+let sig = sk.sign(msg, &mut rng);           // oder try_sign: Result statt Panik
 assert!(pk.verify(msg, &sig));
 ```
 
@@ -69,11 +69,14 @@ bash ci.sh          # Formatierung, Clippy, Tests, Release-Build, Doku
 
 Kleinste unterstützte Rust-Version: 1.87 (`rust-version` in `Cargo.toml`).
 
-Die CI auf GitHub (`.github/workflows/rust.yml`) hat vier Jobs:
+Die CI auf GitHub (`.github/workflows/rust.yml`) hat fünf Jobs:
 
 - `check`: `ci.sh` auf x86-64 und aarch64;
 - `ctgrind`: Valgrind-Prüfung der konstanten Laufzeit (`ctgrind.sh`) auf
   x86-64 und aarch64;
+- `dudect`: Zeitmessung auf x86-64 und aarch64, Tabelle in der
+  Zusammenfassung des Laufs (geteilte Maschinen: nur ein Hinweis, der Job
+  schlägt nicht fehl);
 - `msrv`: Tests mit Rust 1.87;
 - `fuzz`: baut die Fuzz-Ziele, erzeugt den Start-Korpus und lässt jedes
   Ziel 60 Sekunden laufen.
@@ -210,8 +213,14 @@ Keys (G, Basis, Baum) und Sign: `fpr`, FFT, Sampler, ffSampling.
   echter Falcon-Schlüssel ist: |G| ≤ 127, fG − gF = q exakt und alle Blätter
   in [σmin, σmax] (L11, Toleranz 1e-10 wie Python). Sonst `InvalidKey`;
   ohne diese Prüfung lief Sign mit erfundenen Schlüsseln endlos;
-- Schutz gegen Fault-Angriffe: jede Signatur wird vor der Ausgabe mit
-  Verify geprüft (PLAN.md 3.6);
+- Schutz gegen Fault-Angriffe (PLAN.md 6.2): jede Signatur muss Verify
+  bestehen und eine Norm² von mindestens β²/2 haben (erkennt einen
+  ausgefallenen Sampler, dessen Signaturen Verify bestehen); vor und nach
+  jedem Sign wird eine Prüfsumme (SHAKE256) über den ganzen Schlüssel
+  verglichen. `try_sign` gibt dann `Error::FaultDetected` zurück, `sign`
+  bricht mit einer Panik ab. Kostet rund 7 % beim Signieren;
+- auf aarch64 ist während Keygen, Laden und Sign das DIT-Flag gesetzt
+  (Data Independent Timing), wenn die CPU es kennt (`dit_available()`);
 - jede Maske läuft durch eine Optimierungsbarriere: auf x86-64 und aarch64
   eine leere Assembler-Anweisung, die den Wert im Register lässt, sonst
   `core::hint::black_box` (das den Wert über den Stack schickt);
@@ -249,17 +258,20 @@ Weg, den Stack nach einem Aufruf sicher zu löschen.
   u. a. Sprünge, die LLVM im portierten Keygen aus Masken gebaut hatte,
   und Schiebungen mit geheimer Weite (jetzt `ct::shr64`/`shl64`).
 - **dudect** auf x86-64-Hardware: alle Bausteine |t| < 4.5 (Gleitkomma
-  ≤ 1.6, Sampler ≤ 1.3, Sign 1.7, ein Sign-Versuch ohne Neustart 1.0);
-  die Zahl der SamplerZ-Runden ist für alle Schlüssel gleich. Zwei
-  Messfehler im Prüfprogramm (ungleiche Vorbereitung, feste Speicheradresse
-  des festen Schlüssels) sind in PLAN.md 6.1 beschrieben.
+  ≤ 2.0, Sampler ≤ 1.9, Sign 1.7, ein Sign-Versuch ohne Neustart 1.7,
+  gemessen mit Fault-Schutz); die Zahl der SamplerZ-Runden ist für alle
+  Schlüssel gleich. Messfehler im Prüfprogramm (ungleiche Vorbereitung der
+  Eingaben, feste Speicheradresse des festen Schlüssels) sind in PLAN.md
+  6.1 und 6.2 beschrieben.
 - **Assembler:** keine Gleitkomma- oder Divisionsbefehle der Hardware,
   keine bedingten Sprünge in den Gleitkomma- und Sampler-Funktionen
   (x86-64 und aarch64).
 
-Offen: dudect auf aarch64 braucht echte Hardware (die GitHub-Runner sind
-für Zeitmessungen ungeeignet). Gegen Power- und EM-Angriffe schützt die
-Implementierung nicht (PLAN.md §1).
+dudect auf aarch64 läuft im CI-Job `dudect` auf dem ARM-Runner (echter
+Prozessor, aber geteilte Maschine, also nur ein Hinweis); ein eigenes
+ARM-Gerät wäre genauer. Gegen Power- und EM-Angriffe schützt die
+Implementierung nicht (PLAN.md §1). Die Laufzeiten oben sind vor dem
+Fault-Schutz gemessen.
 
 ## Aufbau
 
