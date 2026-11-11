@@ -40,7 +40,8 @@
 use core::ops::{Add, Div, Mul, Neg, Sub};
 
 use crate::ct::{
-    cond_neg64, mask64_from_bit, mask64_from_msb, mask64_lt, mask64_nonzero, select64, shl64, shr64,
+    barrier64, cond_neg64, mask64_from_bit, mask64_from_msb, mask64_lt, mask64_nonzero, select64,
+    shl64, shr64,
 };
 
 const SIGN: u64 = 1 << 63;
@@ -314,16 +315,7 @@ impl Div for Fpr {
         let s = (self.0 ^ y.0) >> 63;
         let (_, ex, mx) = unpack(self.0);
         let (_, ey, my) = unpack(y.0);
-        // 56 Quotientenbits, Bit für Bit; r bleibt < 2·my < 2⁵⁴.
-        let mut r = mx;
-        let mut q = 0u64;
-        for i in 0..56u32 {
-            let ge = !mask64_lt(r, my);
-            r = r.wrapping_sub(my & ge);
-            q |= (ge & 1) << (55 - i);
-            r <<= 1;
-        }
-        let sticky = mask64_nonzero(r) & 1;
+        let (q, sticky) = div_mantissa(mx, my);
         // q in [2⁵⁴, 2⁵⁶); bei q ≥ 2⁵⁵ ein Bit nach rechts (ins Sticky).
         let top = (q >> 55) & 1;
         let m = select64(mask64_from_bit(top), q, (q >> 1) | (q & 1)) | sticky;
@@ -341,6 +333,71 @@ fn unpack(x: u64) -> (u64, i32, u64) {
     let e = ((x >> 52) & 0x7FF) as i32;
     let m = ((x & FRAC) | (1 << 52)) & mask64_nonzero(e as u64);
     (x >> 63, e, m)
+}
+
+/// Startwert des Kehrwerts: y₀ = 48/17 − 32/17 · d/2⁶⁴, als Festkomma mit
+/// 62 Nachkommabits (Fehler höchstens 1/17).
+const RECIP_C1: u64 = ((48u128 << 62) / 17) as u64;
+/// 8/17 · 2⁶⁴, damit (d · RECIP_C2) >> 64 = d · 8/17 ohne Division.
+const RECIP_C2: u64 = ((8u128 << 64) / 17) as u64;
+
+/// q = ⌊mx · 2⁵⁵ / my⌋ und das Sticky-Bit (1, wenn ein Rest bleibt), für
+/// my ∈ [2⁵², 2⁵³) und mx = 0 oder mx ∈ [2⁵², 2⁵³).
+///
+/// Bisher Bit für Bit in 56 Runden (wie die Referenz). Jetzt über den
+/// Kehrwert: Newton-Verfahren mit fester Rundenzahl, Näherung des
+/// Quotienten durch eine Multiplikation, danach je zwei Korrekturschritte
+/// nach unten und oben über Masken. Das Ergebnis ist exakt dasselbe (der
+/// Quotient ist eindeutig, die Korrektur macht ihn genau), also auch die
+/// gerundete Division. Gebraucht werden nur Multiplikation 64 × 64 → 128,
+/// Addition und Masken, keine Verzweigung und keine Hardware-Division;
+/// die Multiplikation gilt auf beiden Zielen als konstant (PLAN.md §10).
+/// Etwa sechsmal weniger Befehle als die Schleife.
+#[inline(always)]
+fn div_mantissa(mx: u64, my: u64) -> (u64, u64) {
+    // Kehrwert von d = my · 2¹¹ ∈ [2⁶³, 2⁶⁴): y = Y/2⁶² ≈ 2⁶⁴/d ∈ (1, 2].
+    let d = my << 11;
+    let mut y = RECIP_C1 - ((d as u128 * RECIP_C2 as u128) >> 64) as u64;
+    // Newton: y ← y · (2 − d/2⁶⁴ · y); Fehler 1/17 → 2⁻⁸ → 2⁻¹⁶ → 2⁻³³ →
+    // Genauigkeit des Festkommas.
+    for _ in 0..4 {
+        let t = ((d as u128 * y as u128) >> 64) as u64;
+        let e = (1u64 << 63).wrapping_sub(t);
+        y = ((y as u128 * e as u128) >> 62) as u64;
+    }
+    // mx · 2⁵⁵ / my = mx · 2⁶⁶ / d = mx · Y / 2⁶⁰
+    let mut q = ((mx as u128 * y as u128) >> 60) as u64;
+    let n = (mx as i128) << 55;
+    let mut r = n - (q as i128) * (my as i128);
+    // Rest nach [0, my) bringen: zweimal nach unten, zweimal nach oben.
+    for _ in 0..2 {
+        let neg = barrier64((r >> 127) as u64);
+        q = q.wrapping_sub(neg & 1);
+        r += (my & neg) as i128;
+    }
+    for _ in 0..2 {
+        let t = r - my as i128;
+        let ge = barrier64(!((t >> 127) as u64));
+        q = q.wrapping_add(ge & 1);
+        r -= (my & ge) as i128;
+    }
+    (q, mask64_nonzero(r as u64) & 1)
+}
+
+/// Bisherige Division Bit für Bit (wie die Referenz), als Vergleich für
+/// die Tests von `div_mantissa`.
+#[cfg(test)]
+fn div_mantissa_bitwise(mx: u64, my: u64) -> (u64, u64) {
+    // 56 Quotientenbits; r bleibt < 2·my < 2⁵⁴.
+    let mut r = mx;
+    let mut q = 0u64;
+    for i in 0..56u32 {
+        let ge = !mask64_lt(r, my);
+        r = r.wrapping_sub(my & ge);
+        q |= (ge & 1) << (55 - i);
+        r <<= 1;
+    }
+    (q, mask64_nonzero(r) & 1)
 }
 
 /// Schiebt m nach links, bis Bit 63 gesetzt ist, in sechs festen Schritten.
@@ -617,6 +674,64 @@ mod tests {
             check("add_emu", a, b, fa.add_emu(fb), a + b);
             check("mul_emu", a, b, fa.mul_emu(fb), a * b);
             check("sqrt_emu", a, 0.0, fa.abs().sqrt_emu(), a.abs().sqrt());
+        }
+    }
+
+    /// Die Mantissendivision über den Kehrwert liefert exakt dasselbe wie
+    /// die bisherige Schleife: Grenzwerte und 2 Millionen Zufallspaare.
+    #[test]
+    fn div_mantissa_matches_bitwise() {
+        let lo = 1u64 << 52;
+        let hi = (1u64 << 53) - 1;
+        let edges = [
+            lo,
+            lo + 1,
+            lo + 2,
+            hi - 1,
+            hi,
+            lo + (lo >> 1),
+            (lo + hi) / 2,
+        ];
+        for &mx in edges.iter().chain([0u64].iter()) {
+            for &my in &edges {
+                assert_eq!(
+                    div_mantissa(mx, my),
+                    div_mantissa_bitwise(mx, my),
+                    "{mx} / {my}"
+                );
+            }
+        }
+        let mut r = Rng(0xD1F);
+        for i in 0..2_000_000u64 {
+            let mx = lo | (r.next() & (lo - 1));
+            // jedes vierte Paar mit nahe beieinander liegenden Mantissen
+            let my = if i % 4 == 0 {
+                (mx ^ (r.next() & 0xFF)) | lo
+            } else {
+                lo | (r.next() & (lo - 1))
+            };
+            assert_eq!(
+                div_mantissa(mx, my),
+                div_mantissa_bitwise(mx, my),
+                "{mx} / {my}"
+            );
+        }
+    }
+
+    /// Langer Lauf (500 Millionen Paare), mit `--ignored` starten.
+    #[test]
+    #[ignore = "lange Laufzeit"]
+    fn div_mantissa_matches_bitwise_long() {
+        let lo = 1u64 << 52;
+        let mut r = Rng(0x05EE_DD1F);
+        for _ in 0..500_000_000u64 {
+            let mx = lo | (r.next() & (lo - 1));
+            let my = lo | (r.next() & (lo - 1));
+            assert_eq!(
+                div_mantissa(mx, my),
+                div_mantissa_bitwise(mx, my),
+                "{mx} / {my}"
+            );
         }
     }
 
