@@ -79,16 +79,21 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-      - name: Rust, Ziele und Cross-Werkzeuge installieren
+      - name: Rust und Ziele installieren
         run: |
           rustup toolchain install stable --profile minimal
           rustup default stable
           rustup target add i686-unknown-linux-gnu s390x-unknown-linux-gnu wasm32-unknown-unknown
           sudo apt-get update -qq
-          sudo apt-get install -y -qq gcc-multilib gcc-s390x-linux-gnu libc6-dev-s390x-cross qemu-user
+      # gcc-multilib und der s390x-Cross-Compiler schliessen sich auf Ubuntu
+      # gegenseitig aus; deshalb nacheinander installieren und testen.
       - name: Tests auf i686 (32 Bit)
         working-directory: Rust
-        run: cargo test --release --target i686-unknown-linux-gnu
+        run: |
+          sudo apt-get install -y -qq gcc-multilib
+          cargo test --release --target i686-unknown-linux-gnu
+      - name: s390x-Werkzeuge installieren
+        run: sudo apt-get install -y -qq gcc-s390x-linux-gnu libc6-dev-s390x-cross qemu-user
       - name: Tests auf s390x (Big-Endian, QEMU)
         working-directory: Rust
         env:
