@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Falcon Demo</title>
+  <link rel="icon" href="logo.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <div class="brand">
+      <img src="logo.svg" alt="" width="44" height="44">
+      <span class="wordmark">FALCON</span>
+    </div>
+    <nav class="tabs" role="tablist" aria-label="Ansicht">
+      <button role="tab" id="tab-sign" aria-selected="false" aria-controls="view-sign">Signieren</button>
+      <button role="tab" id="tab-verify" aria-selected="true" aria-controls="view-verify">Prüfen</button>
+    </nav>
+    <div class="badge" id="badge">Falcon-512 · WASM</div>
+  </header>
+
+  <!-- Prüfen -->
+  <main id="view-verify" role="tabpanel" aria-labelledby="tab-verify">
+    <section class="row two">
+      <article class="tile">
+        <div class="tile-head"><span class="label">Public Key</span><span class="meta" id="pk-meta"></span></div>
+        <div class="hex" id="pk-hex"></div>
+      </article>
+      <article class="tile">
+        <div class="tile-head"><span class="label">Signatur</span><span class="meta" id="sig-meta"></span></div>
+        <div class="hex" id="sig-hex"></div>
+        <div class="note" id="sig-note"></div>
+      </article>
+    </section>
+
+    <section class="row msg-status">
+      <article class="tile">
+        <div class="tile-head"><span class="label">Nachricht</span><span class="meta" id="msg-meta"></span></div>
+        <div class="msg" id="msg-view"></div>
+      </article>
+      <article class="tile status" id="status" aria-live="polite">
+        <span class="label">Status</span>
+        <div class="status-word" id="status-word">bereit</div>
+        <div class="status-sub" id="status-sub"></div>
+      </article>
+    </section>
+
+    <section class="tile progress-panel">
+      <div class="tile-head">
+        <span class="label">Verifikation</span>
+        <span class="meta" id="progress-count">0 / 5 abgeschlossen</span>
+      </div>
+      <ol class="steps" id="steps">
+        <li><span class="seg"></span><span class="step-name"><i></i>Dekodieren</span></li>
+        <li><span class="seg"></span><span class="step-name"><i></i>HashToPoint</span></li>
+        <li><span class="seg"></span><span class="step-name"><i></i>s₂ entpacken</span></li>
+        <li><span class="seg"></span><span class="step-name"><i></i>s₁ = c − s₂h</span></li>
+        <li><span class="seg"></span><span class="step-name"><i></i>Norm</span></li>
+      </ol>
+      <div class="norm" id="norm" hidden>
+        <div class="norm-text" id="norm-text"></div>
+        <div class="gauge" aria-hidden="true"><div class="gauge-fill" id="gauge-fill"></div><div class="gauge-bound"></div></div>
+      </div>
+    </section>
+
+    <section class="controls">
+      <div class="group">
+        <button class="primary" id="btn-verify">Prüfen <kbd>Enter</kbd></button>
+        <label class="select">
+          <span class="sr-only">KAT-Fall</span>
+          <select id="kat-select" aria-label="KAT-Fall wählen"></select>
+        </label>
+        <button id="btn-flip">Bit kippen <kbd>B</kbd></button>
+        <button id="btn-reset">Original <kbd>R</kbd></button>
+        <button id="btn-own">Eigene Daten</button>
+      </div>
+      <div class="segmented" role="group" aria-label="Parametersatz">
+        <button id="set-512" aria-pressed="true">512 <kbd>1</kbd></button>
+        <button id="set-1024" aria-pressed="false">1024 <kbd>2</kbd></button>
+      </div>
+    </section>
+
+    <dialog id="own-dialog">
+      <form method="dialog" class="own-form" id="own-form">
+        <h2>Eigene Daten</h2>
+        <p class="hint">Hex (Leerzeichen und Zeilenumbrüche erlaubt) oder eine Datei mit den rohen Bytes.</p>
+        <label>Public Key <input type="file" id="own-pk-file"></label>
+        <textarea id="own-pk" rows="3" spellcheck="false" placeholder="09…"></textarea>
+        <label>Signatur <input type="file" id="own-sig-file"></label>
+        <textarea id="own-sig" rows="3" spellcheck="false" placeholder="39…"></textarea>
+        <label>Nachricht
+          <span class="radio"><input type="radio" name="msg-mode" value="text" checked> Text</span>
+          <span class="radio"><input type="radio" name="msg-mode" value="hex"> Hex</span>
+          <input type="file" id="own-msg-file">
+        </label>
+        <textarea id="own-msg" rows="2" spellcheck="false"></textarea>
+        <div class="own-error" id="own-error" role="alert"></div>
+        <div class="dialog-buttons">
+          <button value="cancel" formnovalidate>Abbrechen</button>
+          <button class="primary" id="own-apply" value="default">Übernehmen und prüfen</button>
+        </div>
+      </form>
+    </dialog>
+  </main>
+
+  <!-- Signieren -->
+  <main id="view-sign" role="tabpanel" aria-labelledby="tab-sign" hidden>
+    <section class="row two">
+      <article class="tile">
+        <div class="tile-head"><span class="label">Schlüsselpaar</span><span class="meta" id="key-meta">noch keines</span></div>
+        <div class="hex" id="key-pk-hex"></div>
+        <div class="note" id="key-note">Secret Key bleibt im WebAssembly-Speicher und wird beim Verwerfen gelöscht.</div>
+        <div class="tile-actions">
+          <button class="primary" id="btn-keygen">Schlüssel erzeugen</button>
+        </div>
+      </article>
+      <article class="tile">
+        <div class="tile-head"><span class="label">Nachricht</span><span class="meta" id="sign-msg-meta"></span></div>
+        <textarea id="sign-msg" rows="4" spellcheck="false">Hallo Bern, das ist Falcon im Browser.</textarea>
+        <div class="tile-actions">
+          <button class="primary" id="btn-sign" disabled>Signieren</button>
+        </div>
+      </article>
+    </section>
+    <section class="row msg-status">
+      <article class="tile">
+        <div class="tile-head"><span class="label">Signatur</span><span class="meta" id="sign-sig-meta"></span></div>
+        <div class="hex" id="sign-sig-hex"></div>
+      </article>
+      <article class="tile status" id="sign-status" aria-live="polite">
+        <span class="label">Status</span>
+        <div class="status-word" id="sign-status-word">bereit</div>
+        <div class="status-sub" id="sign-status-sub">erst Schlüssel erzeugen</div>
+      </article>
+    </section>
+    <section class="controls">
+      <div class="group">
+        <button id="btn-to-verify" disabled>In „Prüfen“ übernehmen</button>
+      </div>
+      <p class="hint">Nur zur Vorführung: Auf WebAssembly gelten die Prüfungen der konstanten Laufzeit nicht (PLAN.md §6). Keine echten Schlüssel verwenden.</p>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <span id="version">lädt …</span>
+    <span>Tastatur: Enter prüfen · B Bit kippen · R Original · 1/2 Parametersatz</span>
+  </footer>
+</div>
+<script type="module" src="app.js"></script>
+</body>
+</html>

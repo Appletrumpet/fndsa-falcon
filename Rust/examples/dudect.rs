@@ -1,0 +1,345 @@
+//! Statistische Zeitmessung nach dudect (PLAN.md §6, Prüfung 2).
+//!
+//! Je Baustein zwei Klassen von Eingaben, zufällig gemischt gemessen:
+//! Klasse 0 mit festen, Klasse 1 mit zufälligen geheimen Werten. Ein
+//! Welch-t-Test vergleicht die Laufzeiten; |t| > 4.5 gilt als Leck. Wie in
+//! dudect werden die Messungen zusätzlich an mehreren Perzentilen
+//! abgeschnitten (Ausreisser durch Unterbrechungen), gemeldet wird das
+//! grösste |t|.
+//!
+//! Nur auf echter Hardware aussagekräftig (nicht unter QEMU), Release-Build:
+//!
+//! ```text
+//! cargo run --release --example dudect --features dudect
+//! ```
+//!
+//! Zeitquelle: auf x86-64 der Zyklenzähler (`rdtsc`), auf aarch64 der
+//! Systemzähler `cntvct_el0` (feste Frequenz, meist 24 MHz bis 1 GHz; wird
+//! ausgegeben). Bei niedriger Frequenz sind kurze Bausteine nur wenige
+//! Takte lang; der t-Test bleibt gültig, erkennt aber nur grössere
+//! Unterschiede. Auf aarch64 wird zusätzlich gemeldet, ob DIT gesetzt wird.
+
+use fndsa::dudect as d;
+use fndsa::{keygen_from_seed, LogN, SigningKey};
+use rand_core::{CryptoRng, RngCore};
+use std::hint::black_box;
+
+/// xorshift64 für die Auswahl von Klassen und Eingaben (öffentlich).
+struct X(u64);
+
+impl X {
+    fn next(&mut self) -> u64 {
+        self.0 ^= self.0 << 13;
+        self.0 ^= self.0 >> 7;
+        self.0 ^= self.0 << 17;
+        self.0
+    }
+    /// zufällige normale Gleitkommazahl mit Exponent in [−lim, lim]
+    fn normal(&mut self, lim: u64) -> u64 {
+        let r = self.next();
+        let e = (r % (2 * lim + 1)) + 1023 - lim;
+        ((r >> 63) << 63) | (e << 52) | (self.next() & ((1 << 52) - 1))
+    }
+    fn uniform(&mut self, lo: f64, hi: f64) -> u64 {
+        let u = (self.next() >> 11) as f64 / (1u64 << 53) as f64;
+        (lo + u * (hi - lo)).to_bits()
+    }
+}
+
+impl RngCore for X {
+    fn next_u32(&mut self) -> u32 {
+        self.next() as u32
+    }
+    fn next_u64(&mut self) -> u64 {
+        self.next()
+    }
+    fn fill_bytes(&mut self, dest: &mut [u8]) {
+        for b in dest {
+            *b = self.next() as u8;
+        }
+    }
+    fn try_fill_bytes(&mut self, dest: &mut [u8]) -> Result<(), rand_core::Error> {
+        self.fill_bytes(dest);
+        Ok(())
+    }
+}
+
+impl CryptoRng for X {}
+
+/// Zeitstempel in Zyklen (x86-64), Takten des Systemzählers (aarch64)
+/// bzw. Nanosekunden (sonst).
+#[inline(always)]
+fn now() -> u64 {
+    #[cfg(target_arch = "x86_64")]
+    // SAFETY: lfence und rdtsc sind auf jeder x86-64-CPU vorhanden.
+    unsafe {
+        use core::arch::x86_64::{_mm_lfence, _rdtsc};
+        _mm_lfence();
+        let t = _rdtsc();
+        _mm_lfence();
+        t
+    }
+    #[cfg(target_arch = "aarch64")]
+    // SAFETY: cntvct_el0 ist unter Linux und macOS aus dem Userspace
+    // lesbar; isb verhindert, dass der Befehl vorgezogen wird.
+    unsafe {
+        let t: u64;
+        core::arch::asm!("isb", "mrs {}, cntvct_el0", "isb", out(reg) t, options(nostack, preserves_flags));
+        t
+    }
+    #[cfg(not(any(target_arch = "x86_64", target_arch = "aarch64")))]
+    {
+        use std::sync::OnceLock;
+        static START: OnceLock<std::time::Instant> = OnceLock::new();
+        START
+            .get_or_init(std::time::Instant::now)
+            .elapsed()
+            .as_nanos() as u64
+    }
+}
+
+/// Frequenz des Systemzählers in MHz (nur aarch64).
+#[allow(dead_code)]
+fn counter_mhz() -> u64 {
+    #[cfg(target_arch = "aarch64")]
+    // SAFETY: cntfrq_el0 ist aus dem Userspace lesbar.
+    unsafe {
+        let f: u64;
+        core::arch::asm!("mrs {}, cntfrq_el0", out(reg) f, options(nomem, nostack, preserves_flags));
+        f / 1_000_000
+    }
+    #[cfg(not(target_arch = "aarch64"))]
+    0
+}
+
+/// Welch-t-Statistik zweier Stichproben.
+fn welch(a: &[f64], b: &[f64]) -> f64 {
+    let mv = |x: &[f64]| {
+        let n = x.len() as f64;
+        let m = x.iter().sum::<f64>() / n;
+        let v = x.iter().map(|y| (y - m).powi(2)).sum::<f64>() / (n - 1.0);
+        (m, v, n)
+    };
+    let (ma, va, na) = mv(a);
+    let (mb, vb, nb) = mv(b);
+    (ma - mb) / (va / na + vb / nb).sqrt()
+}
+
+/// Misst `n` Aufrufe; `run(klasse, rng)` bereitet die Eingabe vor und gibt
+/// die gemessene Dauer zurück. Liefert (grösstes |t|, Median Klasse 0, 1).
+fn test(n: usize, mut run: impl FnMut(bool, &mut X) -> u64) -> (f64, u64, u64) {
+    let mut rng = X(0x9E37_79B9_7F4A_7C15);
+    // Aufwärmen
+    for _ in 0..n / 20 {
+        let c = rng.next() & 1 == 1;
+        run(c, &mut rng);
+    }
+    let mut samples: Vec<(bool, u64)> = Vec::with_capacity(n);
+    for _ in 0..n {
+        let c = rng.next() & 1 == 1;
+        samples.push((c, run(c, &mut rng)));
+    }
+    let mut all: Vec<u64> = samples.iter().map(|s| s.1).collect();
+    all.sort_unstable();
+    let pct = |p: f64| all[((all.len() - 1) as f64 * p) as usize];
+    let mut tmax: f64 = 0.0;
+    for cut in [1.0, 0.99, 0.95, 0.9, 0.75, 0.5] {
+        let lim = pct(cut);
+        let (mut a, mut b) = (Vec::new(), Vec::new());
+        for &(c, t) in &samples {
+            if t <= lim {
+                if c {
+                    b.push(t as f64)
+                } else {
+                    a.push(t as f64)
+                }
+            }
+        }
+        if a.len() > 10 && b.len() > 10 {
+            tmax = tmax.max(welch(&a, &b).abs());
+        }
+    }
+    let median = |cls: bool| {
+        let mut v: Vec<u64> = samples.iter().filter(|s| s.0 == cls).map(|s| s.1).collect();
+        v.sort_unstable();
+        v[v.len() / 2]
+    };
+    (tmax, median(false), median(true))
+}
+
+fn report(name: &str, n: usize, (t, m0, m1): (f64, u64, u64)) {
+    let verdict = if t > 4.5 { "AUFFÄLLIG" } else { "ok" };
+    println!("{name:<34} {n:>9} {m0:>10} {m1:>10} {t:>8.2}  {verdict}");
+}
+
+fn main() {
+    let unit = if cfg!(target_arch = "x86_64") {
+        "Zyklen".to_string()
+    } else if cfg!(target_arch = "aarch64") {
+        format!("Takten des Systemzählers, {} MHz", counter_mhz())
+    } else {
+        "ns".to_string()
+    };
+    println!(
+        "Ziel: {}-{}, DIT gesetzt: {}",
+        std::env::consts::ARCH,
+        std::env::consts::OS,
+        if d::dit_available() { "ja" } else { "nein" }
+    );
+    println!(
+        "{:<34} {:>9} {:>10} {:>10} {:>8}",
+        "Baustein (fest gegen zufällig)", "Messungen", "Median 0", "Median 1", "|t|"
+    );
+    println!("(Median in {unit})");
+
+    let n = 1_000_000;
+    type Op2 = fn(u64, u64) -> u64;
+    for (name, op) in [
+        ("fpr: Division", d::fpr_div as Op2),
+        ("fpr: Multiplikation", d::fpr_mul),
+        ("fpr: Addition", d::fpr_add),
+    ] {
+        let one = 1.0f64.to_bits();
+        let three = 3.0f64.to_bits();
+        let r = test(n, |c, x| {
+            // gleiche Vorbereitung für beide Klassen, erst danach wählen
+            let (ra, rb) = (x.normal(60), x.normal(60));
+            let (a, b) = [(one, three), (ra, rb)][c as usize];
+            let (a, b) = (black_box(a), black_box(b));
+            let t0 = now();
+            black_box(op(a, b));
+            now() - t0
+        });
+        report(name, n, r);
+    }
+    let r = test(n, |c, x| {
+        let r = x.normal(300) & !(1 << 63);
+        let a = [2.0f64.to_bits(), r][c as usize];
+        let a = black_box(a);
+        let t0 = now();
+        black_box(d::fpr_sqrt(a));
+        now() - t0
+    });
+    report("fpr: Wurzel", n, r);
+    let r = test(n, |c, x| {
+        let r = x.normal(40);
+        let a = [0.5f64.to_bits(), r][c as usize];
+        let a = black_box(a);
+        let t0 = now();
+        black_box(d::fpr_rint(a));
+        now() - t0
+    });
+    report("fpr: Runden", n, r);
+
+    let r = test(n, |c, x| {
+        // gleiche Vorbereitung für beide Klassen, erst danach fest setzen
+        let mut b = [0u8; 9];
+        x.fill_bytes(&mut b);
+        if !c {
+            b = [0u8; 9];
+        }
+        let b = black_box(b);
+        let t0 = now();
+        black_box(d::base_sampler(b));
+        now() - t0
+    });
+    report("Sampler: BaseSampler", n, r);
+
+    let ns = 200_000;
+    let r = test(ns, |c, x| {
+        let r = (x.uniform(-100.0, 100.0), x.uniform(1.2778337, 1.8205));
+        let (mu, sigma) = [(0.0f64.to_bits(), 1.5f64.to_bits()), r][c as usize];
+        // Zufall des Samplers in beiden Klassen gleich verteilt
+        let seed = x.next().to_le_bytes();
+        let (mu, sigma) = (black_box(mu), black_box(sigma));
+        let t0 = now();
+        black_box(d::sampler_z(mu, sigma, &seed));
+        now() - t0
+    });
+    report("Sampler: SamplerZ (μ, σ′)", ns, r);
+
+    // Signieren: fester Schlüssel gegen Schlüssel aus einem Vorrat von 16.
+    //
+    // Der Schlüssel wird vor jeder Messung (ausserhalb der Zeitnahme) neu
+    // geladen, und der Cache wird für beide Klassen gleich geleert. Ohne
+    // das Neuladen läge der feste Schlüssel immer an derselben Adresse, die
+    // anderen an verschiedenen; dann misst der Test auch die Lage im
+    // Speicher (Konflikte im Cache), nicht den Wert des Schlüssels. So
+    // ergab ein einzelner Sign-Versuch ohne Neuladen |t| = 5 bis 19, mit
+    // Neuladen |t| < 2.5 (PLAN.md 6.1).
+    let key_bytes: Vec<_> = (0..16u8)
+        .map(|i| {
+            keygen_from_seed(LogN::FALCON_512, &[i; 48])
+                .unwrap()
+                .0
+                .to_bytes()
+        })
+        .collect();
+    let fixed_bytes = keygen_from_seed(LogN::FALCON_512, &[0xAA; 48])
+        .unwrap()
+        .0
+        .to_bytes();
+    let mut evict = vec![0u8; 16 << 20];
+    let mut prepare = |c: bool, x: &mut X| {
+        let b = if c {
+            &key_bytes[(x.next() % 16) as usize]
+        } else {
+            &fixed_bytes
+        };
+        let k = SigningKey::from_bytes(b).unwrap();
+        for i in (0..evict.len()).step_by(64) {
+            evict[i] = evict[i].wrapping_add(1);
+        }
+        black_box(&evict);
+        k
+    };
+
+    let nsig = 3000;
+    let r = test(nsig, |c, x| {
+        let k = prepare(c, x);
+        let t0 = now();
+        black_box(k.sign(b"dudect", x));
+        now() - t0
+    });
+    report("Sign (Schlüssel)", nsig, r);
+
+    // Ein Sign-Versuch ohne Neustarts (ffSampling und Signaturvektor).
+    let r = test(nsig, |c, x| {
+        let k = prepare(c, x);
+        let seed = x.next().to_le_bytes();
+        let t0 = now();
+        black_box(d::sign_attempt(&k, &seed));
+        now() - t0
+    });
+    report("Sign-Versuch ohne Neustart", nsig, r);
+
+    // Zahl der SamplerZ-Runden je Versuch. Die Runde ist eine freigegebene
+    // Verzweigung; ihre Zahl soll nicht vom Schlüssel abhängen.
+    let fixed = SigningKey::from_bytes(&fixed_bytes).unwrap();
+    let keys: Vec<SigningKey> = key_bytes
+        .iter()
+        .map(|b| SigningKey::from_bytes(b).unwrap())
+        .collect();
+    let rounds = |k: &SigningKey, rng: &mut X| {
+        d::take_sampler_rounds();
+        d::sign_attempt(k, &rng.next().to_le_bytes());
+        d::take_sampler_rounds() as f64
+    };
+    let mut rng = X(42);
+    let (mut a, mut b) = (Vec::new(), Vec::new());
+    for _ in 0..4000 {
+        if rng.next() & 1 == 1 {
+            let k = &keys[(rng.next() % 16) as usize];
+            b.push(rounds(k, &mut rng));
+        } else {
+            a.push(rounds(&fixed, &mut rng));
+        }
+    }
+    let mean = |v: &[f64]| v.iter().sum::<f64>() / v.len() as f64;
+    println!(
+        "SamplerZ-Runden je Versuch: fest {:.1}, andere {:.1}, |t| = {:.2}",
+        mean(&a),
+        mean(&b),
+        welch(&a, &b).abs()
+    );
+}

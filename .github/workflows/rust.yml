@@ -23,6 +23,141 @@ jobs:
       - name: CI-Skript
         run: bash Rust/ci.sh
 
+  ctgrind:
+    # Konstante Laufzeit mit Valgrind (PLAN.md §6), auf beiden Zielplattformen
+    # und unter allen Compiler-Einstellungen aus ctgrind.sh --matrix
+    # (opt-level 0/1/2/3/s/z, LTO, target-cpu=native, native-fpu, Rust 1.87).
+    strategy:
+      matrix:
+        os: [ubuntu-24.04, ubuntu-24.04-arm]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Rust und Valgrind installieren
+        run: |
+          rustup toolchain install stable --profile minimal
+          rustup toolchain install 1.87 --profile minimal
+          rustup default stable
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq valgrind
+      - name: Valgrind-Prüfung
+        run: bash Rust/ctgrind.sh --matrix
+
+  dudect:
+    # Zeitmessung nach dudect (PLAN.md §6) auf beiden Zielplattformen. Die
+    # Runner sind echte x86-64- bzw. ARM-Prozessoren (kein QEMU), aber
+    # geteilte virtuelle Maschinen: Das Ergebnis ist ein Hinweis, kein
+    # Nachweis. Der Job schlägt deshalb nicht fehl, sondern schreibt die
+    # Tabelle in die Zusammenfassung des Laufs.
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, ubuntu-24.04-arm]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Rust installieren
+        run: |
+          rustup toolchain install stable --profile minimal
+          rustup default stable
+      - name: dudect
+        working-directory: Rust
+        run: |
+          lscpu | grep -i "model name" || true
+          cargo run --release --example dudect --features dudect | tee dudect.txt
+          {
+            echo "### dudect auf ${{ matrix.os }}"
+            echo '```'
+            cat dudect.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  platforms:
+    # Andere Plattformen (nur Korrektheit): 32 Bit (i686), Big-Endian (s390x
+    # unter QEMU) und wasm32 (für die Web-Oberfläche, nur übersetzen).
+    # Findet Fehler bei Bytereihenfolge, usize und u128.
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Rust und Ziele installieren
+        run: |
+          rustup toolchain install stable --profile minimal
+          rustup default stable
+          rustup target add i686-unknown-linux-gnu s390x-unknown-linux-gnu wasm32-unknown-unknown
+          sudo apt-get update -qq
+      # gcc-multilib und der s390x-Cross-Compiler schliessen sich auf Ubuntu
+      # gegenseitig aus; deshalb nacheinander installieren und testen.
+      - name: Tests auf i686 (32 Bit)
+        working-directory: Rust
+        run: |
+          sudo apt-get install -y -qq gcc-multilib
+          cargo test --release --target i686-unknown-linux-gnu
+      - name: s390x-Werkzeuge installieren
+        run: sudo apt-get install -y -qq gcc-s390x-linux-gnu libc6-dev-s390x-cross qemu-user
+      - name: Tests auf s390x (Big-Endian, QEMU)
+        working-directory: Rust
+        env:
+          CARGO_TARGET_S390X_UNKNOWN_LINUX_GNU_LINKER: s390x-linux-gnu-gcc
+          CARGO_TARGET_S390X_UNKNOWN_LINUX_GNU_RUNNER: qemu-s390x -L /usr/s390x-linux-gnu
+        run: cargo test --release --target s390x-unknown-linux-gnu
+      - name: wasm32 übersetzen
+        working-directory: Rust
+        run: cargo build --release --lib --target wasm32-unknown-unknown
+
+  sanitizer:
+    # Alle Tests mit AddressSanitizer (Speicherfehler im unsafe-Code:
+    # Barrieren, Valgrind-Markierungen, DIT). Braucht Nightly.
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Nightly installieren
+        run: rustup toolchain install nightly --profile minimal
+      - name: Tests mit AddressSanitizer
+        working-directory: Rust
+        env:
+          RUSTFLAGS: -Zsanitizer=address
+        run: cargo +nightly test --release --target x86_64-unknown-linux-gnu --lib --tests
+
+  web:
+    # Web-Oberfläche (UI-PLAN.md §7): Tests der WASM-Hülle, WASM bauen,
+    # KAT-Daten erzeugen. Auf main zusätzlich als Pages-Artefakt hochladen.
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Rust, wasm32 und wasm-bindgen-cli installieren
+        run: |
+          rustup toolchain install stable --profile minimal
+          rustup default stable
+          rustup target add wasm32-unknown-unknown
+          cargo install wasm-bindgen-cli --version 0.2.100 --locked
+      - name: Tests der Hülle
+        working-directory: Rust/wasm
+        run: cargo test --release
+      - name: Bauen
+        run: bash Rust/web/build.sh
+      - name: Pages-Artefakt
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: Rust/web
+
+  pages:
+    # Veröffentlicht web/ auf GitHub Pages (UI-PLAN.md W6). Nur auf main und
+    # nur, wenn in den Repository-Einstellungen Pages auf "GitHub Actions"
+    # steht (kann nur der Besitzer einstellen).
+    needs: web
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-24.04
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@v4
+
   msrv:
     # Prüft die kleinste unterstützte Version aus Cargo.toml (rust-version).
     runs-on: ubuntu-24.04
@@ -32,7 +167,7 @@ jobs:
         run: rustup toolchain install 1.87 --profile minimal
       - name: Tests mit Rust 1.87
         working-directory: Rust
-        run: cargo +1.87 test --all-features
+        run: cargo +1.87 test --features fuzzing,ctgrind,dudect
 
   fuzz:
     # Baut die Fuzz-Ziele (PLAN.md, Abschnitt 7) und lässt jedes kurz laufen.
@@ -53,6 +188,6 @@ jobs:
       - name: Fuzz-Ziele je 60 s ausführen
         working-directory: Rust
         run: |
-          for t in decode_pk decode_sk decompress verify; do
+          for t in decode_pk decode_sk decompress verify signing_key sign keygen fpr; do
             cargo +nightly fuzz run "$t" -- -max_total_time=60
           done

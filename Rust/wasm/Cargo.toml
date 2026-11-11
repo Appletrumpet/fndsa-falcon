@@ -1,0 +1,31 @@
+[package]
+name = "fndsa-wasm"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.87"
+publish = false
+description = "WASM-Hülle von fndsa für die Web-Oberfläche (UI-PLAN.md §5)"
+
+# Bauen (UI-PLAN.md §7, Skript web/build.sh):
+#   cargo build --release --target wasm32-unknown-unknown
+#   wasm-bindgen --target web --out-dir ../web/pkg \
+#       target/wasm32-unknown-unknown/release/fndsa_wasm.wasm
+# Tests der Hülle laufen nativ: cargo test
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+fndsa = { path = ".." }
+# Version muss genau zu wasm-bindgen-cli passen.
+wasm-bindgen = "=0.2.100"
+rand_core = { version = "0.6.4", default-features = false }
+sha3 = { version = "0.10.8", features = ["zeroize"] }
+
+[profile.release]
+opt-level = "s"
+lto = true
+codegen-units = 1
+
+# Eigener Workspace, damit `cargo test` im Haupt-Crate dieses Crate nicht baut.
+[workspace]

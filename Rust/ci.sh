@@ -8,16 +8,27 @@ cd "$(dirname "$0")"
 echo "== Formatierung"
 cargo fmt --check
 
+# Alle Features ausser native-fpu: Standard ist die emulierte Gleitkomma-
+# arithmetik. native-fpu wird zusätzlich einzeln gebaut und getestet.
+FEATURES="fuzzing,ctgrind,dudect"
+
 echo "== Clippy (Warnungen sind Fehler)"
+cargo clippy --all-targets --features "$FEATURES" -- -D warnings
 cargo clippy --all-targets --all-features -- -D warnings
 
-echo "== Tests"
-cargo test --all-features
+echo "== Tests (emuliert, Standard)"
+cargo test --features "$FEATURES"
+
+echo "== Tests (native-fpu)"
+cargo test --features native-fpu
 
 echo "== Build ohne Test-Code und Release"
 cargo build --release
 
 echo "== Doku"
 RUSTDOCFLAGS="-D warnings" cargo doc --no-deps
+
+echo "== WASM-Hülle der Web-Oberfläche (wasm/, nativ getestet)"
+(cd wasm && cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test)
 
 echo "Alles in Ordnung."

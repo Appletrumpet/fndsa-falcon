@@ -79,11 +79,8 @@ impl LogN {
 #[derive(Debug)]
 pub struct Params {
     pub(crate) logn: LogN,
-    #[allow(dead_code)] // ab Phase 3 (Sampler)
     pub(crate) sigma: f64,
-    #[allow(dead_code)] // ab Phase 3 (Sampler)
     pub(crate) sigma_min: f64,
-    #[allow(dead_code)] // ab Phase 3 (Sampler)
     pub(crate) sigma_max: f64,
     /// ⌊β²⌋, maximale quadrierte Norm einer Signatur.
     pub(crate) sig_bound: u64,

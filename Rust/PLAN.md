@@ -1,6 +1,32 @@
 # Plan: FN-DSA (Falcon) in Rust, seitenkanalresistent
 
-Stand: 10. November 2026, Branch `Rust`. Phase 0 und 1 sind vollständig
+Stand: 11. November 2026, Branch `Rust`. Alle Phasen 0 bis 8 sind
+umgesetzt (Phase 8: Messungen und Feature `native-fpu`, Abschnitt 5.2).
+Phase 6 (Seitenkanal-Prüfung): Valgrind ohne Befund auf x86-64 und
+aarch64 (Release und opt-level 0; lokal in Docker und im CI-Job `ctgrind`,
+erster grüner Lauf für Commit `c02768f`), dudect ohne Befund auf
+x86-64-Hardware, Assembler-Stichprobe auf beiden Zielen.
+Ergebnisse und Befunde in Abschnitt 6. Danach ergänzt (6.2): Fault-Schutz
+in Sign (`try_sign`: Prüfsumme des Schlüssels, untere Normschranke), DIT
+auf aarch64 und ein CI-Job `dudect` auf x86-64- und ARM-Runnern.
+Erweiterte Tests (7.1): Mutationstests, Grenzfälle für Verify, Statistik
+der Signaturen, Löschtest, Valgrind-Matrix, 32 Bit/Big-Endian, Sanitizer,
+Dauertest, drei neue Fuzz-Ziele. Web-Oberfläche nach UI-PLAN.md (W0–W5,
+W7; neue API `VerifyingKey::verify_report`).
+Keygen ist eine Portierung der Referenz (PQClean, `keygen.c`, `fft.c`) und
+erzeugt aus allen 200 KAT-Seeds byte-genau die KAT-Schlüssel. Zuvor:
+Phase 0 bis 4 sind umgesetzt:
+Phase 2 (`fpr`, FFT), Phase 3 (`prng`, Sampler) und Phase 4 (Baum,
+ffSampling, Sign) rechnen **bitgleich** mit Python, geprüft gegen
+`Python/data/vectors/` (siehe Änderung zu 3.3); auch ganze Signaturen aus
+`flow.sign` stimmen Byte für Byte, wenn Rust denselben Zufall bekommt.
+Abweichung in Phase 4: Bei einem Neustart behält Sign das Salt (wie Alg. 10
+und Python), statt wie in 3.6 beschrieben ein neues zu ziehen. Ergänzt nach
+der Analyse von Phase 1–4: `SigningKey::from_bytes` prüft |G| ≤ 127,
+fG − gF = q und σ′ ∈ [σmin, σmax] für alle Blätter (sonst lief Sign mit
+erfundenen Schlüsseln endlos); Verify nach Sign ist umgesetzt; neues
+Fuzz-Ziel `signing_key`.
+Phase 0 und 1 sind vollständig
 umgesetzt (Crate, `params`, `ct` in Grundform mit Optimierungsbarriere,
 `modq`, `hashing`, `encoding`, Verify, CI-Skript `ci.sh` und GitHub-Workflow
 für x86-64/aarch64 mit Jobs für Rust 1.87 und die Fuzz-Ziele aus §7). Alle 200 KAT-Signaturen werden
@@ -34,7 +60,7 @@ werden, weil der Begriff sonst unerfüllbar ist):
 | Branch-Prediction / Spectre-artige Leaks über Kontrollfluss | **ja** (Kontrollfluss) | wie Timing |
 | Reste im Speicher (Schlüssel bleibt nach Gebrauch im RAM) | **ja** | `zeroize` für alle geheimen Puffer |
 | Leistungsaufnahme / EM (DPA, z. B. „FALCON Down“, 2021) | **nein**, nur benennen | bräuchte Masking; Forschungsstand, nicht Kernumfang |
-| Fault-Angriffe (Fehler einschleusen) | **teilweise** | optional Verify-nach-Sign, Plausibilitätsprüfungen |
+| Fault-Angriffe (Fehler einschleusen) | **teilweise** (Erkennung) | Verify nach Sign, untere Normschranke, Prüfsumme des Schlüssels vor und nach Sign (6.2); keine Doppelrechnung |
 
 Konstante Laufzeit schützt gegen Angreifer, die Zeit messen (auch über das
 Netz) und Cache-Zustände beobachten. Gegen jemanden mit Oszilloskop am Gerät
@@ -68,10 +94,10 @@ Implementations of Falcon“, 2019):
 | L5 | `decompress` | „keine Obergrenze für \|sᵢ\|“ | in Rust braucht es einen festen Typ (`i16`) | **entschieden (9.11.2026):** wie die Referenz, \|sᵢ\| > 2047 ablehnen; im Rahmen der Normschranke kommt das bei echten Signaturen praktisch nie vor |
 | L6 | Keygen und sk-Format | 7.5: keine Prüfung, ob f, g, F ins sk-Format passen | bei Falcon-1024 lässt sich etwa 1 von 10⁴ Schlüsseln nicht speichern | **entschieden (9.11.2026):** wie die Referenz, solche Kandidaten verwerfen (f, g nach FG_BITS, F, G mit 8 Bit) |
 | L7 | BerExp | Alg. 14: Schleife bricht ab, sobald ein Byte entscheidet | Zahl der gezogenen Bytes hängt von z ab | **entschieden (9.11.2026):** nur streng konstant, immer 8 Bytes, siehe 3.4 |
-| L8 | FFT-Darstellung | alle n Werte, Reihenfolge ζₖ | doppelte Arbeit | nur n/2 Werte (der Rest ist konjugiert); Reihenfolge der Doku beibehalten, damit die Python-Werte vergleichbar bleiben (mit Toleranz, siehe Abschnitt 7) |
+| L8 | FFT-Darstellung | alle n Werte, Reihenfolge ζₖ | doppelte Arbeit | ~~nur n/2 Werte~~ **geändert (10.11.2026):** alle n Werte wie Python, damit die Rechenwege und damit die Bits gleich bleiben (siehe 3.3); die doppelte Arbeit ist für die Arbeit unkritisch |
 | L9 | Zufall | beliebiges `rng.random_bytes` | SamplerZ braucht pro Signatur Tausende Bytes | Seed aus OS-Zufall → SHAKE256 → ChaCha20-PRNG (Referenz) |
 | L10 | KAT byte-genau | 7.3: nicht reproduzierbar | stimmt nur ohne den RNG-Ablauf der Referenz | **entschieden (9.11.2026):** die **KAT-Schlüssel** werden byte-genau reproduziert, mit dem Keygen-Ablauf der Referenz (Seed → SHAKE256 → Tabellen-Gauss), siehe 3.5 und Phase 7. Die **KAT-Signaturen** nicht: wegen L7 zieht BerExp andere Bytes als die Referenz |
-| L11 | `_SIGMA_EPS` (Python) | nicht dokumentiert | nur wegen gerundetem σmin nötig | in Rust exakte Konstanten, keine Toleranz; die Prüfung σ′ ∈ [σmin, σmax] wird zur Debug-Assertion, weil σ′ geheim ist |
+| L11 | `_SIGMA_EPS` (Python) | nicht dokumentiert | nur wegen gerundetem σmin nötig | ~~Debug-Assertion~~ **umgesetzt (Phase 4):** σ′ ∈ [σmin − 1e-10, σmax + 1e-10] wird einmal beim Laden des Secret Keys für alle Blätter geprüft, ohne Verzweigung auf den Werten (`InvalidKey` sonst). Die Toleranz bleibt nötig, weil σmin in Tab. 3.3 gerundet ist |
 
 **Entschieden:** L2, L5, L6, L7, L10. Alle Punkte aus 2.2 sind damit
 entschieden.
@@ -190,6 +216,19 @@ durch komplexe Zahlen mit CPythons eigenem Divisionsalgorithmus, und die
 Konstanten und `conj(ζ)/2` statt Division durch `2ζ`. Gleitkommawerte werden
 deshalb mit Toleranz verglichen (Abschnitt 7).
 
+**Geändert (10.11.2026, Phase 2):** Die Voraussetzung oben gilt nicht mehr.
+Mit dem Merge von `main` rechnet Python reproduzierbar (Smith-Division als
+einzelne Operationen, Ziel Z1 der C-Portierung), und die Wurzeln ζ liegen als
+feste Tabelle vor (`C/src/fft_table.h`, aus den Python-Werten erzeugt). Rust
+übernimmt dieselbe Tabelle (`src/fft_table.rs`, erzeugt mit
+`scripts/gen_fft_table.py`) und dieselbe Reihenfolge der Operationen. Weil
+`fpr` korrekt rundet, sind FFT, Sampler und x/z im Sampler **bitgleich** mit
+den Testvektoren in `Python/data/vectors/`, einschliesslich des Vorzeichens
+von Nullen. Die Smith-Division hat keine Verzweigung: beide Zweige sind mit
+vertauschten Operanden dieselbe Formel, die Auswahl läuft über Masken.
+Zahlenbereich von `fpr` (umgesetzt): keine subnormalen Zahlen, kein ±∞,
+kein NaN; Unterlauf ergibt ±0.
+
 Optional als Feature `native-fpu`: `f64` direkt, nur für Ziele, auf denen
 add/mul/sqrt nachweislich konstante Laufzeit haben (z. B. x86-64 mit SSE2, ohne
 Division auf geheimen Daten). Standard bleibt die Emulation.
@@ -293,10 +332,15 @@ Division auf geheimen Daten). Standard bleibt die Emulation.
   verzweigen (Neustart).
 - Ab hier ist s₂ öffentlich: Kompression mit normalem Code.
 - Passt das komprimierte s₂ nicht in die feste Signaturlänge (Tab. 3.3), wird
-  neu signiert (neues Salt, neue Zufallswerte). Das Ergebnis ja/nein darf
+  neu signiert (neue Zufallswerte; das Salt bleibt wie in Alg. 10 und
+  Python gleich, umgesetzt in Phase 4). Das Ergebnis ja/nein darf
   verzweigen.
 - Optional (Fault-Schutz): nach dem Signieren `verify` aufrufen; das kostet
-  wenig im Vergleich zum Signieren.
+  wenig im Vergleich zum Signieren. **Umgesetzt (Phase 4):** bei Fehlschlag
+  neu signieren, nach drei Fehlschlägen Panik statt falscher Signatur.
+  **Erweitert (6.2):** `try_sign` mit Fehler `FaultDetected`, untere
+  Normschranke und Prüfsumme des Schlüssels; `sign` ruft `try_sign` auf
+  und bricht bei einem Fehler mit einer Panik ab.
 
 ### 3.7 Modulare Arithmetik (mod q)
 
@@ -322,7 +366,8 @@ Rust/
     fpr.rs            # emulierte Gleitkommazahlen (L3), optional native-fpu
     poly.rs           # Ganzzahlpolynome kleiner Grösse (i16/i32)
     modq.rs           # NTT mod 12289, Montgomery
-    fft.rs            # FFT auf Fpr, n/2 komplexe Werte (L8), split/merge
+    fft.rs            # FFT auf Fpr, n komplexe Werte wie Python (L8), split/merge
+    fft_table.rs      # Wurzeln ζ als Bits, erzeugt aus C/src/fft_table.h
     hashing.rs        # HashToPoint (variable Laufzeit, öffentlich)
     encoding.rs       # Kompression, pk/sk/sig-Formate (öffentlich)
     prng.rs           # SHAKE256-Seed → ChaCha20 (L9)
@@ -393,13 +438,82 @@ nur noch auf alle Seeds.
 |---|---|---|---|
 | 0 | Crate, `params`, Testdaten aus `Python/data/` einbinden, CI-Skript | Build, Tab. 3.3 | klein |
 | 1 | `modq` (konstant), `hashing`, `encoding`, `verify` | alle 200 KAT-Signaturen gültig, pk/sk-Formate gegen KAT | klein–mittel |
-| 2 | `ct`, `fpr` (emuliert), `fft` | `fpr` bitgleich gegen `f64` für Millionen Zufallswerte im normalen Zahlenbereich inkl. Grenzfälle; FFT gegen Python-Werte mit Toleranz | mittel |
-| 3 | `prng`, `sampler` | BaseSampler und ApproxExp gegen alle Schritte der Sampler-Testvektoren; BerExp-Äquivalenztest; statistische Tests für SamplerZ (Abschnitt 7) | mittel |
-| 4 | `tree`, `ffsampling`, `sign` (mit KAT-sk, `load_secret_key` inkl. `recompute_G`) | Falcon-Baum exakt gegen Testvektor; ffSampling mit Test-RNG gegen Python (ganzzahlige Ausgabe gleich, Gleitkomma mit Toleranz); KAT-sk → sign → verify | mittel |
-| 5 | `zint`, `ntrugen` (NTRUSolve fester Länge, Portierung der Referenz), `keygen`; AES-CTR-DRBG für Tests von Anfang an | fG − gF = q, γ-Schranke, sk-Format, keygen → sign → verify für 512/1024, reduzierte n; **KAT count 0 byte-genau** (f, g, dann F) für beide Varianten | **gross** |
-| 6 | Seitenkanal-Prüfung (Abschnitt 6) | dudect ohne Befund, Valgrind ohne Befund auf geheimen Daten | mittel |
-| 7 | KAT-Schlüssel byte-genau (L10), alle Seeds | alle 200 KAT-Seeds ergeben exakt sk und pk der KAT-Dateien (Signaturen wegen L7 nicht) | klein, wenn count 0 in Phase 5 stimmt |
-| 8 (optional) | Benchmarks gegen Python, `native-fpu` | Zahlen für die Arbeit | klein |
+| 2 | `ct`, `fpr` (emuliert), `fft` | `fpr` bitgleich gegen `f64` für Millionen Zufallswerte im normalen Zahlenbereich inkl. Grenzfälle; FFT **bitgleich** gegen `Python/data/vectors/fft.*` (**erledigt**) | mittel |
+| 3 | `prng`, `sampler` | BaseSampler und ApproxExp gegen alle Schritte der Sampler-Testvektoren; BerExp-Äquivalenztest; statistische Tests für SamplerZ (Abschnitt 7) (**erledigt**, gegen `Python/data/vectors/sampler.*`) | mittel |
+| 4 | `tree`, `ffsampling`, `sign` (mit KAT-sk, `load_secret_key` inkl. `recompute_G`) | Falcon-Baum und ffSampling bitgleich gegen `Python/data/vectors/tree.*` und `ffsampling.*` (Test-Generator wie beim SamplerZ); KAT-sk → sign → verify (**erledigt**; dazu `flow.sign` und `flow.sign_restart` byte-genau) | mittel |
+| 5 | `zint`, `ntrugen` (NTRUSolve fester Länge, Portierung der Referenz), `keygen`; AES-CTR-DRBG für Tests von Anfang an | fG − gF = q, γ-Schranke, sk-Format, keygen → sign → verify für 512/1024, reduzierte n; **KAT count 0 byte-genau** (f, g, dann F) für beide Varianten (**erledigt**; dazu `fft_ref.rs`, die FFT der Referenz, weil `reduce` mit ihr rundet) | **gross** |
+| 6 | Seitenkanal-Prüfung (Abschnitt 6) | dudect ohne Befund, Valgrind ohne Befund auf geheimen Daten (**erledigt**: Valgrind auf x86-64 und aarch64, dudect auf x86-64; dudect auf aarch64 als CI-Job auf dem ARM-Runner, 6.2) | mittel |
+| 7 | KAT-Schlüssel byte-genau (L10), alle Seeds | alle 200 KAT-Seeds ergeben exakt sk und pk der KAT-Dateien (Signaturen wegen L7 nicht) (**erledigt**, siehe 5.1) | klein, wenn count 0 in Phase 5 stimmt |
+| 8 (optional) | Benchmarks gegen Python, `native-fpu` | Zahlen für die Arbeit (**erledigt**, siehe 5.2) | klein |
+
+### 5.1 Ergebnis Phase 7 (10.11.2026)
+
+Der Test `tests/kat_keygen.rs` bildet für alle 200 KAT-Fälle den Ablauf von
+`PQCgenKAT_sign` nach: AES-256-CTR-DRBG mit dem `seed` der KAT-Datei,
+48 Bytes für `keygen_from_seed`, danach `sign` aus demselben Strom.
+`examples/kat_rsp.rs` schreibt daraus KAT-Dateien im NIST-Format und
+vergleicht sie Feld für Feld mit den offiziellen:
+
+| Datei | Fälle | pk, sk gleich | Salt gleich | sm gleich | Verify ok |
+|---|---|---|---|---|---|
+| falcon512 | 100 | 100 | 100 | 0 | 100 |
+| falcon1024 | 100 | 100 | 100 | 0 | 100 |
+
+Das Salt stimmt, weil Rust es wie die Referenz als erste 40 Bytes nach dem
+Keygen-Seed aus dem DRBG liest; damit ist auch die Reihenfolge der Aufrufe
+bestätigt. Die komprimierte Signatur weicht erwartungsgemäss ab (BerExp
+liest immer 8 Bytes, L7; Sampler mit ChaCha20, L9); ihre Länge stimmt nur
+zufällig (11 von 100). Jede Rust-Signatur besteht Verify mit dem
+offiziellen pk.
+
+### 5.2 Ergebnis Phase 8 (11.11.2026)
+
+**Messprotokoll** (gemeinsam für Rust, C und Python; `examples/bench.rs`,
+`scripts/bench_python.py`):
+- Operationen: Keygen aus einem Seed, sk laden, Sign, Verify, je für
+  Falcon-512 und Falcon-1024;
+- feste Eingaben: Seeds 0, 1, 2, … (48 gleiche Bytes), Nachricht 32 Bytes;
+  ein Thread, Release-Build;
+- Aufwärmen, dann N Läufe (Rust: Keygen 50/30, sk laden 200, Sign 500,
+  Verify 2000; Python: 8/4, 20, 50, 200); gemeldet werden Median sowie
+  10- und 90-%-Perzentil, in Rust zusätzlich in Zyklen (`rdtsc`);
+- Umgebung angeben: CPU, Betriebssystem, Compiler bzw. Python-Version.
+
+**Ergebnis** (Median; AMD Zen 3, „AMD64 Family 25 Model 97“, Windows 11;
+Rust 1.99.1, Python 3.13.14; Faktor = Python / Rust):
+
+| Operation | n | Python | Rust emuliert | Faktor | Rust `native-fpu` | Faktor |
+|---|---|---|---|---|---|---|
+| Keygen | 512 | 736 ms | 21,8 ms | 34 | 11,6 ms | 63 |
+| sk laden | 512 | 11,6 ms | 5,38 ms | 2,2 | 2,77 ms | 4,2 |
+| Sign | 512 | 17,2 ms | 6,66 ms | 2,6 | 3,39 ms | 5,1 |
+| Verify | 512 | 2,89 ms | 18,4 µs | 157 | 17,7 µs | 163 |
+| Keygen | 1024 | 2720 ms | 67,2 ms | 40 | 38,8 ms | 70 |
+| sk laden | 1024 | 29,3 ms | 12,5 ms | 2,4 | 6,51 ms | 4,5 |
+| Sign | 1024 | 48,8 ms | 14,3 ms | 3,4 | 7,33 ms | 6,7 |
+| Verify | 1024 | 8,16 ms | 36,8 µs | 222 | 36,8 µs | 222 |
+
+Einordnung:
+- Keygen schwankt stark (10/90 %: in Rust 14–49 ms für Falcon-512), weil
+  verworfene Kandidaten vom Seed abhängen; bei Python mit nur 8 bzw. 4
+  Läufen ist der Median entsprechend unsicher.
+- Verify kommt ohne Gleitkomma aus; der Unterschied zu Python stammt aus
+  Ganzzahlen fester Breite und der NTT statt Python-Listen.
+- Sign ist mit emulierten Gleitkommazahlen nur 2,6- bis 3,4-mal schneller
+  als Python, das die Gleitkommaeinheit der Hardware benutzt. Mit
+  `native-fpu` halbiert sich die Zeit; den Rest kostet vor allem die
+  weiterhin emulierte Division (rund 400 Zyklen je Division).
+
+**Feature `native-fpu`** (3.3, §10): Addition, Subtraktion, Multiplikation
+und Wurzel über die Gleitkommaeinheit, Division und Runden emuliert.
+Alle Tests einschliesslich der bitgleichen Vergleiche mit Python und der
+200 KAT-Schlüssel bestehen damit unverändert (keine subnormalen Zahlen in
+Falcon). dudect auf demselben Prozessor: alle Bausteine |t| ≤ 2,2 (Sign
+1,39, Sign-Versuch 1,11). Standard bleibt die Emulation: Ob `addsd`,
+`mulsd` und `sqrtsd` auf einer CPU konstante Laufzeit haben, hängt vom
+Modell ab und ist hier nur für diesen Prozessor gemessen; auf aarch64
+bräuchte es zusätzlich das DIT-Flag (§10). `ci.sh` testet beide
+Varianten.
 
 ---
 
@@ -442,6 +556,140 @@ Alle drei Prüfungen laufen auf beiden Zielplattformen (Abschnitt 10).
 
 Zusätzlich: Durchsicht, dass alle geheimen Puffer gelöscht werden.
 
+### 6.1 Ergebnisse (Phase 6, 10.11.2026)
+
+**Valgrind** (`examples/ctgrind.rs`, `ctgrind.sh`, Feature `ctgrind`):
+Keygen-Seed und Seed des Samplers werden als geheim markiert (`ct::poison`),
+dann laufen Keygen, Speichern, Laden, Sign und Verify für 512 und 1024. Die
+erlaubten Stellen aus der Tabelle oben geben `ct::declassify` bzw.
+`ct::unpoison` (h, s₂ nach der Annahme) frei.
+- Ergebnis: **keine Meldung** auf x86-64, im Release-Build und mit
+  opt-level 0 ohne Überlaufprüfungen (die Überlaufprüfungen des
+  Debug-Builds sind selbst Verzweigungen auf Werten und gehören nicht zum
+  Konstantzeit-Code). Ebenso **keine Meldung auf aarch64** im CI-Job
+  `ctgrind` (GitHub-Runner `ubuntu-24.04-arm`, beide Builds, Selbsttest
+  schlägt an; erster Lauf für Commit `c02768f`).
+- Wirksamkeit belegt: Selbsttest (absichtliche Verzweigung auf geheimem
+  Byte wird gemeldet) und zwei Gegenproben (ohne die Freigabe in SamplerZ
+  bzw. beim Neuziehen in Keygen meldet Valgrind sofort).
+- **Befunde, behoben:**
+  1. `zint_sub`, `zint_norm_zero`, `zint_bezout` (portierter Keygen):
+     LLVM baute Auswahlen über Masken ohne Barriere in Sprünge um →
+     Masken durch `ct::barrier`.
+  2. Schiebungen mit geheimer Weite in `fpr` und im Sampler (Memcheck
+     verlangt bekannte Schiebeweiten) → `ct::shr64`/`ct::shl64` mit sechs
+     festen Schritten; Runden in `make` bitweise statt über `0xC8 >> x`.
+     Damit hängt die Laufzeit auch auf CPUs ohne konstante Schiebebefehle
+     nicht von den Werten ab.
+  3. `is_short` in Sign: `saturating_mul/add` und `unsigned_abs`
+     verzweigen → Begrenzung über Maske, Summe in u128.
+  4. Prüfungen mit `||` bzw. `contains` werten in zwei Schritten aus und
+     verzweigen vor der Freigabe → Masken (`out_of_range_mask`).
+  5. `check_fg` brach beim ersten zu grossen Koeffizienten ab (`any`) →
+     Maske über alle Koeffizienten.
+  6. Im Prüfprogramm selbst: `poison(&[T])` wirkte im Release-Build nicht,
+     weil der Compiler hinter `&` unveränderliche Daten annimmt → `&mut`.
+
+**dudect** (`examples/dudect.rs`, Feature `dudect`), x86-64-Laptop,
+Windows, Zyklenzähler; fest gegen zufällig, |t| (Schwelle 4.5):
+
+| Baustein | Messungen | \|t\| |
+|---|---|---|
+| fpr Division, Multiplikation, Addition, Wurzel, Runden | je 10⁶ | 0.76 – 1.56 |
+| BaseSampler | 10⁶ | 1.26 |
+| SamplerZ (μ, σ′) | 2·10⁵ | 0.75 |
+| Sign (fester Schlüssel gegen 16 andere) | 3000 | 1.71 |
+| ein Sign-Versuch ohne Neustart (ffSampling, Signaturvektor) | 3000 | 1.01 |
+| Zahl der SamplerZ-Runden je Versuch (1778.3 gegen 1778.1) | 4000 | 0.21 |
+
+Messfehler im Prüfprogramm, gefunden und behoben:
+- BaseSampler zuerst |t| = 13: Die Eingaben beider Klassen wurden
+  unterschiedlich vorbereitet (nur Klasse 1 zog Zufallsbytes).
+- Sign zuerst |t| = 6.2, nach Leeren des Caches 3.7; ein einzelner
+  Sign-Versuch ohne Neustarts sogar 5 bis 19 (mit `native-fpu` höher, weil
+  das Rauschen kleiner ist). Die frühere Erklärung (schlüsselabhängige Zahl
+  der Neustarts) war **falsch**: Auch ohne Neustarts schlug der Test an,
+  und die Zahl der SamplerZ-Runden ist für alle Schlüssel gleich. Ursache
+  war die Lage im Speicher: Der feste Schlüssel lag immer an derselben
+  Adresse, die anderen an verschiedenen, und die Konflikte im Cache
+  unterschieden sich. Seit der Schlüssel vor jeder Messung neu geladen wird
+  (beide Klassen mit wechselnden Adressen), liegen alle Werte deutlich
+  unter der Schwelle. Gemessen wird damit der Wert des Schlüssels, nicht
+  seine Adresse; Adressen hängen nicht von geheimen Daten ab.
+Keygen wird nicht gemessen: Es verwirft Kandidaten absichtlich (erlaubte
+Verzweigung), seine Laufzeit hängt deshalb vom Seed ab.
+
+**Assembler:** keine Gleitkomma- und Divisionsbefehle der Hardware im
+ganzen Crate (x86-64, aarch64); `fpr`-Operationen, Smith-Division und
+Gleitkommateile des Samplers ohne bedingte Sprünge (einzige Ausnahme: die
+feste Schleife der Division). Für den portierten Keygen-Code ersetzt die
+Valgrind-Prüfung die Durchsicht von Hand.
+
+**Gelöschte Puffer:** zusätzlich gelöscht werden jetzt der Keccak-Zustand
+(`sha3` mit Feature `zeroize`) und die Zwischenfelder der γ-Berechnung.
+Bekannte Grenze: der Ausgabepuffer im XOF-Leser von `digest` und Werte in
+Registern und auf dem Stack.
+
+**dudect auf aarch64:** siehe 6.2 (CI-Job `dudect`). Valgrind auf aarch64
+ist erledigt (CI-Job `ctgrind`).
+
+### 6.2 Nachträge: Fault-Schutz, DIT, dudect auf aarch64 (11.11.2026)
+
+**Fault-Schutz in Sign** (`SigningKey::try_sign`, Fehler `FaultDetected`;
+`sign` bricht dann mit einer Panik ab). Drei Prüfungen, alle auf Daten,
+die entweder öffentlich werden oder nur ja/nein verraten:
+
+| Prüfung | erkennt | Kosten |
+|---|---|---|
+| Verify nach Sign (seit Phase 4) | Fehler, die eine ungültige Signatur ergeben | ≈ 20 µs |
+| untere Schranke ‖(s₁, s₂)‖² ≥ ⌊β²⌋/2 | Ausfall des Samplers (Zufall null, Schleife übersprungen): Die Signatur besteht Verify, ist aber nur auf den Mittelwert gerundet und verrät über viele Signaturen die Basis (wie bei NTRUSign) | vernachlässigbar |
+| Prüfsumme SHAKE256 über f, g, F, Basis, Baum und h, beim Laden berechnet, vor und nach jedem Sign verglichen | dauerhaft veränderter Schlüssel im Speicher (gekippte Bits, Rowhammer); ein veränderter Baum liefert sonst gültige, aber falsch verteilte Signaturen | ≈ 7 % von Sign |
+
+Begründung der Schranke: β = 1.1·σ·√(2n), die Norm² liegt im Mittel bei
+2nσ² ≈ 0.83·β² und streut um 4.4 % (n = 512) bzw. 3.1 % (n = 1024); β²/2
+liegt 9 bzw. 13 Standardabweichungen darunter. Gemessen (Tests in
+`lib.rs`): ehrliche Signaturen 0.72–0.94·β² (512) bzw. 0.75–0.89·β²
+(1024); mit eingeschleustem Ausfall des Samplers (nur im Test-Build,
+`sampler::testing::FAULT_ROUND`) 0.03·β², und diese Signaturen bestehen
+Verify. Weitere Tests verändern f, F, die Basis, ein Blatt des Baums und h
+und erwarten `FaultDetected`. Valgrind meldet nach der Änderung nichts.
+
+dudect nach der Änderung (x86-64, zwei Läufe): fpr ≤ 1.97, BaseSampler
+≤ 1.88, SamplerZ ≤ 0.84, Sign ≤ 1.73, Sign-Versuch ≤ 1.73, Runden 0.21.
+Dabei ein dritter Messfehler im Prüfprogramm: Die Addition stieg ohne
+jede Änderung an `fpr` auf |t| = 4.2 bis 5.6 (der Maschinencode von
+`fpr_add` ist mit dem alten Stand identisch und hat keinen Sprung). Ursache
+war wie beim BaseSampler die ungleiche Vorbereitung: Nur Klasse 1 zog
+Zufallszahlen, Klasse 0 nahm Konstanten; ob das vor der Zeitnahme
+sichtbar wird, hängt von der Lage des Codes ab. Jetzt ziehen beide
+Klassen für alle Bausteine dieselben Zufallszahlen, erst danach wird der
+feste Wert gewählt; die Addition liegt wieder bei 0.3 bis 1.1.
+
+Grenze: Ein einzelner Fehler mitten in einer Rechnung, der eine gültige
+**und** plausible Signatur ergibt, wird nicht erkannt; dafür bräuchte es
+eine Doppelrechnung (Sign zweimal mit demselben Zufall, doppelte Kosten).
+Fehler in der Zufallsquelle selbst (z. B. immer derselbe Seed) erkennt
+Sign ebenfalls nicht. Die Laufzeiten in 5.2 sind vor dem Fault-Schutz
+gemessen.
+
+**DIT auf aarch64** (§10): `ct::DitGuard` setzt das Flag (Register
+`S3_3_C4_C2_5`, Bit 24) während Keygen, Laden und Sign, wenn die CPU es
+kennt (`is_aarch64_feature_detected!("dit")`), und stellt danach den
+alten Wert her. Öffentlich abfragbar mit `fndsa::dit_available()`.
+Geprüft: Assembler für aarch64, Test `dit_guard_sets_and_restores` in
+der CI auf dem ARM-Runner.
+
+**dudect auf aarch64:** Der neue CI-Job `dudect` lässt `examples/dudect.rs`
+auf `ubuntu-24.04` und `ubuntu-24.04-arm` laufen und schreibt die Tabelle
+in die Zusammenfassung des Laufs. Zeitquelle auf aarch64 ist der
+Systemzähler `cntvct_el0` (Frequenz wird ausgegeben); das Programm meldet
+auch, ob DIT gesetzt wird. Die Runner sind echte Prozessoren (kein QEMU),
+aber geteilte virtuelle Maschinen: Ein Wert unter 4.5 ist ein Hinweis,
+kein Nachweis, und ein einzelner Ausreisser kann vom Nachbarn auf der
+Maschine kommen. Der Job schlägt deshalb nicht fehl. Eine Messung auf
+einem eigenen ARM-Gerät (Raspberry Pi 5, Apple Silicon) bleibt die
+bessere Prüfung. Ergebnis des ersten Laufs: steht aus.
+
 ---
 
 ## 7. Tests
@@ -449,14 +697,12 @@ Zusätzlich: Durchsicht, dass alle geheimen Puffer gelöscht werden.
 - **Portiert aus Python:** die Tests aus `Python/tests/` dort, wo sie
   Spezifikationseigenschaften prüfen (Parameter, Kompression, Formate, NTT,
   FFT-Eigenschaften, Sampler, ffLDL-Invarianten).
-- **Differenztests gegen Python:** Ein Skript in `Python/scripts/` erzeugt
-  JSON-Vektoren (FFT, split/merge, Baum für die KAT-Schlüssel, ffSampling mit
-  festen Zufallsbytes). Python bleibt unverändert, daher **nicht bitgleich**
-  (Gründe in 3.3): Gleitkommawerte mit relativer Toleranz (Richtwert 2⁻⁴⁰,
-  beim Umsetzen festlegen), ganzzahlige Ergebnisse (z aus ffSampling, s₁, s₂)
-  müssen gleich sein. Bei sehr seltenen Abweichungen durch Rundung an einer
-  Ganzzahlgrenze den Fall einzeln prüfen. Exakte Referenzwerte für Baum und
-  Signaturvektor liefern die Sampler-Testvektoren.
+- **Differenztests gegen Python:** `Python/scripts/gen_vectors.py` (aus der
+  C-Portierung) erzeugt Vektoren für jede Funktion
+  (`Python/data/vectors/*.txt`, Leser in `tests/common/vectors.rs`).
+  **Geändert (10.11.2026):** Vergleich **bitgleich**, nicht mit Toleranz
+  (Begründung in 3.3). Umgesetzt für FFT und Sampler. **Ergänzt
+  (11.11.2026):** auch die übrigen Vektoren, siehe 7.2.
 - **Nicht bitgleich zu erwarten:** (F, G) aus NTRUSolve (3.5) und wegen L7
   alles, was auf die Zufallsfolge nach dem ersten BerExp-Aufruf angewiesen ist
   (SamplerZ-Folgen, exakte Signatur aus dem Testvektor).
@@ -477,7 +723,122 @@ Zusätzlich: Durchsicht, dass alle geheimen Puffer gelöscht werden.
     die diskrete Gaussverteilung für mehrere (μ, σ′), mit festen Seeds wie in
     7.2 der Doku.
 - **Fuzzing** (`cargo fuzz`) für `decode_pk`, `decode_sk`, `decode_sig`,
-  `decompress` und `verify`: diese verarbeiten Daten von aussen.
+  `decompress` und `verify`: diese verarbeiten Daten von aussen. Dazu
+  `signing_key` (laden, signieren, prüfen).
+
+### 7.1 Erweiterte Tests (11.11.2026)
+
+Ziel: Fehler finden, die die Vergleiche mit Python und den KAT-Dateien
+nicht sehen können. Der Vergleich mit der C-Implementierung und PQClean
+(signieren hier, prüfen dort und umgekehrt; vergleichendes Fuzzing von
+Verify) ist zurückgestellt.
+
+| Test | Datei | Ergebnis |
+|---|---|---|
+| Mutationstests (`cargo-mutants`) | Linux-Container | siehe unten |
+| Normschranke genau auf ⌊β²⌋ und eins darüber (eigens gebauter Public Key: s₂ = (1, 0, …), h = c − t, also s₁ = t) | `tests/verify_edge.rs` | β² angenommen, β² + 1 abgelehnt |
+| jedes einzelne gekippte Bit einer Signatur (5 Signaturen, alle Bits) | `tests/verify_edge.rs` | alle abgelehnt |
+| Längen: nur gepolstert und ungepolstert gültig, wie PQClean `do_verify` | `tests/verify_edge.rs` | ja, genau diese zwei |
+| alle 256 Header-Bytes; Public Key mit Koeffizient q, falscher Länge, anderem Grad | `tests/verify_edge.rs` | nur 0x30 \| logn |
+| leere Nachricht und 1 MiB | `tests/verify_edge.rs` | ok |
+| Verteilung von s₂: Mittel, σ, Wölbung, χ² gegen N(0, σ²); zwei Schlüssel gleich verteilt | `tests/statistics.rs` | 512: σ̂ = 165.64 (σ = 165.74), Wölbung 3.000, χ² = 16.6; 1024: σ̂ = 168.03 (168.39), χ² = 12.9; zwei Schlüssel χ² = 13.8 (Schranke jeweils 40.8, p = 0.001) |
+| Fehlersimulation: 400 zufällige Bits in f, g, F, Basis, Baum, h | `lib.rs` | alle von der Prüfsumme erkannt |
+| Löschtest: eigener Speicherverwalter sucht in freigegebenem Speicher nach Stücken von f, g, F (als `i8`) und f mod q (`u32`); Gegenprobe mit absichtlich ungelöschtem Puffer | `tests/zeroize.rs` | keine Kopie gefunden, Gegenprobe erkannt |
+| Valgrind über Compiler-Einstellungen: opt-level 0/1/2/3/s/z, LTO, x86-64-v3, native-fpu, Rust 1.87 (`ctgrind.sh --matrix`) | `ctgrind.sh` | 10 Varianten ohne Meldung (x86-64; aarch64 im CI-Job) |
+| 32 Bit (i686) und Big-Endian (s390x unter QEMU), alle Tests | CI-Job `platforms` | alle bestehen, auch die 200 KAT-Schlüssel byte-genau |
+| wasm32 (für die Web-Oberfläche) | CI-Job `platforms` | übersetzt; Tests nicht ausgeführt (keine Laufzeitumgebung) |
+| AddressSanitizer, alle Tests | CI-Job `sanitizer` | keine Meldung |
+| Dauertest (`--ignored`) | `tests/soak.rs` | 5000 Schlüssel / 100 000 Signaturen (512) und 1250 / 25 000 (1024) ohne Fehler, 34 min |
+| neue Fuzz-Ziele `sign` (beliebiger Zufall und Nachricht), `keygen` (beliebiger Seed), `fpr` (gegen `f64`) | `fuzz/` | `fpr` fand einen Grenzfall, siehe unten |
+| zurückgestellte Abdeckungslücken: `Display` aller Fehler, Getter, gültiges s₂ im Fuzz-Ziel, `FuzzRng` | `lib.rs`, `fuzzing.rs`, `tests/keygen.rs` | geschlossen |
+| restliche Python-Testvektoren (21 Dateien) | `src/python_vectors.rs` | 510 Fälle bestehen, siehe 7.2 |
+
+**Befund durch Fuzzing (`fpr`):** Liegt das genaue Ergebnis einer
+Multiplikation knapp unter 2⁻¹⁰²², rundet IEEE auf 2⁻¹⁰²² auf; `Fpr` gibt
+±0. Die Referenz macht dasselbe (`FPR()` in PQClean `fpr.h`: Der Exponent
+vor dem Runden entscheidet). Kein Fehler, aber die Beschreibung des
+Zahlenbereichs war ungenau; jetzt in `fpr.rs` präzisiert und als
+Regressionstest festgehalten. In Falcon kommen solche Werte nicht vor.
+
+**Mutationstests** (`cargo-mutants` 27.1, im Linux-Container): Das
+Werkzeug baut kleine Fehler ein (Operator getauscht, Rückgabewert fest,
+Funktion leer) und prüft, ob ein Test scheitert. Lauf über alle Dateien
+ausser dem portierten Keygen (`ntrugen.rs`, `zint.rs`, `fft_ref.rs` und den
+erzeugten Tabellen, zusammen rund 2000 Mutationen; diesen Code prüfen die
+200 byte-genauen KAT-Schlüssel streng) und ohne den Code, der nur mit den
+Features `dudect`/`ctgrind` oder auf aarch64 wirkt. Wartezeit 30 s je
+Mutation, der Test der 200 KAT-Schlüssel übersprungen (prüft den Keygen).
+
+| Ergebnis | Anzahl |
+|---|---|
+| erkannt (Test scheitert) | 606 |
+| erkannt durch Zeitüberschreitung (z. B. Sign startet endlos neu) | 439 |
+| nicht übersetzbar | 177 |
+| überlebt | 60 |
+
+Die 60 Überlebenden:
+
+| Gruppe | Anzahl | Bewertung |
+|---|---|---|
+| `fuzzing.rs` (Einstiege der Fuzz-Ziele, Test-Zufallsquellen) | 35 | Testcode |
+| `ct.rs`: Konstanten der Valgrind-Anfragen, DIT | 8 | wirken nur unter Valgrind bzw. auf aarch64 |
+| gleichwertig (`find_psi`: (q ± 1)/2048 = 6; `bitrev10`: Bit 10 ist 0; `decompress`: Endprüfung schon durch `rest_is_zero` abgedeckt; p/(±1) = p·(±1); `0x50 \| logn` = `0x50 ^ logn`; in den Blattgrenzen sind „unter“ und „über“ nie beide wahr) | 9 | keine Änderung |
+| **echte Lücken:** `key_valid_mask` (G-Schranke, konstanter Term, übrige Terme, ganze Funktion), `leaves_in_range_mask` (ganze Funktion, beide Verknüpfungen), Längenprüfung in `encode_sk` | 8 | neue Tests, siehe unten |
+
+Aus den Teilläufen davor kamen sechs weitere Lücken in `lib.rs`: Texte der
+Fehler (`Display`), Mindestlänge 42 Bytes in `Signature::from_bytes`,
+Vorzeichen der Toleranz um σmin/σmax, Platzberechnung in `key_digest`
+(nur `debug_assert`, jetzt `assert`, weil ein gewachsener Puffer eine
+ungelöschte Kopie hinterliesse). Neue Tests: `key_valid_mask_each_condition`
+(kleine Schlüssel mit n = 2, z. B. f = 1, g = −97, F = 127, G = −30, also
+fG − gF = q, und jede Bedingung einzeln verletzt),
+`leaves_in_range_mask_bounds` (Grenzen genau auf dem kleinsten und
+grössten Blatt eines KAT-Schlüssels und eine Stufe enger),
+`error_messages`, `signature_length_limit`, `leaf_bounds_have_tolerance`,
+Längenfälle in `encode_sk_rejects_mismatched_lengths`. Nachlauf über
+diese Funktionen: 91 Mutationen, 79 erkannt, 9 nicht übersetzbar, 3
+überlebt, alle drei gleichwertig.
+
+
+### 7.2 Restliche Python-Testvektoren (11.11.2026)
+
+Nach dem Vergleich mit der C-Implementierung, die alle Dateien in
+`Python/data/vectors/` prüft, nutzt Rust jetzt auch die übrigen 21
+(`src/python_vectors.rs`, dafür `falcon::compute_s1` als eigene Funktion
+wie in C):
+
+| Dateien | geprüft | übersprungen | bekannte Unterschiede |
+|---|---|---|---|
+| `encoding.*` (9) | 162 | 21 | 2 |
+| `modq.*` (6) | 242 | 11 | 15 |
+| `hashing.hash_to_point` | 31 | 0 | 0 |
+| `falcon.compute_public_key`, `compute_s1`, `is_short` | 33 | 0 | 0 |
+| `flow.verify` | 12 | 0 | 0 |
+| `flow.keygen` (n = 2 … 1024) | 30 | 0 | 0 |
+| **zusammen** | **510** | **32** | **17** |
+
+- **Übersprungen** heisst: Rust kann die Eingabe durch seine Typen gar
+  nicht darstellen (Salt ≠ 40 Bytes, Koeffizient ausserhalb von i8, Länge
+  keine Zweierpotenz); in Python sind all diese Fälle Fehler. Bei
+  `decode_kat_message` prüft die Testhilfe `split_kat_sm` das Format nicht,
+  dort zählen nur die gültigen Fälle.
+- **Bekannte Unterschiede:** Python erlaubt für mod q auch n = 1 (Falcon
+  beginnt bei n = 2), und Python dekomprimiert |sᵢ| > 2047, Rust lehnt das
+  wie die Referenz ab (L5).
+- **Darstellung der NTT:** Rust legt die Werte in bitumgekehrter
+  Reihenfolge ab, Python in natürlicher; die Werte sind dieselben.
+- **`decode_sig`:** `Signature::from_bytes` kennt den Parametersatz nicht
+  und nimmt jeden gültigen Grad an; ein fremder Grad fällt erst in Verify
+  auf (Schritt `Decode`). Eine Obergrenze für die Länge hat Python so wenig
+  wie Rust; nur die C-Implementierung lehnt mehr als `sig_bytelen` + 1
+  Bytes ab.
+- **`flow.keygen`:** Rust erzeugt mit dem Keygen der Referenz andere
+  Schlüssel (L10). Geprüft wird, dass Rust die Python-Schlüssel für alle
+  Grade als gültig erkennt: fG − gF = q exakt, h = g/f, G aus f, g, F (wo
+  |G| ≤ 127), für 512/1024 auch Laden über das Secret-Key-Format.
+- Nicht übertragbar: `bigint`, `poly.*`, die übrigen `ntrugen.*`
+  (anderer Keygen), `shake256` (Crate `sha3`), `sampler.uniform_bits`
+  (in Rust Teil von BaseSampler).
 
 ---
 
@@ -513,12 +874,22 @@ Alle Designentscheidungen sind getroffen; der Plan ist bereit zur Umsetzung.
 
 Noch offen (blockiert erst Phase 6, nicht den Start):
 
-- aarch64-Hardware für Valgrind und dudect beschaffen bzw. klären
-  (Abschnitt 10).
-- Die Keygen-Details aus 3.5 (Byte-Reihenfolge, Neuziehen, Reihenfolge der
-  Prüfungen) und der Zahlenbereich von `fpr` (3.3) beruhen auf meiner
-  Erinnerung an die Referenz und werden zu Beginn von Phase 2 bzw. 5 im
-  Quelltext der Referenz nachgeprüft.
+- ~~aarch64-Hardware für dudect beschaffen bzw. klären (Abschnitt 10).~~
+  dudect läuft als CI-Job auf dem ARM-Runner (6.2); ein eigenes Gerät
+  wäre genauer. Valgrind auf aarch64 läuft ebenfalls auf den GitHub-Runnern
+  (`ubuntu-24.04-arm`).
+- ~~Die Keygen-Details aus 3.5 … werden … nachgeprüft.~~ **Nachgeprüft
+  (Phase 5, PQClean `keygen.c`):** Seed (48 Bytes) → SHAKE256 → alle
+  Zufallswerte; 64-Bit-Werte little-endian (`get_rng_u64`); Tabellen-Gauss
+  mit Summe von 1024/n Ziehungen; neu gezogen wird ein einzelner
+  Koeffizient ausserhalb **±127** (nicht ±`lim`) und der letzte bis zur
+  ungeraden Summe; danach verwirft die Referenz den ganzen Kandidaten,
+  wenn ein Koeffizient nicht in FG_BITS passt. Reihenfolge der Prüfungen:
+  FG_BITS, ‖(g, −f)‖² < 16823, γ² < 16822.4121, h = g/f (invertierbar),
+  NTRUSolve mit |F|, |G| ≤ 127. Zusätzlich gefunden: `reduce` rundet mit
+  der FFT der Referenz (n/2 Werte, `fpr_gm_tab`); sie ist mitportiert
+  (`fft_ref.rs`). γ rechnet Rust mit der eigenen FFT, weil γ nur
+  „verwerfen ja/nein“ entscheidet. Zahlenbereich von `fpr` siehe 3.3.
 
 ---
 
@@ -527,10 +898,10 @@ Noch offen (blockiert erst Phase 6, nicht den Start):
 | Thema | x86-64 | aarch64 |
 |---|---|---|
 | 64×64→128-Multiplikation (ApproxExp, `fpr`, `zint`) | `mul` nativ | `mul`/`umulh` nativ |
-| Hardware-Hilfe für konstante Laufzeit | keine allgemeine Garantie; Intel DOITM auf neueren CPUs (vom Betriebssystem gesteuert) | DIT-Flag (Data Independent Timing, ab ARMv8.4): beim Signieren und im Keygen setzen, wo verfügbar |
+| Hardware-Hilfe für konstante Laufzeit | keine allgemeine Garantie; Intel DOITM auf neueren CPUs (vom Betriebssystem gesteuert) | DIT-Flag (Data Independent Timing, ab ARMv8.4): beim Signieren, Laden und im Keygen setzen, wo verfügbar (**umgesetzt**, 6.2) |
 | `native-fpu` | add/mul/sqrt in SSE2 gelten als konstant für normale Zahlen; Division nicht verwenden | nur mit DIT zulassen; welche FP-Befehle DIT abdeckt, in der ARM-Doku nachprüfen |
 | Valgrind-Prüfung (Abschnitt 6) | Linux x86-64 | Linux aarch64 (z. B. Raspberry Pi 5, AWS Graviton); macOS wird von Valgrind nicht unterstützt |
-| dudect-Messungen | echte Hardware | echte Hardware (z. B. Apple-Silicon-Mac oder Raspberry Pi 5); **nicht** unter QEMU, dort sind Zeiten bedeutungslos |
+| dudect-Messungen | echte Hardware | echte Hardware (z. B. Apple-Silicon-Mac oder Raspberry Pi 5); **nicht** unter QEMU, dort sind Zeiten bedeutungslos. CI-Job auf dem ARM-Runner als Hinweis (6.2) |
 | Assembler-Kontrolle | `cargo asm` für x86-64 | `cargo asm --target aarch64-unknown-linux-gnu`; bedingte Sprünge (`b.cond`, `cbz`, `tbz`) und `csel` prüfen |
 | Funktionstests | nativ | nativ oder per `cross`/QEMU (nur Korrektheit, keine Zeiten) |
 
@@ -546,5 +917,6 @@ Folgen für den Plan:
   x86-64-Linux und aarch64-Linux, Assembler-Kontrolle für beide.
 - `no_std` ist nicht nötig; das Crate nutzt `std` (`alloc` würde reichen,
   ist aber kein Ziel).
-- Hardware für aarch64-Messungen muss beschafft bzw. geklärt werden
-  (eigenes Gerät, Hochschul-Server oder Cloud-Instanz).
+- Hardware für aarch64-Messungen: vorerst der GitHub-ARM-Runner (6.2);
+  ein eigenes Gerät, ein Hochschul-Server oder eine Cloud-Instanz ohne
+  Nachbarn wäre genauer.

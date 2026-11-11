@@ -1,14 +1,21 @@
-//! Bausteine der Top-Level-Funktionen (Ebene 2). Bisher: Public Key aus
-//! f, g berechnen und Verify. Keygen und Sign folgen in Phase 4/5.
+//! Bausteine der Top-Level-Funktionen (Ebene 2): Public Key aus f, g,
+//! Verify, Laden des Secret Keys (G neu berechnen) und Sign. Keygen folgt in
+//! Phase 5.
 //!
-//! Spec-Referenz: Alg. 4 Z. 9, Alg. 16. Entspricht `Python/falcon/falcon.py`.
+//! Spec-Referenz: Alg. 4 Z. 9, Alg. 10, Alg. 16, Gl. 3.35. Entspricht
+//! `Python/falcon/falcon.py` (Sign bitgleich mit `flow.sign`).
 
 use zeroize::Zeroizing;
 
-use crate::encoding::decompress;
+use crate::encoding::{compress, decompress};
+use crate::ffsampling::ff_sampling;
+use crate::fft::{fft, fft_add, fft_mul, fft_norm_sq, fft_sub, ifft, Cplx, Poly};
+use crate::fpr::Fpr;
 use crate::hashing::hash_to_point;
 use crate::modq;
-use crate::params::Params;
+use crate::params::{Params, Q};
+use crate::prng::RandomSource;
+use crate::tree::{Basis, Tree};
 use crate::Error;
 
 /// h = g · f⁻¹ mod q. Alg. 4, Z. 9.
@@ -17,7 +24,6 @@ use crate::Error;
 /// Verzweigung auf den Werten (PLAN.md, 3.7). Nur das Ergebnis
 /// „f invertierbar ja/nein“ verzweigt; ein nicht invertierbares f wird beim
 /// Keygen verworfen.
-#[allow(dead_code)] // wird erst von Keygen benutzt (Phase 5)
 pub(crate) fn compute_public_key(f: &[i8], g: &[i8]) -> Result<Vec<u16>, Error> {
     // Die Längen sind öffentlich. Ohne Prüfung würde `zip` still abschneiden
     // und die NTT prüft die Länge nur im Debug-Build.
@@ -31,7 +37,7 @@ pub(crate) fn compute_public_key(f: &[i8], g: &[i8]) -> Result<Vec<u16>, Error> 
         Zeroizing::new(g.iter().map(|&x| modq::from_i32(x as i32)).collect());
     modq::ntt(&mut ft);
     modq::ntt(&mut gt);
-    if modq::any_zero_mask(&ft) != 0 {
+    if crate::ct::declassify(modq::any_zero_mask(&ft)) != 0 {
         return Err(Error::NotInvertible);
     }
     let mut h: Vec<u32> = ft
@@ -40,12 +46,18 @@ pub(crate) fn compute_public_key(f: &[i8], g: &[i8]) -> Result<Vec<u16>, Error> 
         .map(|(&a, &b)| modq::mul(b, modq::inv(a)))
         .collect();
     modq::intt(&mut h);
-    Ok(h.into_iter().map(|x| x as u16).collect())
+    let h: Vec<u16> = h.into_iter().map(|x| x as u16).collect();
+    // h ist der Public Key und damit öffentlich.
+    crate::ct::unpoison(&h);
+    Ok(h)
 }
 
 /// Verify (Alg. 16). Alles hier ist öffentlich, normaler Code erlaubt.
 ///
-/// `h_ntt` ist h in NTT-Form (im `VerifyingKey` vorberechnet).
+/// `h_ntt` ist h in NTT-Form (im `VerifyingKey` vorberechnet). Die
+/// öffentliche API geht über `VerifyingKey::verify_report`; diese Form
+/// bleibt für die Tests der Bausteine.
+#[cfg(test)]
 pub(crate) fn verify(
     params: &Params,
     h_ntt: &[u32],
@@ -53,30 +65,245 @@ pub(crate) fn verify(
     s2_enc: &[u8],
     msg: &[u8],
 ) -> bool {
+    signature_norm_sq(params, h_ntt, salt, s2_enc, msg).is_some_and(|x| x <= params.sig_bound)
+}
+
+/// ‖(s₁, s₂)‖² einer Signatur (Alg. 16, Z. 1–6 ohne den Vergleich);
+/// `None`, wenn s₂ nicht gültig kodiert ist. Öffentlich wie Verify.
+pub(crate) fn signature_norm_sq(
+    params: &Params,
+    h_ntt: &[u32],
+    salt: &[u8],
+    s2_enc: &[u8],
+    msg: &[u8],
+) -> Option<u64> {
     let n = params.n();
     let c = hash_to_point(salt, msg, n);
-    let s2 = match decompress(s2_enc, n, params.s2_padded_len()) {
-        Some(s) => s,
-        None => return false,
-    };
+    let s2 = decompress(s2_enc, n, params.s2_padded_len())?;
+    let s1 = compute_s1(&c, &s2, h_ntt);
 
-    // s₁ = c − s₂·h mod q, zentriert (Alg. 16, Z. 5)
+    // ‖(s₁, s₂)‖² ≤ ⌊β²⌋ (Alg. 16, Z. 6). Kein Überlauf: höchstens
+    // 1024 · (6144² + 2047²) < 2⁴⁶.
+    let mut norm = 0u64;
+    for (&a, &b) in s1.iter().zip(&s2) {
+        let (a, b) = (a as i64, b as i64);
+        norm += (a * a + b * b) as u64;
+    }
+    Some(norm)
+}
+
+/// s₁ = c − s₂·h mod q, zentriert nach (−q/2, q/2] (Alg. 16, Z. 5).
+/// `c` mit Werten in [0, q), `h_ntt` ist h in NTT-Form. Öffentlich.
+pub(crate) fn compute_s1(c: &[u16], s2: &[i16], h_ntt: &[u32]) -> Vec<i32> {
     let mut t: Vec<u32> = s2.iter().map(|&x| modq::from_i32(x as i32)).collect();
     modq::ntt(&mut t);
     for (ti, &hi) in t.iter_mut().zip(h_ntt) {
         *ti = modq::mul(*ti, hi);
     }
     modq::intt(&mut t);
+    c.iter()
+        .zip(&t)
+        .map(|(&ci, &ti)| modq::center(modq::sub(ci as u32, ti)))
+        .collect()
+}
 
-    // ‖(s₁, s₂)‖² ≤ ⌊β²⌋ (Alg. 16, Z. 6). Kein Überlauf: höchstens
-    // 1024 · (6144² + 2047²) < 2⁴⁶.
-    let mut norm = 0u64;
-    for i in 0..n {
-        let s1 = modq::center(modq::sub(c[i] as u32, t[i])) as i64;
-        let s2i = s2[i] as i64;
-        norm += (s1 * s1 + s2i * s2i) as u64;
+/// Untere Schranke für ‖(s₁, s₂)‖² einer ehrlich erzeugten Signatur
+/// (Fault-Schutz, PLAN.md 3.6): ⌊β²⌋ / 2.
+///
+/// Mit β = 1.1·σ·√(2n) liegt die Norm² im Mittel bei 2nσ² ≈ 0.83·β² und
+/// streut um 4.4 % (n = 512) bzw. 3.1 % (n = 1024); β²/2 liegt 9 bzw. 13
+/// Standardabweichungen darunter und wird ohne Fehler praktisch nie
+/// unterschritten. Fällt der Sampler dagegen aus (Zufall null, Schleife
+/// übersprungen) und rundet nur noch auf den Mittelwert, ist die Norm²
+/// etwa 25-mal kleiner (gleichverteilter statt Gaussscher Rest; gemessen 0.03·β²), die
+/// Signatur besteht Verify aber weiterhin. Solche Signaturen verraten über
+/// viele Nachrichten die Basis (Angriff wie auf NTRUSign); sie dürfen nicht
+/// ausgegeben werden.
+pub(crate) fn min_norm_sq(params: &Params) -> u64 {
+    params.sig_bound / 2
+}
+
+// ---------------------------------------------------------------------------
+// Sign (Alg. 10) und Laden des Secret Keys
+// ---------------------------------------------------------------------------
+
+/// G aus der NTRU-Gleichung: G = g·F/f mod q, zentriert (Gl. 3.35).
+/// Für das Laden des Secret Keys, der G nicht speichert.
+///
+/// Geheim; wie `compute_public_key` ohne Verzweigung auf den Werten. Fehler
+/// nur, wenn f nicht invertierbar ist (dann ist der Key ungültig).
+pub(crate) fn recompute_g(f: &[i8], g: &[i8], big_f: &[i8]) -> Result<Zeroizing<Vec<i16>>, Error> {
+    let ntt_of = |a: &[i8]| {
+        let mut v: Zeroizing<Vec<u32>> =
+            Zeroizing::new(a.iter().map(|&x| modq::from_i32(x as i32)).collect());
+        modq::ntt(&mut v);
+        v
+    };
+    let (ft, gt, bigft) = (ntt_of(f), ntt_of(g), ntt_of(big_f));
+    if crate::ct::declassify(modq::any_zero_mask(&ft)) != 0 {
+        return Err(Error::NotInvertible);
     }
-    norm <= params.sig_bound
+    let mut t: Zeroizing<Vec<u32>> = Zeroizing::new(
+        (0..f.len())
+            .map(|i| modq::mul(modq::mul(gt[i], bigft[i]), modq::inv(ft[i])))
+            .collect(),
+    );
+    modq::intt(&mut t);
+    Ok(Zeroizing::new(
+        t.iter().map(|&x| modq::center(x) as i16).collect(),
+    ))
+}
+
+/// Maske „f, g, F, G bilden einen gültigen Falcon-Schlüssel“ (alle Bits
+/// gesetzt = gültig):
+///
+/// - |Gᵢ| ≤ 127, damit G wie F in 8 Bit passt (L6);
+/// - fG − gF = q exakt in ℤ[x]/(xⁿ+1) (Gl. 3.15), nicht nur mod q.
+///
+/// Ohne diese Prüfung lädt `SigningKey::from_bytes` auch erfundene
+/// Schlüssel; deren Basis taugt nicht, und Sign findet nie eine Signatur.
+/// Konstante Laufzeit: Schulbuch-Multiplikation mit festen Schleifen, die
+/// Indizes hängen nur von n ab, das Ergebnis wird über Masken gesammelt.
+/// Kein Überlauf: |Σ| ≤ n · 2 · 127 · 6144 < 2³¹.
+pub(crate) fn key_valid_mask(f: &[i8], g: &[i8], big_f: &[i8], big_g: &[i16]) -> u32 {
+    let n = f.len();
+    let mut bad = 0u32;
+    for &x in big_g {
+        bad |= crate::encoding::out_of_range_mask(x as i32, 127);
+    }
+    let mut acc: Zeroizing<Vec<i32>> = Zeroizing::new(vec![0; n]);
+    for i in 0..n {
+        for j in 0..n {
+            let p = f[i] as i32 * big_g[j] as i32 - g[i] as i32 * big_f[j] as i32;
+            // xⁿ = −1: Überlauf des Index heisst Vorzeichenwechsel
+            let k = i + j;
+            let wrap = (k >= n) as i32; // öffentlich, hängt nur von i, j ab
+            acc[k & (n - 1)] += p * (1 - 2 * wrap);
+        }
+    }
+    bad |= !crate::ct::is_zero_mask((acc[0] - Q as i32) as u32);
+    for &a in &acc[1..] {
+        bad |= !crate::ct::is_zero_mask(a as u32);
+    }
+    !bad
+}
+
+fn fft_of_i8(a: &[i8]) -> Poly {
+    let v: Zeroizing<Vec<Fpr>> = Zeroizing::new(a.iter().map(|&x| Fpr::of_i64(x as i64)).collect());
+    fft(&v)
+}
+
+/// Ziel t = (c, 0)·B⁻¹ = (−c·F/q, c·f/q) in FFT-Form (Alg. 10, Z. 3).
+/// Wie Python: Produkt, dann jede Komponente durch q.
+pub(crate) fn compute_target(c: &[u16], f: &[i8], big_f: &[i8]) -> (Poly, Poly) {
+    let cf: Zeroizing<Vec<Fpr>> =
+        Zeroizing::new(c.iter().map(|&x| Fpr::of_i64(x as i64)).collect());
+    let c_hat = fft(&cf);
+    let (f_hat, bigf_hat) = (fft_of_i8(f), fft_of_i8(big_f));
+    let q = Fpr::of_i64(Q as i64);
+    let div_q = |x: Cplx| Cplx::new(x.re / q, x.im / q);
+    let t0 = c_hat
+        .iter()
+        .zip(bigf_hat.iter())
+        .map(|(a, b)| {
+            let p = a.mul(*b);
+            div_q(Cplx::new(-p.re, -p.im))
+        })
+        .collect();
+    let t1 = c_hat
+        .iter()
+        .zip(f_hat.iter())
+        .map(|(a, b)| div_q(a.mul(*b)))
+        .collect();
+    (Poly::new(t0), Poly::new(t1))
+}
+
+/// s = (t − z)·B in FFT-Form (Alg. 10, Z. 7).
+pub(crate) fn compute_signature_vector(
+    t: (&[Cplx], &[Cplx]),
+    z: (&[Cplx], &[Cplx]),
+    b: &Basis,
+) -> (Poly, Poly) {
+    let d0 = fft_sub(t.0, z.0);
+    let d1 = fft_sub(t.1, z.1);
+    let s0 = fft_add(&fft_mul(&d0, &b.b00), &fft_mul(&d1, &b.b10));
+    let s1 = fft_add(&fft_mul(&d0, &b.b01), &fft_mul(&d1, &b.b11));
+    (s0, s1)
+}
+
+/// ‖s₀‖² + ‖s₁‖² ≤ ⌊β²⌋ in FFT-Form, als Maske (Alg. 10, Z. 8).
+pub(crate) fn is_short_fft_mask(s0: &[Cplx], s1: &[Cplx], bound: u64) -> u64 {
+    let norm = fft_norm_sq(s0) + fft_norm_sq(s1);
+    !Fpr::of_i64(bound as i64).lt_mask(norm)
+}
+
+/// iFFT beider Komponenten, gerundet (Alg. 10, Z. 9).
+pub(crate) fn to_coefficients(
+    s0: &[Cplx],
+    s1: &[Cplx],
+) -> (Zeroizing<Vec<i64>>, Zeroizing<Vec<i64>>) {
+    let r = |s: &[Cplx]| Zeroizing::new(ifft(s).iter().map(|x| x.rint()).collect::<Vec<i64>>());
+    (r(s0), r(s1))
+}
+
+/// Ganzzahlige Normprüfung wie in Verify (Alg. 16, Z. 6). s₁ ist geheim:
+/// ohne Verzweigung. Beträge werden auf 2³¹ begrenzt (über Maske), damit
+/// auch unsinnig grosse Werte nicht überlaufen; die Summe läuft in u128.
+pub(crate) fn is_short(s1: &[i64], s2: &[i64], bound: u64) -> bool {
+    use crate::ct::{cond_neg64, mask64_lt, select64};
+    let mut norm: u128 = 0;
+    for &x in s1.iter().chain(s2) {
+        // Betrag ohne Verzweigung (unsigned_abs verzweigt im Debug-Build)
+        let a = cond_neg64(x as u64, (x as u64) >> 63);
+        let a = select64(mask64_lt(1 << 31, a), a, 1 << 31);
+        norm += (a * a) as u128;
+    }
+    norm <= bound as u128
+}
+
+/// Teile des Secret Keys, die Sign braucht.
+pub(crate) struct SignKey<'a> {
+    pub f: &'a [i8],
+    pub big_f: &'a [i8],
+    pub basis: &'a Basis,
+    pub tree: &'a Tree,
+}
+
+/// Sign (Alg. 10) mit festem Salt; liefert das komprimierte s₂.
+///
+/// Erlaubte Verzweigungen auf geheimen Daten (PLAN.md §6): Neustart, wenn
+/// die Norm zu gross ist, und wenn s₂ nicht in die feste Länge passt (s₂
+/// ist ab dann öffentlich). Wie Python und Alg. 10 bleibt das Salt bei
+/// einem Neustart gleich, nur der Zufall läuft weiter.
+pub(crate) fn sign_core(
+    key: &SignKey,
+    params: &Params,
+    msg: &[u8],
+    salt: &[u8; 40],
+    rng: &mut impl RandomSource,
+) -> Vec<u8> {
+    let c = hash_to_point(salt, msg, params.n());
+    let (t0, t1) = compute_target(&c, key.f, key.big_f);
+    loop {
+        let (s0, s1) = loop {
+            let (z0, z1) = ff_sampling(&t0, &t1, key.tree, params, rng);
+            let (s0, s1) = compute_signature_vector((&t0, &t1), (&z0, &z1), key.basis);
+            if crate::ct::declassify(is_short_fft_mask(&s0, &s1, params.sig_bound)) != 0 {
+                break (s0, s1);
+            }
+        };
+        let (c1, c2) = to_coefficients(&s0, &s1);
+        if !crate::ct::declassify(is_short(&c1, &c2, params.sig_bound)) {
+            continue;
+        }
+        // Ab hier ist s₂ Teil der Signatur und damit öffentlich.
+        crate::ct::unpoison(&c2[..]);
+        // Ab hier ist s₂ öffentlich. |s₂ᵢ| ≤ √β² < 2¹⁵ wegen der Normprüfung.
+        let s2: Vec<i16> = c2.iter().map(|&x| x as i16).collect();
+        if let Some(enc) = compress(&s2, params.s2_padded_len()) {
+            return enc;
+        }
+    }
 }
 
 #[cfg(test)]
@@ -84,6 +311,72 @@ mod tests {
     use super::*;
     use crate::encoding::{decode_pk, decode_sk};
     use crate::kat;
+
+    /// Kleiner gültiger Schlüssel für n = 2: f = 1, g = −97, F = 127,
+    /// G = −30, denn fG − gF = −30 + 97·127 = 12289 = q.
+    #[test]
+    fn key_valid_mask_each_condition() {
+        let ok = |f: [i8; 2], g: [i8; 2], bf: [i8; 2], bg: [i16; 2]| {
+            let m = key_valid_mask(&f, &g, &bf, &bg);
+            assert!(m == 0 || m == u32::MAX, "keine Maske: {m:#x}");
+            m == u32::MAX
+        };
+        assert!(ok([1, 0], [-97, 0], [127, 0], [-30, 0]));
+        // konstanter Term ≠ q
+        assert!(!ok([1, 0], [-97, 0], [127, 0], [-29, 0]));
+        // anderer Koeffizient ≠ 0
+        assert!(!ok([1, 0], [-97, 0], [127, 0], [-30, 1]));
+        // Gleichung erfüllt (fG − gF = G = q), aber |G| > 127
+        assert!(!ok([1, 0], [0, 0], [0, 0], [Q as i16, 0]));
+        assert!(!ok([1, 0], [0, 0], [0, 0], [128, 0]));
+        // x² = −1: f = x, G = −q·x ergibt fG = q
+        assert!(!ok([0, 1], [0, 0], [0, 0], [0, -(Q as i16)]));
+    }
+
+    /// Blattprüfung auf dem Baum eines KAT-Schlüssels: Grenzen genau auf
+    /// dem kleinsten und grössten Blatt gültig, eine Stufe enger ungültig.
+    #[test]
+    fn leaves_in_range_mask_bounds() {
+        use crate::tree::{build_basis_fft, build_falcon_tree, leaves_in_range_mask, Tree};
+        fn leaves(t: &Tree, out: &mut Vec<Fpr>) {
+            match t {
+                Tree::Leaf(x) => out.push(*x),
+                Tree::Node(_, l, r) => {
+                    leaves(l, out);
+                    leaves(r, out);
+                }
+            }
+        }
+        let rec = &kat::load_kat(512)[0];
+        let sk = decode_sk(&rec.sk).unwrap();
+        let g = recompute_g(&sk.f, &sk.g, &sk.big_f).unwrap();
+        let basis = build_basis_fft(&sk.f, &sk.g, &sk.big_f, &g);
+        let sigma = Fpr::from_bits(crate::params::FALCON_512.sigma.to_bits());
+        let tree = build_falcon_tree(&basis, sigma);
+        let mut v = Vec::new();
+        leaves(&tree, &mut v);
+        // positive Zahlen: Bits wachsen mit dem Wert
+        let lo = v.iter().map(|x| x.to_bits()).min().unwrap();
+        let hi = v.iter().map(|x| x.to_bits()).max().unwrap();
+        assert!(lo < hi);
+        let m = |a: u64, b: u64| leaves_in_range_mask(&tree, Fpr::from_bits(a), Fpr::from_bits(b));
+        assert_eq!(m(lo, hi), u64::MAX);
+        assert_eq!(m(lo + 1, hi), 0, "kleinstes Blatt unter der Grenze");
+        assert_eq!(m(lo, hi - 1), 0, "grösstes Blatt über der Grenze");
+        assert_eq!(m(hi, hi), 0);
+    }
+
+    /// Echter KAT-Schlüssel gültig; F verändert (G neu berechnet) ungültig.
+    #[test]
+    fn key_valid_mask_kat_and_modified() {
+        let rec = &kat::load_kat(512)[0];
+        let mut sk = decode_sk(&rec.sk).unwrap();
+        let g = recompute_g(&sk.f, &sk.g, &sk.big_f).unwrap();
+        assert_eq!(key_valid_mask(&sk.f, &sk.g, &sk.big_f, &g), u32::MAX);
+        sk.big_f[0] = sk.big_f[0].wrapping_add(1);
+        let g = recompute_g(&sk.f, &sk.g, &sk.big_f).unwrap();
+        assert_eq!(key_valid_mask(&sk.f, &sk.g, &sk.big_f, &g), 0);
+    }
 
     #[test]
     fn kat_public_key_from_secret_key() {
@@ -171,5 +464,79 @@ mod tests {
             compute_public_key(&[0; 8], &[1; 8]).err(),
             Some(Error::NotInvertible)
         );
+    }
+
+    // -----------------------------------------------------------------------
+    // Sign
+    // -----------------------------------------------------------------------
+
+    use crate::kat::vectors::load;
+    use crate::tree::tests::{bits, cplxs};
+
+    fn i8s(c: &crate::kat::vectors::Case, key: &str) -> Vec<i8> {
+        c.ints(key).into_iter().map(|x| x as i8).collect()
+    }
+
+    #[test]
+    fn recompute_g_matches_python() {
+        for c in load("ntrugen.recompute_G") {
+            // Grad 1 gibt es in Rust nicht (LogN ab 1, also n ≥ 2).
+            if c.ints("f").len() < 2 {
+                continue;
+            }
+            let g = recompute_g(&i8s(&c, "f"), &i8s(&c, "g"), &i8s(&c, "F")).unwrap();
+            let want: Vec<i16> = c.ints("out").into_iter().map(|x| x as i16).collect();
+            assert_eq!(&g[..], &want[..], "Fall {}", c.index);
+        }
+    }
+
+    #[test]
+    fn compute_target_matches_python() {
+        for c in load("falcon.compute_target") {
+            let cc: Vec<u16> = c.ints("c").into_iter().map(|x| x as u16).collect();
+            let (t0, t1) = compute_target(&cc, &i8s(&c, "f"), &i8s(&c, "F"));
+            assert_eq!(bits(&t0), c.cplx("out0"), "Fall {}", c.index);
+            assert_eq!(bits(&t1), c.cplx("out1"), "Fall {}", c.index);
+        }
+    }
+
+    #[test]
+    fn signature_vector_matches_python() {
+        for c in load("falcon.compute_signature_vector") {
+            let p = |k: &str| Poly::new(cplxs(&c, k));
+            let b = Basis {
+                b00: p("basis00"),
+                b01: p("basis01"),
+                b10: p("basis10"),
+                b11: p("basis11"),
+            };
+            let (s0, s1) = compute_signature_vector(
+                (&cplxs(&c, "t0"), &cplxs(&c, "t1")),
+                (&cplxs(&c, "z0"), &cplxs(&c, "z1")),
+                &b,
+            );
+            assert_eq!(bits(&s0), c.cplx("out0"), "Fall {}", c.index);
+            assert_eq!(bits(&s1), c.cplx("out1"), "Fall {}", c.index);
+        }
+    }
+
+    #[test]
+    fn norm_checks_and_rounding_match_python() {
+        use crate::params::{FALCON_1024, FALCON_512};
+        for c in load("falcon.is_short_fft") {
+            let p = if c.ints("params")[0] == 1024 {
+                &FALCON_1024
+            } else {
+                &FALCON_512
+            };
+            let m = is_short_fft_mask(&cplxs(&c, "s0"), &cplxs(&c, "s1"), p.sig_bound);
+            assert_eq!(m != 0, c.bool("out"), "Fall {}", c.index);
+        }
+        for c in load("falcon.to_coefficients") {
+            let (a, b) = to_coefficients(&cplxs(&c, "s0"), &cplxs(&c, "s1"));
+            let want = |k: &str| -> Vec<i64> { c.ints(k).into_iter().map(|x| x as i64).collect() };
+            assert_eq!(&a[..], &want("out0")[..], "Fall {}", c.index);
+            assert_eq!(&b[..], &want("out1")[..], "Fall {}", c.index);
+        }
     }
 }

@@ -200,7 +200,6 @@ pub fn intt(a: &mut [u32]) {
 }
 
 /// Maske „mindestens ein Wert ist 0“, ohne Abbruch über alle Werte.
-#[allow(dead_code)] // wird erst von Keygen benutzt (Phase 5)
 pub fn any_zero_mask(a: &[u32]) -> u32 {
     a.iter().fold(0, |acc, &x| acc | ct::is_zero_mask(x))
 }
