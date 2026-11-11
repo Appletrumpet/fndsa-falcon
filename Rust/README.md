@@ -71,7 +71,9 @@ Kleinste unterstützte Rust-Version: 1.87 (`rust-version` in `Cargo.toml`).
 
 **Web-Oberfläche** (Vorführung im Browser, [UI-PLAN.md](UI-PLAN.md)):
 Signaturen prüfen mit den fünf Schritten von Verify, Bit kippen, eigene
-Daten, Schlüssel erzeugen und signieren. Bauen und starten (Linux oder WSL;
+Daten, Schlüssel erzeugen und signieren, dazu ein Chat, in dem jede
+Nachricht signiert und beim Empfänger geprüft wird (mit Prüfbericht und
+„Nachricht verfälschen“). Bauen und starten (Linux oder WSL;
 einmal vorher `rustup target add wasm32-unknown-unknown` und
 `cargo install wasm-bindgen-cli --version 0.2.100 --locked`):
 

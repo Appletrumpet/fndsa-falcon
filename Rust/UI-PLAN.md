@@ -317,3 +317,28 @@ Laufzeit (PLAN.md §6) gelten nur für x86-64 und aarch64. Die Ansicht
 „Signieren“ sagt deshalb „nur zur Vorführung, keine echten Schlüssel“. Der
 Secret Key verlässt den WASM-Speicher nicht und wird beim Verwerfen
 gelöscht (`zeroize` im Crate).
+
+## 11. Ergänzung: Chat (11.11.2026)
+
+Dritte Ansicht „Chat“ nach Entwurf 3 (Messenger mit Prüfbericht), ohne
+Änderung an „Signieren“ und „Prüfen“ und ohne neue Rust-Funktion (nutzt
+`Signer` und `verify` der WASM-Hülle):
+
+- Beim ersten Öffnen entstehen zwei Schlüsselpaare (du und Alice) für den
+  gewählten Parametersatz; ein Wechsel 512/1024 erzeugt neue. Drei
+  Startnachrichten sind schon signiert und geprüft.
+- Jede Nachricht wird mit dem Schlüssel des Absenders signiert (Zufall aus
+  `crypto.getRandomValues`) und mit dessen Public Key geprüft, wie es der
+  Empfänger täte. Die Blase zeigt „✓ signiert · gültig“ bzw. „✕ ungültig“.
+- Ein Klick auf eine Nachricht zeigt rechts den Prüfbericht: Ergebnis,
+  gemessene Zeit (Mittel aus 20 Aufrufen), die fünf Schritte, Norm gegen
+  Schranke, Salt und Längen.
+- „Nachricht verfälschen“ ändert ein Zeichen der Nachricht bei
+  unveränderter Signatur; Verify scheitert dann am Schritt „Norm“.
+  „Original“ stellt den Text wieder her.
+- Ein Fenster, Alice wird simuliert („Schreiben als: Du | Alice“); kein
+  Server nötig.
+
+Geprüft in der Vorschau (Chromium) bei 1920 × 1080, 1280 × 800 und 375 px:
+Senden als du und als Alice, Verfälschen und Wiederherstellen, Wechsel auf
+Falcon-1024, keine Fehler in der Konsole.

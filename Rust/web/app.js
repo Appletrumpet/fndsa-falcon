@@ -258,6 +258,8 @@ function setSet(set) {
   $('btn-keygen').textContent = `Schlüssel erzeugen (Falcon-${set})`;
   fillSelect();
   loadCase(0);
+  // offener Chat: Schlüssel für den neuen Parametersatz erzeugen
+  if (!$('view-chat').hidden && chat.set !== set) chatKeys();
 }
 
 // ---------------------------------------------------------------- Eigene Daten
@@ -358,14 +360,194 @@ function toVerify() {
   runVerify();
 }
 
+// ---------------------------------------------------------------- Chat
+
+// Zwei Personen im selben Fenster (Alice wird simuliert). Jede Nachricht
+// wird mit dem Signer des Absenders signiert und mit dessen Public Key
+// geprüft, wie es der Empfänger täte.
+const chat = {
+  people: null, // { me: Signer, alice: Signer }
+  set: null,
+  sender: 'me',
+  messages: [], // { from, text, original, msg, sig, report, micros }
+  selected: -1,
+};
+
+const DEMO = [
+  ['alice', 'Hast du die Folien?'],
+  ['me', 'Ja, schicke ich gleich'],
+  ['alice', 'Danke, bis morgen'],
+];
+
+const NAMES = { me: 'Du', alice: 'Alice' };
+const STEP_COUNT = 5;
+
+function verifyMessage(m) {
+  const pk = chat.people[m.from].publicKey;
+  const t0 = performance.now();
+  const runs = 20;
+  let r = null;
+  for (let i = 0; i < runs; i++) {
+    r?.free();
+    r = verify(pk, m.sig, m.msg);
+  }
+  m.micros = ((performance.now() - t0) / runs) * 1000;
+  m.report = readReport(r);
+}
+
+function addMessage(from, text) {
+  const msg = new TextEncoder().encode(text);
+  const random = crypto.getRandomValues(new Uint8Array(40));
+  const sig = chat.people[from].sign(msg, random);
+  random.fill(0);
+  const m = { from, text, original: null, msg, sig, report: null, micros: 0 };
+  verifyMessage(m);
+  chat.messages.push(m);
+  return chat.messages.length - 1;
+}
+
+async function chatKeys() {
+  $('chat-meta').textContent = 'Schlüssel werden erzeugt …';
+  await nextFrame();
+  const logn = state.set === '512' ? 9 : 10;
+  const make = () => {
+    const seed = crypto.getRandomValues(new Uint8Array(48));
+    const s = new Signer(logn, seed);
+    seed.fill(0);
+    return s;
+  };
+  chat.people?.me.free();
+  chat.people?.alice.free();
+  chat.people = { me: make(), alice: make() };
+  chat.set = state.set;
+  chat.messages = [];
+  chat.selected = -1;
+  for (const [from, text] of DEMO) addMessage(from, text);
+  chat.selected = chat.messages.length - 1;
+  const fp = (s) => hexOf(s.publicKey.subarray(1, 4));
+  $('chat-meta').textContent =
+    `Falcon-${state.set} · Du ${fp(chat.people.me)}… · Alice ${fp(chat.people.alice)}…`;
+  renderChat();
+}
+
+function renderChat() {
+  const list = $('chat-list');
+  list.replaceChildren();
+  chat.messages.forEach((m, i) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = `bubble ${m.from === 'me' ? 'me' : 'them'}`;
+    if (i === chat.selected) b.classList.add('selected');
+    if (!m.report.accepted) b.classList.add('rejected');
+    const who = document.createElement('span');
+    who.className = 'who';
+    who.textContent = NAMES[m.from];
+    const badge = document.createElement('span');
+    const ok = m.report.accepted;
+    badge.className = `badge-line ${ok ? 'ok' : 'bad'}`;
+    badge.textContent = ok
+      ? '✓ signiert · gültig'
+      : `✕ ungültig${m.original !== null ? ' · verfälscht' : ''}`;
+    b.append(who, m.text, badge);
+    b.addEventListener('click', () => {
+      chat.selected = i;
+      renderChat();
+    });
+    list.append(b);
+  });
+  list.scrollTop = list.scrollHeight;
+  renderInspector();
+}
+
+function renderInspector() {
+  const m = chat.messages[chat.selected];
+  const steps = $('insp-steps').children;
+  $('insp-tamper').disabled = !m;
+  $('insp-restore').disabled = !m || m.original === null;
+  if (!m) {
+    setStatus('insp', '', '–', 'Nachricht anklicken');
+    for (const li of steps) li.className = '';
+    $('insp-norm').textContent = 'Norm';
+    $('insp-raw').textContent = '';
+    return;
+  }
+  const r = m.report;
+  const failed = r.failedAt ?? -1;
+  for (let k = 0; k < STEP_COUNT; k++) {
+    steps[k].className = failed === -1 || k < failed ? 'ok' : k === failed ? 'bad' : '';
+  }
+  $('insp-norm').textContent =
+    r.norm == null
+      ? 'Norm'
+      : `Norm ${group(r.norm)} ${r.norm > r.bound ? '>' : '≤'} ${group(r.bound)}`;
+  const from = NAMES[m.from];
+  if (r.accepted) {
+    setStatus('insp', 'ok', 'gültig', `von ${from} · ${group(m.micros)} µs geprüft`);
+  } else {
+    setStatus('insp', 'bad', 'abgelehnt', `angeblich von ${from} · ${REASONS[failed] ?? ''}`);
+  }
+  $('insp-raw').textContent =
+    `Salt ${hexOf(m.sig.subarray(1, 7))}… · Signatur ${m.sig.length} B · Nachricht ${m.msg.length} B`;
+}
+
+/** Ein Zeichen der Nachricht ändern, die Signatur bleibt dieselbe. */
+function tamper() {
+  const m = chat.messages[chat.selected];
+  if (!m) return;
+  if (m.original === null) m.original = m.text;
+  const t = m.text;
+  const i = [...t].findIndex((ch) => /[a-zäöüA-ZÄÖÜ0-9]/.test(ch));
+  const chars = [...t];
+  if (i >= 0) {
+    const ch = chars[i];
+    chars[i] = /[0-9]/.test(ch)
+      ? String((Number(ch) + 1) % 10)
+      : ch === ch.toLowerCase() ? ch.toUpperCase() : ch.toLowerCase();
+  } else {
+    chars.push('!');
+  }
+  m.text = chars.join('');
+  m.msg = new TextEncoder().encode(m.text);
+  verifyMessage(m);
+  renderChat();
+}
+
+function restoreMessage() {
+  const m = chat.messages[chat.selected];
+  if (!m || m.original === null) return;
+  m.text = m.original;
+  m.original = null;
+  m.msg = new TextEncoder().encode(m.text);
+  verifyMessage(m);
+  renderChat();
+}
+
+function setSender(who) {
+  chat.sender = who;
+  $('as-me').setAttribute('aria-pressed', String(who === 'me'));
+  $('as-alice').setAttribute('aria-pressed', String(who === 'alice'));
+  $('chat-text').placeholder = who === 'me' ? 'Nachricht an Alice' : 'Antwort von Alice';
+  $('chat-text').focus();
+}
+
+function sendChat(e) {
+  e.preventDefault();
+  const text = $('chat-text').value.trim();
+  if (!text || !chat.people) return;
+  chat.selected = addMessage(chat.sender, text);
+  $('chat-text').value = '';
+  renderChat();
+}
+
 // ---------------------------------------------------------------- Ansichten, Tastatur
 
 function showView(name) {
-  const verifyView = name === 'verify';
-  $('view-verify').hidden = !verifyView;
-  $('view-sign').hidden = verifyView;
-  $('tab-verify').setAttribute('aria-selected', String(verifyView));
-  $('tab-sign').setAttribute('aria-selected', String(!verifyView));
+  for (const v of ['verify', 'sign', 'chat']) {
+    $(`view-${v}`).hidden = v !== name;
+    $(`tab-${v}`).setAttribute('aria-selected', String(v === name));
+  }
+  // Schlüssel erst beim ersten Öffnen (oder nach Wechsel 512/1024) erzeugen
+  if (name === 'chat' && chat.set !== state.set) chatKeys();
 }
 
 function onKey(e) {
@@ -406,6 +588,18 @@ function wire() {
   });
   $('tab-verify').addEventListener('click', () => showView('verify'));
   $('tab-sign').addEventListener('click', () => showView('sign'));
+  $('tab-chat').addEventListener('click', () => showView('chat'));
+  $('chat-form').addEventListener('submit', sendChat);
+  $('as-me').addEventListener('click', () => setSender('me'));
+  $('as-alice').addEventListener('click', () => setSender('alice'));
+  $('insp-tamper').addEventListener('click', tamper);
+  $('insp-restore').addEventListener('click', restoreMessage);
+  $('chat-newkeys').addEventListener('click', chatKeys);
+  $('chat-clear').addEventListener('click', () => {
+    chat.messages = [];
+    chat.selected = -1;
+    renderChat();
+  });
   $('btn-keygen').addEventListener('click', keygen);
   $('btn-sign').addEventListener('click', sign);
   $('btn-to-verify').addEventListener('click', toVerify);

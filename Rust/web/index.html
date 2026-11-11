@@ -17,6 +17,7 @@
     <nav class="tabs" role="tablist" aria-label="Ansicht">
       <button role="tab" id="tab-sign" aria-selected="false" aria-controls="view-sign">Signieren</button>
       <button role="tab" id="tab-verify" aria-selected="true" aria-controls="view-verify">Prüfen</button>
+      <button role="tab" id="tab-chat" aria-selected="false" aria-controls="view-chat">Chat</button>
     </nav>
     <div class="badge" id="badge">Falcon-512 · WASM</div>
   </header>
@@ -140,6 +141,48 @@
         <button id="btn-to-verify" disabled>In „Prüfen“ übernehmen</button>
       </div>
       <p class="hint">Nur zur Vorführung: Auf WebAssembly gelten die Prüfungen der konstanten Laufzeit nicht (PLAN.md §6). Keine echten Schlüssel verwenden.</p>
+    </section>
+  </main>
+
+  <!-- Chat: jede Nachricht signiert, beim Empfänger geprüft -->
+  <main id="view-chat" role="tabpanel" aria-labelledby="tab-chat" hidden>
+    <section class="chat-layout">
+      <article class="tile chat">
+        <div class="tile-head"><span class="label">Chat mit Alice</span><span class="meta" id="chat-meta">Schlüssel werden erzeugt …</span></div>
+        <div class="chat-list" id="chat-list" aria-live="polite"></div>
+        <form class="chat-input" id="chat-form" autocomplete="off">
+          <div class="segmented" role="group" aria-label="Absender">
+            <button type="button" id="as-me" aria-pressed="true">Du</button>
+            <button type="button" id="as-alice" aria-pressed="false">Alice</button>
+          </div>
+          <input id="chat-text" maxlength="500" placeholder="Nachricht schreiben" aria-label="Nachricht">
+          <button class="primary" id="chat-send" type="submit">Senden</button>
+        </form>
+      </article>
+      <article class="tile status inspector" id="insp" aria-live="polite">
+        <span class="label">Prüfbericht</span>
+        <div class="status-word" id="insp-word">–</div>
+        <div class="status-sub" id="insp-sub">Nachricht anklicken</div>
+        <ol class="insp-steps" id="insp-steps">
+          <li><i></i>Dekodieren</li>
+          <li><i></i>HashToPoint</li>
+          <li><i></i>s₂ entpacken</li>
+          <li><i></i>s₁ = c − s₂h</li>
+          <li><i></i><span id="insp-norm">Norm</span></li>
+        </ol>
+        <div class="insp-raw" id="insp-raw"></div>
+        <div class="tile-actions">
+          <button id="insp-tamper" disabled>Nachricht verfälschen</button>
+          <button id="insp-restore" disabled>Original</button>
+        </div>
+      </article>
+    </section>
+    <section class="controls">
+      <div class="group">
+        <button id="chat-newkeys">Neue Schlüssel</button>
+        <button id="chat-clear">Verlauf leeren</button>
+      </div>
+      <p class="hint">Jede Nachricht wird mit dem Schlüssel des Absenders signiert und beim Empfänger mit dessen Public Key geprüft.</p>
     </section>
   </main>
 

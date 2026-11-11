@@ -225,6 +225,62 @@ dialog::backdrop { background: #000a; }
 
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
+/* Chat (Entwurf 3): Messenger links, Prüfbericht rechts */
+.chat-layout { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: var(--gap); }
+.chat { display: flex; flex-direction: column; }
+.chat-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  height: 46vh;
+  min-height: 300px;
+  overflow-y: auto;
+  padding: 4px 4px 4px 0;
+}
+.bubble {
+  max-width: 80%;
+  padding: 10px 14px;
+  border-radius: 14px;
+  font-size: 20px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  text-align: left;
+  font-family: var(--sans);
+  color: var(--text);
+  background: var(--line);
+}
+.bubble.them { align-self: flex-start; border-bottom-left-radius: 4px; }
+.bubble.me { align-self: flex-end; border-bottom-right-radius: 4px; background: var(--brand); color: var(--brand-fg); }
+.bubble.selected { outline: 2px solid var(--run); outline-offset: 3px; }
+.bubble.rejected { border-color: var(--bad); }
+.bubble .who { display: block; font-size: 14px; color: var(--muted); margin-bottom: 2px; }
+.bubble.me .who { color: #9FE1CB; }
+.bubble .badge-line { display: block; font-size: 14px; margin-top: 4px; font-family: var(--mono); }
+.bubble .badge-line.ok { color: var(--ok-text); }
+.bubble .badge-line.bad { color: var(--bad-text); }
+.bubble.me .badge-line.ok { color: #C0DD97; }
+.chat-input { display: flex; gap: 12px; margin-top: 14px; align-items: center; }
+.chat-input input {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  font-size: 20px;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px 14px;
+}
+.inspector { justify-content: flex-start; }
+.insp-steps { list-style: none; margin: 14px 0 0; padding: 0; display: flex; flex-direction: column; gap: 8px; font-size: 20px; color: var(--muted); }
+.insp-steps li { display: flex; align-items: center; gap: 10px; }
+.insp-steps i { font-style: normal; width: 1.2em; text-align: center; font-weight: 700; }
+.insp-steps li.ok { color: var(--text); }
+.insp-steps li.ok i::before { content: "✓"; color: var(--ok-text); }
+.insp-steps li.bad { color: var(--bad-text); }
+.insp-steps li.bad i::before { content: "✕"; color: var(--bad-text); }
+.insp-raw { margin-top: 14px; font-family: var(--mono); font-size: 16px; color: var(--muted); word-break: break-all; min-height: 2.8em; }
+
 /* Beamer (1920 × 1080): grössere Schrift, Fläche ausnutzen */
 @media (min-width: 1600px) and (min-height: 900px) {
   html, body { font-size: 20px; }
@@ -260,6 +316,9 @@ dialog::backdrop { background: #000a; }
   .tile-head { flex-wrap: wrap; }
   .meta { white-space: normal; }
   .app { padding: 16px; }
+  .chat-layout { grid-template-columns: 1fr; }
+  .bubble { max-width: 92%; font-size: 17px; }
+  .chat-list { height: 50vh; }
 }
 @media (prefers-reduced-motion: reduce) {
   .seg, .gauge-fill { transition: none; }
