@@ -16,9 +16,9 @@
  * FALCON_ERR_NONE, wenn die Kodierung zu lang ist. Alg. 17. */
 int falcon_compress(uint8_t *out, size_t *out_len, const int32_t *s, const falcon_params *p);
 
-/* Umkehrung von compress; gepolstert (Alg. 18) oder ungepolstert (§3.11.3), höchstens
- * sig_bytelen - 40 Bytes (KAT Falcon-1024 count = 82). Teilweises Padding ist ungültig.
- * Werte können den Bereich von int16_t überschreiten. */
+/* Umkehrung von compress; gepolstert (Alg. 18) oder ungepolstert (§3.11.3), ohne Obergrenze
+ * der Länge wie in Python. Teilweises Padding ist ungültig. Werte können den Bereich von int16_t
+ * überschreiten; Werte ausserhalb von int32_t lehnt C ab (Python liefert sie). */
 int falcon_decompress(int32_t *s, const uint8_t *b, size_t len, const falcon_params *p);
 
 /* Header + 14 Bit pro Koeffizient. §3.11.4. */
@@ -34,6 +34,11 @@ int falcon_decode_sk(int32_t *f, int32_t *g, int32_t *F, size_t *n, const uint8_
 int falcon_encode_sig(uint8_t *out, size_t *out_len, const falcon_signature *sig,
                       const falcon_params *p);
 int falcon_decode_sig(falcon_signature *sig, const uint8_t *b, size_t len, const falcon_params *p);
+
+/* Längstes s2, das verify noch bestehen kann. Jeder Koeffizient braucht 9 + |v|/128 Bits, und
+ * aus ||s2||² <= sig_bound folgt Summe |v| <= sqrt(n · sig_bound). Längere Kodierungen lehnt
+ * decode_sig ab; Python nimmt sie an, verify verwirft sie dort an der Normprüfung. */
+size_t falcon_max_s2_len(const falcon_params *p);
 
 /* KAT-Format der NIST-API; *msg zeigt in sm hinein. Nur für Tests. §3.11.6. */
 int falcon_decode_kat_message(const uint8_t **msg, size_t *msg_len, falcon_signature *sig,

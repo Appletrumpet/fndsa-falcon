@@ -94,6 +94,10 @@ int falcon_sign(falcon_signature *sig, const falcon_secret_key *sk, const uint8_
         if (falcon_to_coefficients(s1_coeff, s2_coeff, s0, s1, p->n) != FALCON_OK) {
             return FALCON_ERR_VALUE;
         }
+        /* Zusätzlich exakt prüfen wie verify: is_short_fft rechnet in Gleitkomma. */
+        if (!falcon_is_short(s1_coeff, s2_coeff, p)) {
+            continue;
+        }
         if (falcon_compress(sig->s2_encoded, &sig->s2_len, s2_coeff, p) == FALCON_OK) {
             return FALCON_OK;
         }

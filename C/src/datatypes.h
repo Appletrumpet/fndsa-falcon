@@ -10,8 +10,9 @@
 
 #include "params.h"
 
-/* Längstes angenommenes s2: gepolsterte Länge von Falcon-1024 plus 1 (KAT count = 82). */
-#define FALCON_MAX_S2_BYTES (1280 - 41 + 1)
+/* Platz für s2. Python kennt keine Obergrenze; länger als falcon_max_s2_len kann aber keine
+ * Kodierung sein, die verify besteht (siehe encoding.h). Für Falcon-1024 sind das 1414 Bytes. */
+#define FALCON_MAX_S2_BYTES 1414
 #define FALCON_MAX_SIG_BYTES (1 + FALCON_SALT_BYTES + FALCON_MAX_S2_BYTES)
 #define FALCON_MAX_PK_BYTES 1793
 #define FALCON_MAX_SK_BYTES 2305

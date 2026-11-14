@@ -182,6 +182,12 @@ int main(void)
         pk.n = vec_ints(&v, "h", pk.h, FALCON_MAX_N);
         size_t mlen = vec_bytes(&v, "msg", msg, sizeof msg);
         size_t slen = vec_bytes(&v, "sig", sig_bytes, sizeof sig_bytes);
+        if (slen - 41 > falcon_max_s2_len(p)) {
+            /* decode_sig lehnt ab; Python verify verwirft solche Signaturen ebenfalls. */
+            CHECK(falcon_decode_sig(&sig, sig_bytes, slen, p) == FALCON_ERR_VALUE && vec_int(&v, "out") == 0,
+                  "verify Fall %zu: zu lang", v.index);
+            continue;
+        }
         CHECK(falcon_decode_sig(&sig, sig_bytes, slen, p) == FALCON_OK, "verify Fall %zu", v.index);
         CHECK(falcon_verify(&pk, msg, mlen, &sig, p) == vec_int(&v, "out"), "verify Fall %zu", v.index);
     }

@@ -39,9 +39,10 @@ double falcon_scaled_float(const falcon_big *c, size_t scale);
 /* round(x * 2^exp) als ganze Zahl; 0 für x = 0 und nicht endliche x. */
 void falcon_round_scaled_float(falcon_big *out, double x, int exp);
 
-/* F, G direkt gegen f, g verkleinern (Babai-Reduktion). Wie in Python ohne Obergrenze der
- * Durchläufe: Ist ein Koeffizient von mu exakt 1/2, endet die Schleife nicht. Alg. 7, §4.4.3. */
-void falcon_reduce(const falcon_big *f, const falcon_big *g, falcon_big *F, falcon_big *G, size_t n);
+/* F, G direkt gegen f, g verkleinern (Babai-Reduktion). Wie in Python: FALCON_ERR_VALUE, wenn
+ * |f̂|² + |ĝ|² nicht endlich positiv ist oder die Bitgrösse von (F, G) über 32 Runden nicht
+ * kleiner wird (z. B. ein Koeffizient von mu genau 1/2); solve_ntru scheitert dann. Alg. 7, §4.4.3. */
+int falcon_reduce(const falcon_big *f, const falcon_big *g, falcon_big *F, falcon_big *G, size_t n);
 
 /* G aus der NTRU-Gleichung, zentriert. FALCON_ERR_VALUE, wenn f nicht invertierbar ist. Gl. 3.35. */
 int falcon_recompute_G(int32_t *G, const int32_t *f, const int32_t *g, const int32_t *F, size_t n);

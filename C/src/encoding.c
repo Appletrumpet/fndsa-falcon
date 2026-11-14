@@ -1,5 +1,6 @@
 #include "encoding.h"
 
+#include <math.h>
 #include <string.h>
 
 /* Bitbreite von f und g, indiziert mit log2(n) (§3.11.5). */
@@ -144,10 +145,8 @@ int falcon_decompress(int32_t *s, const uint8_t *b, size_t len, const falcon_par
     if (len == 0 || p->sig_bytelen < 41) {
         return FALCON_ERR_NONE;
     }
+    /* Keine Obergrenze: Ungepolsterte Kodierungen dürfen länger sein (wie in Python). */
     size_t padded_len = p->sig_bytelen - 41;
-    if (len > padded_len + 1) {
-        return FALCON_ERR_NONE;
-    }
     int padded = (len == padded_len);
     if (!padded && b[len - 1] == 0) {
         return FALCON_ERR_NONE;
@@ -353,13 +352,32 @@ int falcon_encode_sig(uint8_t *out, size_t *out_len, const falcon_signature *sig
     return FALCON_OK;
 }
 
+size_t falcon_max_s2_len(const falcon_params *p)
+{
+    uint64_t x = (uint64_t)p->n * p->sig_bound;
+    uint64_t r = (uint64_t)sqrt((double)x);
+    while (r * r > x) {
+        r--;
+    }
+    while ((r + 1) * (r + 1) <= x) {
+        r++;
+    }
+    size_t bits = 9 * p->n + (size_t)(r / 128);
+    size_t len = (bits + 7) / 8;
+    size_t padded_len = p->sig_bytelen >= 41 ? p->sig_bytelen - 41 : 0;
+    return len > padded_len ? len : padded_len;
+}
+
 int falcon_decode_sig(falcon_signature *sig, const uint8_t *b, size_t len, const falcon_params *p)
 {
     int logn = falcon_logn(p->n);
-    size_t s2_len = len - 1 - FALCON_SALT_BYTES;
 
-    /* len <= sig_bytelen + 1 wegen KAT Falcon-1024 count = 82. */
-    if (len < 42 || len > p->sig_bytelen + 1 || logn < 0 || s2_len > FALCON_MAX_S2_BYTES) {
+    if (len < 42 || logn < 0) {
+        return FALCON_ERR_VALUE;
+    }
+    size_t s2_len = len - 1 - FALCON_SALT_BYTES;
+    /* Abweichung von Python: längere s2 können verify nie bestehen (falcon_max_s2_len). */
+    if (s2_len > falcon_max_s2_len(p) || s2_len > FALCON_MAX_S2_BYTES) {
         return FALCON_ERR_VALUE;
     }
     if (b[0] != (0x30 | logn)) {

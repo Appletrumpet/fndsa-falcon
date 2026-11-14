@@ -178,8 +178,7 @@ int falcon_solve_ntru(falcon_big *F, falcon_big *G, const falcon_big *f, const f
         falcon_poly_lift(lifted, Gp, h);
         falcon_poly_galois_conjugate(conj, f, n);
         falcon_poly_mul(G, lifted, conj, n);
-        falcon_reduce(f, g, F, G, n);
-        if (!check_ntru(f, g, F, G, n, p->q)) {
+        if (falcon_reduce(f, g, F, G, n) != FALCON_OK || !check_ntru(f, g, F, G, n, p->q)) {
             rc = FALCON_ERR_NONE;
         }
     }
@@ -341,6 +340,8 @@ void falcon_round_scaled_float(falcon_big *out, double x, int exp)
     falcon_big_set_i64(out, m_int < 0 ? -(int64_t)q : (int64_t)q);
 }
 
+#define REDUCE_MAX_STALL 32
+
 static size_t max_bit(const falcon_big *a, const falcon_big *b, size_t n)
 {
     size_t m = 0;
@@ -366,7 +367,7 @@ static void fft_scaled(falcon_cplx *out, const falcon_big *a, size_t scale, size
     (void)falcon_fft(out, values, n);
 }
 
-void falcon_reduce(const falcon_big *f, const falcon_big *g, falcon_big *F, falcon_big *G, size_t n)
+int falcon_reduce(const falcon_big *f, const falcon_big *g, falcon_big *F, falcon_big *G, size_t n)
 {
     falcon_cplx f_hat[FALCON_MAX_N], g_hat[FALCON_MAX_N];
     falcon_cplx F_hat[FALCON_MAX_N], G_hat[FALCON_MAX_N], mu_hat[FALCON_MAX_N];
@@ -374,7 +375,7 @@ void falcon_reduce(const falcon_big *f, const falcon_big *g, falcon_big *F, falc
 
     size_t bits_fg = max_bit(f, g, n);
     if (n == 0 || bits_fg == 0) {
-        return; /* f = g = 0: unverändert */
+        return FALCON_OK; /* f = g = 0: unverändert */
     }
 
     /* f und g so skalieren, dass ihre FFT-Werte sicher im Double-Bereich bleiben. */
@@ -385,19 +386,29 @@ void falcon_reduce(const falcon_big *f, const falcon_big *g, falcon_big *F, falc
     for (size_t i = 0; i < n; i++) {
         double d = falcon_c_add(falcon_c_mul(f_hat[i], falcon_c_adj(f_hat[i])),
                                 falcon_c_mul(g_hat[i], falcon_c_adj(g_hat[i]))).re;
-        if (isinf(d)) {
-            d = 1e308;
-        } else if (!isfinite(d) || d <= 0.0) {
-            d = 1e-300;
+        if (!isfinite(d) || d <= 0.0) {
+            return FALCON_ERR_VALUE; /* wie Python: ArithmeticError */
         }
         denom[i] = d;
     }
 
     falcon_big *k = falcon_poly_new(n), *product = falcon_poly_new(n);
+    int rc = FALCON_OK;
+    size_t best_bits = SIZE_MAX;
+    int stall = 0;
 
     for (;;) {
         size_t max_fg = max_bit(F, G, n);
         if (max_fg == 0) {
+            break;
+        }
+        /* Schutz gegen Endlosschleifen wie in Python: Abbruch, wenn die Bitgrösse von (F, G)
+         * über REDUCE_MAX_STALL Runden nicht kleiner wird. */
+        if (max_fg < best_bits) {
+            best_bits = max_fg;
+            stall = 0;
+        } else if (++stall > REDUCE_MAX_STALL) {
+            rc = FALCON_ERR_VALUE;
             break;
         }
         size_t scale_F = max_fg > 500 ? max_fg - 500 : 0;
@@ -429,6 +440,7 @@ void falcon_reduce(const falcon_big *f, const falcon_big *g, falcon_big *F, falc
     }
     falcon_poly_free(k, n);
     falcon_poly_free(product, n);
+    return rc;
 }
 
 int falcon_recompute_G(int32_t *G, const int32_t *f, const int32_t *g, const int32_t *F, size_t n)

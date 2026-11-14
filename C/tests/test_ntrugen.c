@@ -112,10 +112,15 @@ static void test_big(void)
         vec_big_list(&v, "g", bg, CAP);
         vec_big_list(&v, "F", bF, CAP);
         vec_big_list(&v, "G", bG, CAP);
+        int rc = falcon_reduce(bf, bg, bF, bG, n);
+        if (vec_status(&v) != VEC_STATUS_OK) {
+            CHECK(rc == FALCON_ERR_VALUE, "reduce Fall %zu: rc = %d", v.index, rc);
+            continue;
+        }
         vec_big_list(&v, "out0", eF, CAP);
         vec_big_list(&v, "out1", eG, CAP);
-        falcon_reduce(bf, bg, bF, bG, n);
-        CHECK(big_list_equal(bF, eF, n) && big_list_equal(bG, eG, n), "reduce Fall %zu (n = %zu)", v.index, n);
+        CHECK(rc == FALCON_OK && big_list_equal(bF, eF, n) && big_list_equal(bG, eG, n),
+              "reduce Fall %zu (n = %zu)", v.index, n);
     }
     vec_close(&v);
 

@@ -157,6 +157,11 @@ static void test_sig(void)
         size_t len = vec_bytes(&v, "b", b, sizeof b);
         falcon_params p = read_params(&v);
         int rc = falcon_decode_sig(&sig, b, len, &p);
+        if (len >= 42 && len - 41 > falcon_max_s2_len(&p)) {
+            /* Bewusste Abweichung: Python nimmt an, C lehnt ab (verify verwirft beide). */
+            CHECK(rc == FALCON_ERR_VALUE, "decode_sig Fall %zu: zu lang, rc = %d", v.index, rc);
+            continue;
+        }
         CHECK(rc == expected_rc(&v), "decode_sig Fall %zu: rc = %d", v.index, rc);
         if (rc == FALCON_OK && vec_status(&v) == VEC_STATUS_OK) {
             vec_bytes(&v, "out_salt", expected, sizeof expected);
@@ -188,6 +193,9 @@ int main(void)
 {
     test_compress();
     test_decompress();
+    /* Unabhängig in Python berechnet: max(ceil((9n + isqrt(n · sig_bound) / 128) / 8), sig_bytelen - 41). */
+    CHECK(falcon_max_s2_len(&FALCON_512) == 705, "max_s2_len 512");
+    CHECK(falcon_max_s2_len(&FALCON_1024) == 1414, "max_s2_len 1024");
     test_pk();
     test_sk();
     test_sig();
