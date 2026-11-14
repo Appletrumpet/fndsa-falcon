@@ -410,6 +410,16 @@ def flows() -> None:
             add_case("flow.verify", ["case"] + emit("n", "int", n) + emit("h", "ints", pk.h)
                      + emit("msg", "bytes", bytes(bad)) + emit("sig", "bytes", sig_bytes)
                      + ["status ok"] + emit("out", "bool", rejected))
+        # Lange ungepolsterte Signaturen: Python nimmt sie an, verify verwirft sie.
+        r_long = random.Random(0x10E7 + n)
+        for length in LONG_S2_LENGTHS[n]:
+            msg = b"long signature"
+            long_sig = Signature(salt=bytes(range(40)), s2_encoded=long_s2(n, length, r_long))
+            verdict = top.verify(pk, msg, long_sig, params)
+            add_case("flow.verify", ["case"] + emit("n", "int", n) + emit("h", "ints", pk.h)
+                     + emit("msg", "bytes", msg)
+                     + emit("sig", "bytes", encoding.encode_sig(long_sig, params))
+                     + ["status ok"] + emit("out", "bool", verdict))
 
 
 def restart_flows() -> None:
@@ -456,6 +466,29 @@ def attempt(function, *args):
         function(*args)
     except Exception:
         pass
+
+
+def long_s2(n, length, r):
+    """Ungepolsterte s2-Kodierung mit genau length Bytes; der unäre Teil wird verteilt."""
+    extra = 8 * length - 3 - 9 * n
+    ks = [0] * n
+    i = 0
+    while extra > 0:
+        step = min(extra, 20)
+        ks[i % n] += step
+        extra -= step
+        i += 1
+    bits = ""
+    for k in ks:
+        low7 = r.randrange(1, 128)
+        bits += str(r.randrange(2)) + format(low7, "07b") + "0" * k + "1"
+    bits += "0" * (-len(bits) % 8)
+    out = bytes(int(bits[j:j + 8], 2) for j in range(0, len(bits), 8))
+    assert len(out) == length
+    return out
+
+
+LONG_S2_LENGTHS = {512: (626, 627, 705, 706), 1024: (1240, 1241, 1414, 1415)}
 
 
 def with_n(n, sig_bytelen=None):
@@ -536,6 +569,14 @@ def edge_cases() -> None:
         bitstr = "0" + "1" * 7 + "0" * (big - 1) + "1" + "000000001" * (n - 1)
         bitstr += "0" * (-len(bitstr) % 8)
         encoding.decompress(bytes(int(bitstr[i:i + 8], 2) for i in range(0, len(bitstr), 8)), params)
+    # Ohne Obergrenze (Python seit 47749b0): länger als gepolstert + 1 und über der Länge,
+    # die verify noch bestehen kann (C lehnt in decode_sig ab, siehe falcon_max_s2_len).
+    r_long = random.Random(0x10E6)
+    for params in (FALCON_512, FALCON_1024):
+        for length in LONG_S2_LENGTHS[params.n]:
+            s2 = long_s2(params.n, length, r_long)
+            encoding.decompress(s2, params)
+            encoding.decode_sig(bytes([0x30 | (params.n.bit_length() - 1)]) + bytes(40) + s2, params)
     for rec_n in (512, 1024):
         for i in (0, 7, 82):
             rec = load_kat(rec_n)[i]
@@ -768,10 +809,23 @@ def edge_cases_keygen() -> None:
         F = [x + r.randint(-50, 50) for x in nmul(K, f)]
         G = [x + r.randint(-50, 50) for x in nmul(K, g)]
         ntrugen.reduce(f, g, F, G)
+    # Abbruch ohne Fortschritt (Python seit 47749b0): Gleichstand bei mu = 1/2 und beliebige
+    # grosse F, G, die früher nicht endeten.
+    r_stall = random.Random(0x57A11)
+    attempt(ntrugen.reduce, [1], [1], [1], [0])
+    attempt(ntrugen.reduce, [1, 0], [1, 0], [1, 0], [0, 0])
+    for n, bits in ((4, 2000), (16, 3000)):
+        f, g = [r_stall.randint(-9, 9) for _ in range(n)], [r_stall.randint(-9, 9) for _ in range(n)]
+        F, G = [r_stall.getrandbits(bits) for _ in range(n)], [r_stall.getrandbits(bits) for _ in range(n)]
+        attempt(ntrugen.reduce, f, g, F, G)
 
     # --- solve_ntru -----------------------------------------------------------------
     for f, g in (([3], [5]), ([4], [6]), ([2, 0], [0, 2]), ([1, 1], [1, 1])):
         ntrugen.solve_ntru(f, g, with_n(max(2, len(f))))
+    # f = g = 1: Reduce bleibt bei mu = 1/2 stehen, solve_ntru liefert None.
+    for n in (2, 4, 8):
+        one = [1] + [0] * (n - 1)
+        assert ntrugen.solve_ntru(one, one, with_n(n)) is None
     for n in (2, 4, 8, 16, 64):
         for _ in range(6):
             ntrugen.solve_ntru([r.randint(-4, 4) for _ in range(n)], [r.randint(-4, 4) for _ in range(n)], with_n(n))
