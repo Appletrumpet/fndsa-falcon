@@ -1,8 +1,11 @@
 #include "sampler.h"
 
+#include "ct.h"
+
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 /* Toleranz für Rundungsunterschiede bei sigma_min und sigma_max, wie in Python. */
 #define SIGMA_EPS 1e-10
@@ -70,7 +73,9 @@ uint64_t falcon_approx_exp(double x, double ccs)
 {
     uint64_t y = FALCON_EXP_C[0];
     double scaled = floor(x * 0x1p63);
-    uint64_t z = scaled < 0.0 ? 0 : (uint64_t)scaled;
+    /* z <- max(0, scaled) ohne Verzweigung (Python: z < 0 -> 0). */
+    scaled = falcon_ct_select_double(falcon_ct_mask(falcon_ct_lt_double(scaled, 0.0)), 0.0, scaled);
+    uint64_t z = (uint64_t)scaled;
 
     for (int i = 1; i < 13; i++) {
         y = FALCON_EXP_C[i] - (uint64_t)(((unsigned __int128)z * y) >> 63);
@@ -81,19 +86,18 @@ uint64_t falcon_approx_exp(double x, double ccs)
 
 uint64_t falcon_ber_exp_z(double x, double ccs)
 {
-    if (x < 0.0) {
-        x = 0.0;
-    }
+    x = falcon_ct_select_double(falcon_ct_mask(falcon_ct_lt_double(x, 0.0)), 0.0, x);
 
     /* Alg. 14, Z. 1-3: x = s * ln 2 + r, dann s <- min(s, 63). s bleibt zunächst ein double, wie
      * in Python exakt: Dort wird die ganze Zahl s vor dem Produkt in float umgewandelt. */
     double floored = floor(x / FALCON_LOG2);
     double r = x - floored * FALCON_LOG2;
-    int s = floored > 63.0 ? 63 : (int)floored;
+    floored = falcon_ct_select_double(falcon_ct_mask(falcon_ct_lt_double(63.0, floored)), 63.0, floored);
+    int s = (int)floored;
 
     /* Z. 4: Für y = 0 wäre 2y - 1 in Python negativ und wird dort auf 0 begrenzt. */
     uint64_t y = falcon_approx_exp(r, ccs);
-    return (y == 0) ? 0 : (2 * y - 1) >> s;
+    return ((2 * y - 1) >> s) & falcon_ct_mask(falcon_ct_nonzero(y));
 }
 
 int falcon_ber_exp(double x, double ccs, const falcon_rng *rng)
@@ -107,7 +111,10 @@ int falcon_ber_exp(double x, double ccs, const falcon_rng *rng)
         i -= 8;
         falcon_random_bytes(rng, &b, 1);
         int w = (int)b - (int)((z >> i) & 0xFFu);
-        if (w != 0 || i <= 0) {
+        /* Die Schleife muss nicht in konstanter Zeit laufen (Alg. 14, Z. 9); Z2-Ausnahme. */
+        int done = (w != 0) | (i <= 0);
+        FALCON_DECLASSIFY(&done, sizeof done);
+        if (done) {
             return w < 0;
         }
     }
@@ -127,8 +134,15 @@ double falcon_samplerz_x(int z, int z0, double r, double sigma_p, const falcon_p
 int falcon_sample_integer_gaussian(int32_t *out, double mu, double sigma_p, const falcon_params *p,
                                    const falcon_rng *rng)
 {
-    if (!isfinite(sigma_p) || sigma_p < p->sigma_min - SIGMA_EPS
-        || sigma_p > p->sigma_max + SIGMA_EPS) {
+    /* Bereichsprüfung ohne Verzweigung; nur das Ergebnis wird freigegeben. Es ist für gültige
+     * Schlüssel immer 1 und führt sonst nur zum Fehler (Z2-Ausnahme). */
+    uint64_t bits;
+    memcpy(&bits, &sigma_p, sizeof bits);
+    uint64_t finite = falcon_ct_nonzero(((bits >> 52) & 0x7FFu) ^ 0x7FFu);
+    int ok = (int)(finite & (1u ^ falcon_ct_lt_double(sigma_p, p->sigma_min - SIGMA_EPS))
+                   & (1u ^ falcon_ct_lt_double(p->sigma_max + SIGMA_EPS, sigma_p)));
+    FALCON_DECLASSIFY(&ok, sizeof ok);
+    if (!ok) {
         return FALCON_ERR_VALUE;
     }
 
@@ -136,9 +150,7 @@ int falcon_sample_integer_gaussian(int32_t *out, double mu, double sigma_p, cons
     double s = floor(mu);
     double r = mu - s;
     double ccs = p->sigma_min / sigma_p;
-    if (ccs > 1.0) {
-        ccs = 1.0;
-    }
+    ccs = falcon_ct_select_double(falcon_ct_mask(falcon_ct_lt_double(1.0, ccs)), 1.0, ccs);
 
     for (;;) {
         /* Z. 4-6 */
@@ -149,12 +161,12 @@ int falcon_sample_integer_gaussian(int32_t *out, double mu, double sigma_p, cons
         int z = b + (2 * b - 1) * z0;
 
         double x = falcon_samplerz_x(z, z0, r, sigma_p, p);
-        if (x < 0.0) {
-            x = 0.0;
-        }
+        x = falcon_ct_select_double(falcon_ct_mask(falcon_ct_lt_double(x, 0.0)), 0.0, x);
 
-        /* Z. 8-9 */
-        if (falcon_ber_exp(x, ccs, rng)) {
+        /* Z. 8-9: Annahme oder Ablehnung je Runde ist nach Z2 erlaubt (Isochronie). */
+        int accept = falcon_ber_exp(x, ccs, rng);
+        FALCON_DECLASSIFY(&accept, sizeof accept);
+        if (accept) {
             *out = (int32_t)s + z;
             return FALCON_OK;
         }
