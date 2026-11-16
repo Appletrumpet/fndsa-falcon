@@ -1,4 +1,6 @@
 #include "falcon.h"
+
+#include "ct.h"
 #include <math.h>
 #include <string.h>
 
@@ -87,7 +89,10 @@ int falcon_sign(falcon_signature *sig, const falcon_secret_key *sk, const uint8_
                 return rc;
             }
             falcon_compute_signature_vector(s0, s1, t0, t1, z0, z1, sk);
-            if (falcon_is_short_fft(s0, s1, p->n, p)) {
+            /* Neustart ja/nein ist nach Z2 erlaubt; nur dieses Bit wird freigegeben. */
+            int short_fft = falcon_is_short_fft(s0, s1, p->n, p);
+            FALCON_DECLASSIFY(&short_fft, sizeof short_fft);
+            if (short_fft) {
                 break;
             }
         }
@@ -95,7 +100,9 @@ int falcon_sign(falcon_signature *sig, const falcon_secret_key *sk, const uint8_
             return FALCON_ERR_VALUE;
         }
         /* Zusätzlich exakt prüfen wie verify: is_short_fft rechnet in Gleitkomma. */
-        if (!falcon_is_short(s1_coeff, s2_coeff, p)) {
+        int short_int = falcon_is_short(s1_coeff, s2_coeff, p);
+        FALCON_DECLASSIFY(&short_int, sizeof short_int);
+        if (!short_int) {
             continue;
         }
         if (falcon_compress(sig->s2_encoded, &sig->s2_len, s2_coeff, p) == FALCON_OK) {

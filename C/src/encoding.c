@@ -1,5 +1,7 @@
 #include "encoding.h"
 
+#include "ct.h"
+
 #include <math.h>
 #include <string.h>
 
@@ -113,6 +115,21 @@ int falcon_compress(uint8_t *out, size_t *out_len, const int32_t *s, const falco
     bit_writer w;
     size_t padded_len = p->sig_bytelen - 41;
     size_t slen = padded_len * 8;
+
+    /* Länge vorab ohne Verzweigung auf s: Ein verworfener Versuch in sign zeigt so nur, dass s2
+     * nicht passt (Z2-Ausnahme). Danach ist s Teil der Signatur und öffentlich. */
+    uint64_t total = 0;
+    for (size_t i = 0; i < p->n; i++) {
+        uint32_t u = (uint32_t)s[i];
+        uint32_t neg = 0u - (u >> 31);
+        total += 9u + (((u ^ neg) - neg) >> 7);
+    }
+    int fits = total <= slen;
+    FALCON_DECLASSIFY(&fits, sizeof fits);
+    if (!fits) {
+        return FALCON_ERR_NONE;
+    }
+    FALCON_DECLASSIFY(s, p->n * sizeof *s);
 
     writer_init(&w, out);
     for (size_t i = 0; i < p->n; i++) {
