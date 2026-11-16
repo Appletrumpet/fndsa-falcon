@@ -8,7 +8,8 @@
 CC ?= cc
 # -ffp-contract=off ist zwingend: Bitgleichheit mit Python verlangt einzeln
 # gerundete Gleitkommaoperationen (Ebene 5). Nie -ffast-math.
-BASE_CFLAGS = -std=c11 -Wall -Wextra -Wconversion -Werror -ffp-contract=off -Isrc -Itests \
+# -fno-math-errno: sqrt setzt kein errno und verzweigt deshalb nicht (Z2); Ergebnisse unverändert.
+BASE_CFLAGS = -std=c11 -Wall -Wextra -Wconversion -Werror -ffp-contract=off -fno-math-errno -Isrc -Itests \
               -DFALCON_DATA_DIR=\"../Python/data\"
 DEBUG_CFLAGS = $(BASE_CFLAGS) -O0 -g -fsanitize=address,undefined -fno-sanitize-recover=all
 RELEASE_CFLAGS = $(BASE_CFLAGS) -O2

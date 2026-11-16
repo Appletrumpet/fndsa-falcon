@@ -83,13 +83,15 @@ void falcon_fft_mul(falcon_cplx *out, const falcon_cplx *a, const falcon_cplx *b
 
 int falcon_fft_div(falcon_cplx *out, const falcon_cplx *a, const falcon_cplx *b, size_t n)
 {
+    /* Nenner aus dem Secret Key (ldl): ohne Verzweigung. Die Nullprüfung wird gesammelt und nur
+     * ihr Ergebnis freigegeben (Fehlerpfad, Python: ZeroDivisionError). */
+    uint64_t zero = 0;
     for (size_t i = 0; i < n; i++) {
-        if (b[i].re == 0.0 && b[i].im == 0.0) {
-            return FALCON_ERR_VALUE;
-        }
-        out[i] = falcon_c_div(a[i], b[i]);
+        zero |= (uint64_t)(b[i].re == 0.0) & (uint64_t)(b[i].im == 0.0);
+        out[i] = falcon_c_div_ct(a[i], b[i]);
     }
-    return FALCON_OK;
+    FALCON_DECLASSIFY(&zero, sizeof zero);
+    return zero ? FALCON_ERR_VALUE : FALCON_OK;
 }
 
 void falcon_fft_adj(falcon_cplx *out, const falcon_cplx *a, size_t n)

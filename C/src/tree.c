@@ -129,7 +129,9 @@ int falcon_ff_ldl(falcon_tree *t, const falcon_mat22 *G, size_t n)
 void falcon_normalize_leaves(falcon_tree_node *node, size_t n, double sigma)
 {
     if (n == 1) {
-        node->sigma = sigma / sqrt(node->sigma);
+        /* __builtin_sqrt mit -fno-math-errno: die Wurzelinstruktion direkt, ohne den Aufruf der libm,
+         * die mit -O0 wegen errno auf dem geheimen Wert verzweigt (Z2). Gleiches Ergebnis. */
+        node->sigma = sigma / __builtin_sqrt(node->sigma);
         return;
     }
     falcon_normalize_leaves(node->left, n / 2, sigma);
