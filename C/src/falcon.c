@@ -1,6 +1,7 @@
 #include "falcon.h"
 
 #include "ct.h"
+#include "dit.h"
 #include <math.h>
 #include <string.h>
 
@@ -43,7 +44,7 @@ int falcon_compute_public_key(int32_t *h, const int32_t *f, const int32_t *g, co
     return falcon_div_mod_q(h, g, f, p->n);
 }
 
-int falcon_load_secret_key(falcon_secret_key *sk, const uint8_t *b, size_t len,
+static int load_secret_key(falcon_secret_key *sk, const uint8_t *b, size_t len,
                            const falcon_params *p)
 {
     size_t n = 0;
@@ -60,7 +61,17 @@ int falcon_load_secret_key(falcon_secret_key *sk, const uint8_t *b, size_t len,
     return falcon_build_falcon_tree(&sk->tree, &basis, n, p);
 }
 
-int falcon_sign(falcon_signature *sig, const falcon_secret_key *sk, const uint8_t *message,
+/* Mit DIT für die ganze Dauer (Z2); der vorherige Zustand wird auf jedem Weg wiederhergestellt. */
+int falcon_load_secret_key(falcon_secret_key *sk, const uint8_t *b, size_t len,
+                           const falcon_params *p)
+{
+    int dit = falcon_dit_enable();
+    int rc = load_secret_key(sk, b, len, p);
+    falcon_dit_restore(dit);
+    return rc;
+}
+
+static int sign(falcon_signature *sig, const falcon_secret_key *sk, const uint8_t *message,
                 size_t message_len, const falcon_params *p, const falcon_rng *rng)
 {
     int32_t c[FALCON_MAX_N];
@@ -109,6 +120,15 @@ int falcon_sign(falcon_signature *sig, const falcon_secret_key *sk, const uint8_
             return FALCON_OK;
         }
     }
+}
+
+int falcon_sign(falcon_signature *sig, const falcon_secret_key *sk, const uint8_t *message,
+                size_t message_len, const falcon_params *p, const falcon_rng *rng)
+{
+    int dit = falcon_dit_enable();
+    int rc = sign(sig, sk, message, message_len, p, rng);
+    falcon_dit_restore(dit);
+    return rc;
 }
 
 int falcon_sign_system(falcon_signature *sig, const falcon_secret_key *sk, const uint8_t *message,

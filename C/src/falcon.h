@@ -24,7 +24,8 @@ int falcon_compute_public_key(int32_t *h, const int32_t *f, const int32_t *g, co
 int falcon_load_secret_key(falcon_secret_key *sk, const uint8_t *b, size_t len,
                            const falcon_params *p);
 
-/* Signaturerzeugung. Zieht zuerst 40 Bytes Salt, danach nur noch Zufall für das Sampling. Alg. 10. */
+/* Signaturerzeugung. Zieht zuerst 40 Bytes Salt, danach nur noch Zufall für das Sampling. Alg. 10.
+ * Setzt DIT für die Dauer des Aufrufs, falls der Prozessor es kann (dit.h); ebenso load_secret_key. */
 int falcon_sign(falcon_signature *sig, const falcon_secret_key *sk, const uint8_t *message,
                 size_t message_len, const falcon_params *p, const falcon_rng *rng);
 

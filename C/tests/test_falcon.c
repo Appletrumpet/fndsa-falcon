@@ -1,6 +1,7 @@
 /* Tests für falcon.c: Bausteine und ganze Abläufe aus Python, bitgenau. */
 #include <string.h>
 
+#include "dit.h"
 #include "encoding.h"
 #include "falcon.h"
 #include "vectors.h"
@@ -149,6 +150,48 @@ static falcon_params read_params(const vec_file *v)
     return p;
 }
 
+/* DIT während sign: Die Zufallsquelle liest den Zustand bei jedem Aufruf. */
+typedef struct {
+    falcon_rng inner;
+    int calls, without_dit;
+} dit_probe;
+
+static void probe_random_bytes(void *ctx, uint8_t *out, size_t k)
+{
+    dit_probe *pr = ctx;
+    pr->calls++;
+    pr->without_dit += !falcon_dit_active();
+    falcon_random_bytes(&pr->inner, out, k);
+}
+
+static void test_dit(void)
+{
+    static falcon_secret_key dsk;
+    static falcon_public_key dpk;
+    static falcon_signature dsig;
+    falcon_shake256_ctx kctx, sctx;
+    falcon_rng krng = shake_rng(&kctx, (const uint8_t *)"dit", 3);
+    CHECK(falcon_keygen(&dsk, &dpk, &FALCON_512, &krng) == FALCON_OK, "dit: keygen");
+
+    dit_probe pr = {shake_rng(&sctx, (const uint8_t *)"dit-sign", 8), 0, 0};
+    falcon_rng rng = {probe_random_bytes, &pr};
+    int before = falcon_dit_active();
+    CHECK(falcon_sign(&dsig, &dsk, (const uint8_t *)"m", 1, &FALCON_512, &rng) == FALCON_OK, "dit: sign");
+    CHECK(pr.calls > 0, "dit: Zufallsquelle aufgerufen");
+    if (falcon_dit_supported()) {
+        CHECK(pr.without_dit == 0, "dit: während sign gesetzt (%d von %d Aufrufen ohne)", pr.without_dit, pr.calls);
+        CHECK(falcon_dit_active() == before, "dit: danach wiederhergestellt");
+        /* Verschachtelt: War DIT schon an, bleibt es an. */
+        int outer = falcon_dit_enable();
+        CHECK(falcon_sign(&dsig, &dsk, (const uint8_t *)"m", 1, &FALCON_512, &rng) == FALCON_OK, "dit: sign 2");
+        CHECK(falcon_dit_active() == 1, "dit: bleibt nach verschachteltem Aufruf an");
+        falcon_dit_restore(outer);
+        CHECK(falcon_dit_active() == before, "dit: äusserer Zustand wiederhergestellt");
+    } else {
+        CHECK(falcon_dit_active() == 0, "dit: ohne Unterstützung aus");
+    }
+}
+
 int main(void)
 {
     static falcon_public_key pk;
@@ -194,6 +237,7 @@ int main(void)
     vec_close(&v);
 
     test_keygen();
+    test_dit();
     test_sign_building_blocks();
     test_sign_flow("flow.sign", 0);
     test_sign_flow("flow.sign_restart", 1);

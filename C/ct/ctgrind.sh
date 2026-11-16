@@ -21,7 +21,7 @@ fi
 
 docker run --rm -v "$PWD":/src:ro -v "$PWD/build":/out "$IMAGE" sh -c "
   cd /src &&
-  gcc -std=c11 -Wall -Wextra -Wconversion -Werror -ffp-contract=off -fno-math-errno -g $OPT -DFALCON_CTGRIND -Isrc -Itests \
+  gcc -std=c11 -Wall -Wextra -Wconversion -Werror -ffp-contract=off -fno-math-errno -g $OPT -DFALCON_CTGRIND -DFALCON_NO_DIT -Isrc -Itests \
       -DFALCON_DATA_DIR='\"../Python/data\"' src/*.c tests/vectors.c ct/ctgrind.c -lm -o /tmp/ctgrind &&
   gcc --version | head -n 1 &&
   valgrind --error-limit=no --num-callers=6 /tmp/ctgrind > /out/ctgrind.log 2>&1; true"
