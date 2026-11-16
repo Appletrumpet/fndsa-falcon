@@ -2,15 +2,28 @@
 
 #include <string.h>
 
+#include "ct.h"
 #include "ntt_table.h"
 
 #define PSI_ORDER (2 * FALCON_MAX_N)
 #define INV2 ((FALCON_Q + 1) / 2)
 
+/* u mod q für u < 2^63, ohne Division (Barrett): Der geschätzte Quotient ist dann höchstens um 1
+ * zu klein, eine Korrektur über eine Maske genügt. Der Compiler setzt % sonst als sdiv/udiv um,
+ * deren Laufzeit vom Prozessor abhängen kann (8.1.7). */
+static uint32_t reduce_q(uint64_t u)
+{
+    const uint64_t m = UINT64_MAX / FALCON_Q;
+    uint64_t quot = (uint64_t)(((unsigned __int128)u * m) >> 64);
+    uint64_t r = u - quot * FALCON_Q;
+    r -= falcon_ct_mask(1u ^ ((r - FALCON_Q) >> 63)) & FALCON_Q;
+    return (uint32_t)r;
+}
+
+/* Gilt für -q * 2^40 <= x <= 2^62; alle Aufrufer liegen weit darin (|x| < 2^33). */
 int32_t falcon_mod_q(int64_t x)
 {
-    int64_t r = x % FALCON_Q;
-    return (int32_t)(r < 0 ? r + FALCON_Q : r);
+    return (int32_t)reduce_q((uint64_t)x + (uint64_t)FALCON_Q * ((uint64_t)1 << 40));
 }
 
 static int check_length(size_t n)
@@ -36,17 +49,23 @@ static int32_t inv_zeta(size_t n, size_t k)
 
 static int32_t mul_q(int32_t a, int32_t b)
 {
-    return (int32_t)(((int64_t)a * b) % FALCON_Q);
+    return (int32_t)reduce_q((uint64_t)a * (uint64_t)b);
 }
 
 static int32_t add_q(int32_t a, int32_t b)
 {
-    return (a + b) % FALCON_Q;
+    /* a, b in 0 .. q-1: eine Korrektur genügt. */
+    uint32_t r = (uint32_t)a + (uint32_t)b;
+    r -= (uint32_t)falcon_ct_mask(1u ^ ((uint64_t)(r - FALCON_Q) >> 31 & 1u)) & FALCON_Q;
+    return (int32_t)r;
 }
 
 static int32_t sub_q(int32_t a, int32_t b)
 {
-    return (a + FALCON_Q - b) % FALCON_Q;
+    /* a, b in 0 .. q-1: eine Korrektur genügt. */
+    uint32_t r = (uint32_t)a - (uint32_t)b;
+    r += (uint32_t)falcon_ct_mask((uint64_t)(r >> 31)) & FALCON_Q;
+    return (int32_t)r;
 }
 
 /* Wie _ntt_rec: gerade und ungerade Koeffizienten transformieren, dann zusammenführen.
@@ -155,11 +174,16 @@ int falcon_div_mod_q(int32_t *out, const int32_t *a, const int32_t *b, size_t n)
     }
     ntt_rec(ah, a, 1, n);
     ntt_rec(bh, b, 1, n);
+    /* Nullprüfung ohne Verzweigung (recompute_G läuft auf geheimen Werten); nur „nicht
+     * invertierbar“ wird am Ende freigegeben. inverse_q(0) ist 0, das Ergebnis wird dann verworfen. */
+    uint64_t zero = 0;
     for (size_t i = 0; i < n; i++) {
-        if (bh[i] == 0) {
-            return FALCON_ERR_VALUE;
-        }
+        zero |= 1u ^ falcon_ct_nonzero((uint64_t)(uint32_t)bh[i]);
         ch[i] = mul_q(ah[i], inverse_q(bh[i]));
+    }
+    FALCON_DECLASSIFY(&zero, sizeof zero);
+    if (zero) {
+        return FALCON_ERR_VALUE;
     }
     return falcon_intt(out, ch, n);
 }
@@ -184,6 +208,8 @@ void falcon_center_mod_q(int32_t *out, const int32_t *a, size_t n)
 {
     for (size_t i = 0; i < n; i++) {
         int32_t y = falcon_mod_q(a[i]);
-        out[i] = (y > FALCON_Q / 2) ? y - FALCON_Q : y;
+        /* y > q/2 -> y - q, ohne Verzweigung. */
+        uint64_t above = (uint64_t)(uint32_t)(FALCON_Q / 2 - y) >> 31;
+        out[i] = y - (int32_t)(falcon_ct_mask(above) & FALCON_Q);
     }
 }

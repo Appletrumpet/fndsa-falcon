@@ -311,17 +311,23 @@ int falcon_encode_sk(uint8_t *out, size_t *out_len, const int32_t *f, const int3
     return FALCON_OK;
 }
 
+/* Liest Werte des Secret Key ohne Verzweigung auf ihnen; nur „Kodierung ungültig“ (−2^(bits−1)
+ * kommt vor) wird am Ende freigegeben. Ob genug Bits da sind, hängt nur von der Länge ab. */
 static int read_signed(bit_reader *r, int32_t *a, size_t n, int bits)
 {
-    int32_t top = (int32_t)1 << (bits - 1);
-    for (size_t i = 0; i < n; i++) {
-        int32_t raw = read_bits(r, bits);
-        if (raw < 0 || raw == top) {
-            return FALCON_ERR_VALUE;
-        }
-        a[i] = (raw >= top) ? raw - 2 * top : raw;
+    uint32_t top = (uint32_t)1 << (bits - 1);
+    uint32_t bad = 0;
+    if (r->pos + n * (size_t)bits > r->total) {
+        return FALCON_ERR_VALUE;
     }
-    return FALCON_OK;
+    for (size_t i = 0; i < n; i++) {
+        uint32_t raw = (uint32_t)read_bits(r, bits);
+        bad |= 1u ^ (uint32_t)falcon_ct_nonzero(raw ^ top);
+        uint32_t neg = (uint32_t)falcon_ct_mask((raw >> (bits - 1)) & 1u);
+        a[i] = (int32_t)(raw - (neg & (2 * top)));
+    }
+    FALCON_DECLASSIFY(&bad, sizeof bad);
+    return bad ? FALCON_ERR_VALUE : FALCON_OK;
 }
 
 int falcon_decode_sk(int32_t *f, int32_t *g, int32_t *F, size_t *n, const uint8_t *b, size_t len)

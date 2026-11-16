@@ -13,7 +13,8 @@
 
 #include "params.h"
 
-/* x mod q in 0 .. q-1, auch für negative x (Python: x % q). */
+/* x mod q in 0 .. q-1, auch für negative x (Python: x % q). Ohne Division und Verzweigung;
+ * gilt für -q * 2^40 <= x <= 2^62. */
 int32_t falcon_mod_q(int64_t x);
 
 /* Polynom mod q in Wertedarstellung. §3.5, §4.2.2. */

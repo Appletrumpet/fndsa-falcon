@@ -77,5 +77,34 @@ int main(void)
 
     CHECK(falcon_mod_q(-3) == 12286, "-3 mod q");
     CHECK(falcon_mod_q(-12289) == 0, "-q mod q");
+    /* Barrett-Reduktion gegen % über den ganzen zugesicherten Bereich und an den Rändern. */
+    {
+        const int64_t lo = -(int64_t)FALCON_Q * ((int64_t)1 << 40), hi = (int64_t)1 << 62;
+        int64_t edges[] = {0, 1, FALCON_Q - 1, FALCON_Q, FALCON_Q + 1, 2 * FALCON_Q - 1, 2 * FALCON_Q,
+                           (int64_t)(FALCON_Q - 1) * (FALCON_Q - 1), INT32_MAX, INT32_MIN,
+                           ((int64_t)1 << 33), -((int64_t)1 << 33), lo, lo + 1, hi, hi - 1};
+        int bad = 0;
+        for (size_t i = 0; i < sizeof edges / sizeof edges[0]; i++) {
+            for (int64_t d = -2; d <= 2; d++) {
+                int64_t x = edges[i] + d;
+                if (x < lo || x > hi) {
+                    continue;
+                }
+                int64_t r = x % FALCON_Q;
+                bad |= falcon_mod_q(x) != (int32_t)(r < 0 ? r + FALCON_Q : r);
+            }
+        }
+        uint64_t state = 0x9E3779B97F4A7C15u;
+        for (int i = 0; i < 200000; i++) {
+            state = state * 6364136223846793005u + 1442695040888963407u;
+            int64_t x = (int64_t)(state >> 1) % (hi - lo) + lo;
+            if (x < lo) {
+                x += hi - lo;
+            }
+            int64_t r = x % FALCON_Q;
+            bad |= falcon_mod_q(x) != (int32_t)(r < 0 ? r + FALCON_Q : r);
+        }
+        CHECK(!bad, "mod_q gegen %%");
+    }
     return test_summary("modq");
 }
