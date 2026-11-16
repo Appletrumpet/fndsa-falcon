@@ -2,6 +2,7 @@
 #
 #   make test           alle Tests im Debug-Build (AddressSanitizer, UBSan)
 #   make test-release   alle Tests optimiert
+#   make bench          Laufzeitmessung nach Messprotokoll (Rust/PLAN.md 5.2)
 #   make clean
 
 CC ?= cc
@@ -16,7 +17,7 @@ SRC = $(wildcard src/*.c)
 SUPPORT = tests/vectors.c
 TESTS = $(patsubst tests/%.c,%,$(filter-out $(SUPPORT),$(wildcard tests/test_*.c)))
 
-.PHONY: test test-release clean
+.PHONY: test test-release bench clean
 
 define RUN_TESTS
 	@mkdir -p build/$(1)
@@ -31,6 +32,11 @@ test:
 
 test-release:
 	$(call RUN_TESTS,release,$(RELEASE_CFLAGS))
+
+bench:
+	@mkdir -p build/release
+	$(CC) $(RELEASE_CFLAGS) $(SRC) $(SUPPORT) bench/bench.c -lm -o build/release/bench
+	./build/release/bench
 
 clean:
 	rm -rf build
