@@ -18,6 +18,14 @@
 #define FALCON_DECLASSIFY(ptr, len) ((void)(ptr), (void)(len))
 #endif
 
+/* Speicher löschen (Z5). Die Barriere zwingt den Compiler, das memset auszuführen, auch wenn der
+ * Speicher danach nicht mehr gelesen wird. */
+static inline void falcon_secure_zero(void *p, size_t len)
+{
+    memset(p, 0, len);
+    __asm__ __volatile__("" : : "r"(p) : "memory");
+}
+
 static inline uint64_t falcon_ct_barrier(uint64_t x)
 {
     __asm__("" : "+r"(x));

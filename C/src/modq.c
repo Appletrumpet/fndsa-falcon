@@ -129,6 +129,7 @@ int falcon_intt(int32_t *out, const int32_t *a_hat, size_t n)
         out[i] = falcon_mod_q(a_hat[i]);
     }
     intt_rec(out, tmp, n);
+    falcon_secure_zero(tmp, n * sizeof tmp[0]); /* Z5 */
     return FALCON_OK;
 }
 
@@ -146,7 +147,11 @@ int falcon_mul_mod_q(int32_t *out, const int32_t *a, const int32_t *b, size_t n)
     for (size_t i = 0; i < n; i++) {
         ch[i] = mul_q(ah[i], bh[i]);
     }
-    return falcon_intt(out, ch, n);
+    int rc = falcon_intt(out, ch, n);
+    falcon_secure_zero(ah, n * sizeof ah[0]); /* Z5 */
+    falcon_secure_zero(bh, n * sizeof bh[0]);
+    falcon_secure_zero(ch, n * sizeof ch[0]);
+    return rc;
 }
 
 /* x^(q-2) mod q (Python: pow(x, q - 2, q)). */
@@ -182,10 +187,11 @@ int falcon_div_mod_q(int32_t *out, const int32_t *a, const int32_t *b, size_t n)
         ch[i] = mul_q(ah[i], inverse_q(bh[i]));
     }
     FALCON_DECLASSIFY(&zero, sizeof zero);
-    if (zero) {
-        return FALCON_ERR_VALUE;
-    }
-    return falcon_intt(out, ch, n);
+    int rc = zero ? FALCON_ERR_VALUE : falcon_intt(out, ch, n);
+    falcon_secure_zero(ah, n * sizeof ah[0]); /* Z5 */
+    falcon_secure_zero(bh, n * sizeof bh[0]);
+    falcon_secure_zero(ch, n * sizeof ch[0]);
+    return rc;
 }
 
 int falcon_is_invertible_mod_q(const int32_t *a, size_t n)
@@ -196,12 +202,12 @@ int falcon_is_invertible_mod_q(const int32_t *a, size_t n)
         return FALCON_ERR_VALUE;
     }
     ntt_rec(ah, a, 1, n);
+    int invertible = 1;
     for (size_t i = 0; i < n; i++) {
-        if (ah[i] == 0) {
-            return 0;
-        }
+        invertible &= ah[i] != 0;
     }
-    return 1;
+    falcon_secure_zero(ah, n * sizeof ah[0]); /* Z5 */
+    return invertible;
 }
 
 void falcon_center_mod_q(int32_t *out, const int32_t *a, size_t n)

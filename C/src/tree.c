@@ -25,6 +25,7 @@ void falcon_build_basis_fft(falcon_cplx *b00, falcon_cplx *b01, falcon_cplx *b10
         values[i] = (double)(-F[i]);
     }
     (void)falcon_fft(b11, values, n);
+    falcon_secure_zero(values, sizeof values); /* Z5 */
 }
 
 void falcon_gram_matrix(const falcon_mat22 *out, const falcon_mat22 *b, size_t n)
@@ -123,7 +124,9 @@ int falcon_ff_ldl(falcon_tree *t, const falcon_mat22 *G, size_t n)
     }
     t->nnodes = 0;
     t->nell = 0;
-    return ff_ldl_rec(t, G, n, tmp) != NULL ? FALCON_OK : FALCON_ERR_VALUE;
+    int rc = ff_ldl_rec(t, G, n, tmp) != NULL ? FALCON_OK : FALCON_ERR_VALUE;
+    falcon_secure_zero(tmp, sizeof tmp); /* Z5 */
+    return rc;
 }
 
 void falcon_normalize_leaves(falcon_tree_node *node, size_t n, double sigma)
@@ -145,7 +148,9 @@ int falcon_build_falcon_tree(falcon_tree *t, const falcon_mat22 *basis, size_t n
     falcon_mat22 G = {g, g + n, g + 2 * n, g + 3 * n};
 
     falcon_gram_matrix(&G, basis, n);
-    if (falcon_ff_ldl(t, &G, n) != FALCON_OK) {
+    int rc = falcon_ff_ldl(t, &G, n);
+    falcon_secure_zero(g, sizeof g); /* Z5 */
+    if (rc != FALCON_OK) {
         return FALCON_ERR_VALUE;
     }
     falcon_normalize_leaves(&t->nodes[0], n, p->sigma);

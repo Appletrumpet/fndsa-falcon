@@ -59,7 +59,9 @@ int falcon_ff_sampling_node(falcon_cplx *z0, falcon_cplx *z1, const falcon_cplx 
 {
     falcon_cplx tmp[4 * FALCON_MAX_N];
 
-    return rec(z0, z1, t0, t1, n, node, p, rng, tmp);
+    int rc = rec(z0, z1, t0, t1, n, node, p, rng, tmp);
+    falcon_secure_zero(tmp, sizeof tmp); /* Z5 */
+    return rc;
 }
 
 int falcon_ff_sampling(falcon_cplx *z0, falcon_cplx *z1, const falcon_cplx *t0, const falcon_cplx *t1,

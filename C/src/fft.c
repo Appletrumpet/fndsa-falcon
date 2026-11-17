@@ -57,6 +57,7 @@ int falcon_ifft(double *out, const falcon_cplx *a_hat, size_t n)
         return FALCON_ERR_VALUE;
     }
     ifft_rec(out, 1, a_hat, tmp, n);
+    falcon_secure_zero(tmp, sizeof tmp); /* Z5: Zwischenwerte können geheim sein */
     return FALCON_OK;
 }
 

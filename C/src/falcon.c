@@ -61,25 +61,40 @@ static int load_secret_key(falcon_secret_key *sk, const uint8_t *b, size_t len,
     return falcon_build_falcon_tree(&sk->tree, &basis, n, p);
 }
 
+void falcon_secret_key_clear(falcon_secret_key *sk)
+{
+    falcon_secure_zero(sk, sizeof *sk);
+}
+
 /* Mit DIT für die ganze Dauer (Z2); der vorherige Zustand wird auf jedem Weg wiederhergestellt. */
 int falcon_load_secret_key(falcon_secret_key *sk, const uint8_t *b, size_t len,
                            const falcon_params *p)
 {
     int dit = falcon_dit_enable();
     int rc = load_secret_key(sk, b, len, p);
+    if (rc != FALCON_OK) {
+        falcon_secret_key_clear(sk); /* Z5: kein halb geladener Schlüssel */
+    }
     falcon_dit_restore(dit);
     return rc;
 }
 
-static int sign(falcon_signature *sig, const falcon_secret_key *sk, const uint8_t *message,
-                size_t message_len, const falcon_params *p, const falcon_rng *rng)
-{
+/* Zwischenwerte von sign; falcon_sign löscht sie auf jedem Weg (Z5). */
+typedef struct {
     int32_t c[FALCON_MAX_N];
     int32_t s1_coeff[FALCON_MAX_N];
     int32_t s2_coeff[FALCON_MAX_N];
     falcon_cplx t0[FALCON_MAX_N], t1[FALCON_MAX_N];
     falcon_cplx z0[FALCON_MAX_N], z1[FALCON_MAX_N];
     falcon_cplx s0[FALCON_MAX_N], s1[FALCON_MAX_N];
+} sign_work;
+
+static int sign(sign_work *w, falcon_signature *sig, const falcon_secret_key *sk,
+                const uint8_t *message, size_t message_len, const falcon_params *p,
+                const falcon_rng *rng)
+{
+    int32_t *c = w->c, *s1_coeff = w->s1_coeff, *s2_coeff = w->s2_coeff;
+    falcon_cplx *t0 = w->t0, *t1 = w->t1, *z0 = w->z0, *z1 = w->z1, *s0 = w->s0, *s1 = w->s1;
 
     if (sk->n != p->n || p->sig_bytelen < 41 || p->sig_bytelen - 41 > FALCON_MAX_S2_BYTES) {
         return FALCON_ERR_VALUE;
@@ -125,8 +140,10 @@ static int sign(falcon_signature *sig, const falcon_secret_key *sk, const uint8_
 int falcon_sign(falcon_signature *sig, const falcon_secret_key *sk, const uint8_t *message,
                 size_t message_len, const falcon_params *p, const falcon_rng *rng)
 {
+    sign_work w;
     int dit = falcon_dit_enable();
-    int rc = sign(sig, sk, message, message_len, p, rng);
+    int rc = sign(&w, sig, sk, message, message_len, p, rng);
+    falcon_secure_zero(&w, sizeof w);
     falcon_dit_restore(dit);
     return rc;
 }
@@ -160,6 +177,9 @@ void falcon_compute_target(falcon_cplx *t0, falcon_cplx *t1, const int32_t *c,
         t1[k].re = v.re / q;
         t1[k].im = v.im / q;
     }
+    falcon_secure_zero(values, sizeof values); /* Z5 */
+    falcon_secure_zero(f_hat, sizeof f_hat);
+    falcon_secure_zero(F_hat, sizeof F_hat);
 }
 
 void falcon_compute_signature_vector(falcon_cplx *s0, falcon_cplx *s1, const falcon_cplx *t0,
@@ -190,19 +210,20 @@ int falcon_to_coefficients(int32_t *a, int32_t *b, const falcon_cplx *s0, const 
     double values[FALCON_MAX_N];
 
     /* llrint rundet im Standardmodus bei Gleichstand zur geraden Zahl, wie Python round. */
-    if (falcon_ifft(values, s0, n) != FALCON_OK) {
-        return FALCON_ERR_VALUE;
+    int rc = FALCON_ERR_VALUE;
+    if (falcon_ifft(values, s0, n) == FALCON_OK) {
+        for (size_t i = 0; i < n; i++) {
+            a[i] = (int32_t)llrint(values[i]);
+        }
+        if (falcon_ifft(values, s1, n) == FALCON_OK) {
+            for (size_t i = 0; i < n; i++) {
+                b[i] = (int32_t)llrint(values[i]);
+            }
+            rc = FALCON_OK;
+        }
     }
-    for (size_t i = 0; i < n; i++) {
-        a[i] = (int32_t)llrint(values[i]);
-    }
-    if (falcon_ifft(values, s1, n) != FALCON_OK) {
-        return FALCON_ERR_VALUE;
-    }
-    for (size_t i = 0; i < n; i++) {
-        b[i] = (int32_t)llrint(values[i]);
-    }
-    return FALCON_OK;
+    falcon_secure_zero(values, sizeof values); /* Z5 */
+    return rc;
 }
 
 int falcon_verify(const falcon_public_key *pk, const uint8_t *message, size_t message_len,

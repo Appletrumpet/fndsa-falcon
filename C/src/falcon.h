@@ -19,6 +19,9 @@ int falcon_keygen_system(falcon_secret_key *sk, falcon_public_key *pk, const fal
 /* h = g * f^-1 mod q. FALCON_ERR_VALUE, wenn f nicht invertierbar ist. Alg. 4, Z. 9. */
 int falcon_compute_public_key(int32_t *h, const int32_t *f, const int32_t *g, const falcon_params *p);
 
+/* Secret Key vollständig löschen (Z5); danach unbrauchbar bis zum nächsten Laden. */
+void falcon_secret_key_clear(falcon_secret_key *sk);
+
 /* Secret Key aus Bytes laden: decode_sk, recompute_G, Basis, Baum. Der Baum zeigt in *sk.
  * §3.11.5, Alg. 4, Z. 2-7. */
 int falcon_load_secret_key(falcon_secret_key *sk, const uint8_t *b, size_t len,

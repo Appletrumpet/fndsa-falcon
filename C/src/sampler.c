@@ -45,6 +45,7 @@ int falcon_uniform_bits(falcon_u72 *out, int k, const falcon_rng *rng)
         value.low = buf[i];
     }
     *out = value;
+    falcon_secure_zero(buf, sizeof buf); /* Z5 */
     return FALCON_OK;
 }
 
