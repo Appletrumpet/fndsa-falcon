@@ -190,9 +190,19 @@ void falcon_big_mul(falcon_big *r, const falcon_big *a, const falcon_big *b)
         return;
     }
 
-    uint32_t *out = calloc(la + lb, sizeof *out);
-    if (out == NULL) {
-        abort();
+    /* Ist r keiner der Faktoren, wird sein Speicher wiederverwendet (keine Allokation je Produkt
+     * in poly_mul); sonst ein neuer Block. */
+    int alias = r == a || r == b;
+    uint32_t *out;
+    if (alias) {
+        out = calloc(la + lb, sizeof *out);
+        if (out == NULL) {
+            abort();
+        }
+    } else {
+        reserve(r, la + lb);
+        out = r->limb;
+        memset(out, 0, (la + lb) * sizeof *out);
     }
     for (size_t i = 0; i < la; i++) {
         uint64_t carry = 0;
@@ -204,9 +214,11 @@ void falcon_big_mul(falcon_big *r, const falcon_big *a, const falcon_big *b)
         }
         out[i + lb] = (uint32_t)carry;
     }
-    release(r->limb, r->cap);
-    r->limb = out;
-    r->cap = la + lb;
+    if (alias) {
+        release(r->limb, r->cap);
+        r->limb = out;
+        r->cap = la + lb;
+    }
     r->len = la + lb;
     r->neg = neg;
     trim(r);
