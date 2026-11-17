@@ -86,13 +86,18 @@ double falcon_gram_schmidt_norm(const int32_t *f, const int32_t *g, size_t n, co
     (void)falcon_fft(gh, values, n);
 
     double total = 0.0;
-    for (size_t k = 0; k < n; k++) {
+    int zero = 0;
+    for (size_t k = 0; k < n && !zero; k++) {
         double den = (fh[k].re * fh[k].re + fh[k].im * fh[k].im)
                      + (gh[k].re * gh[k].re + gh[k].im * gh[k].im);
-        if (den <= 0.0) {
-            return HUGE_VAL;
-        }
-        total += q2 / den;
+        zero = den <= 0.0;
+        total += zero ? 0.0 : q2 / den;
+    }
+    falcon_secure_zero(values, sizeof values); /* Z5 */
+    falcon_secure_zero(fh, sizeof fh);
+    falcon_secure_zero(gh, sizeof gh);
+    if (zero) {
+        return HUGE_VAL;
     }
     double second = sqrt(total / (double)n);
     return second > first ? second : first;
@@ -365,6 +370,7 @@ static void fft_scaled(falcon_cplx *out, const falcon_big *a, size_t scale, size
         values[i] = falcon_scaled_float(&a[i], scale);
     }
     (void)falcon_fft(out, values, n);
+    falcon_secure_zero(values, sizeof values); /* Z5 */
 }
 
 int falcon_reduce(const falcon_big *f, const falcon_big *g, falcon_big *F, falcon_big *G, size_t n)
@@ -387,6 +393,9 @@ int falcon_reduce(const falcon_big *f, const falcon_big *g, falcon_big *F, falco
         double d = falcon_c_add(falcon_c_mul(f_hat[i], falcon_c_adj(f_hat[i])),
                                 falcon_c_mul(g_hat[i], falcon_c_adj(g_hat[i]))).re;
         if (!isfinite(d) || d <= 0.0) {
+            falcon_secure_zero(f_hat, sizeof f_hat); /* Z5 */
+            falcon_secure_zero(g_hat, sizeof g_hat);
+            falcon_secure_zero(denom, sizeof denom);
             return FALCON_ERR_VALUE; /* wie Python: ArithmeticError */
         }
         denom[i] = d;
@@ -440,6 +449,13 @@ int falcon_reduce(const falcon_big *f, const falcon_big *g, falcon_big *F, falco
     }
     falcon_poly_free(k, n);
     falcon_poly_free(product, n);
+    falcon_secure_zero(f_hat, sizeof f_hat); /* Z5 */
+    falcon_secure_zero(g_hat, sizeof g_hat);
+    falcon_secure_zero(F_hat, sizeof F_hat);
+    falcon_secure_zero(G_hat, sizeof G_hat);
+    falcon_secure_zero(mu_hat, sizeof mu_hat);
+    falcon_secure_zero(denom, sizeof denom);
+    falcon_secure_zero(mu, sizeof mu);
     return rc;
 }
 

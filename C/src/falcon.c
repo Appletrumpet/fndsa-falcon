@@ -15,7 +15,7 @@
 #include "poly.h"
 #include "tree.h"
 
-int falcon_keygen(falcon_secret_key *sk, falcon_public_key *pk, const falcon_params *p,
+static int keygen(falcon_secret_key *sk, falcon_public_key *pk, const falcon_params *p,
                   const falcon_rng *rng)
 {
     int rc = falcon_generate_ntru_keys(sk->f, sk->g, sk->F, sk->G, p, rng);
@@ -32,6 +32,16 @@ int falcon_keygen(falcon_secret_key *sk, falcon_public_key *pk, const falcon_par
     }
     pk->n = n;
     return falcon_compute_public_key(pk->h, sk->f, sk->g, p);
+}
+
+int falcon_keygen(falcon_secret_key *sk, falcon_public_key *pk, const falcon_params *p,
+                  const falcon_rng *rng)
+{
+    int rc = keygen(sk, pk, p, rng);
+    if (rc != FALCON_OK) {
+        falcon_secret_key_clear(sk); /* Z5: verworfene Kandidaten nicht zurücklassen */
+    }
+    return rc;
 }
 
 int falcon_keygen_system(falcon_secret_key *sk, falcon_public_key *pk, const falcon_params *p)

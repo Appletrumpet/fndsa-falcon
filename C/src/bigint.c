@@ -3,15 +3,31 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "ct.h"
+
+/* Jeder freigegebene Speicher wird vorher gelöscht (Z5): Die Zahlen in keygen sind geheim. */
+static void release(uint32_t *p, size_t words)
+{
+    if (p != NULL) {
+        falcon_secure_zero(p, words * sizeof *p);
+        free(p);
+    }
+}
+
+/* Statt realloc: neuer Block, kopieren, alten gelöscht freigeben (realloc gäbe ihn ungelöscht frei). */
 static void reserve(falcon_big *a, size_t cap)
 {
     if (cap <= a->cap) {
         return;
     }
-    uint32_t *p = realloc(a->limb, cap * sizeof *p);
+    uint32_t *p = malloc(cap * sizeof *p);
     if (p == NULL) {
         abort();
     }
+    if (a->len != 0) {
+        memcpy(p, a->limb, a->len * sizeof *p);
+    }
+    release(a->limb, a->cap);
     a->limb = p;
     a->cap = cap;
 }
@@ -36,7 +52,7 @@ void falcon_big_init(falcon_big *a)
 
 void falcon_big_free(falcon_big *a)
 {
-    free(a->limb);
+    release(a->limb, a->cap);
     falcon_big_init(a);
 }
 
@@ -188,7 +204,7 @@ void falcon_big_mul(falcon_big *r, const falcon_big *a, const falcon_big *b)
         }
         out[i + lb] = (uint32_t)carry;
     }
-    free(r->limb);
+    release(r->limb, r->cap);
     r->limb = out;
     r->cap = la + lb;
     r->len = la + lb;
@@ -339,7 +355,8 @@ void falcon_big_divmod_abs(falcon_big *q, falcon_big *r, const falcon_big *a, co
     while (((b->limb[n - 1] << shift) & 0x80000000u) == 0) {
         shift++;
     }
-    uint32_t *u = malloc((a->len + 1) * sizeof *u);
+    size_t ulen = a->len + 1;
+    uint32_t *u = malloc(ulen * sizeof *u);
     uint32_t *v = malloc(n * sizeof *v);
     if (u == NULL || v == NULL) {
         abort();
@@ -413,6 +430,6 @@ void falcon_big_divmod_abs(falcon_big *q, falcon_big *r, const falcon_big *a, co
     r->len = n;
     r->neg = 0;
     trim(r);
-    free(u);
-    free(v);
+    release(u, ulen);
+    release(v, n);
 }

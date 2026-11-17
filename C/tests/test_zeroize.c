@@ -17,6 +17,7 @@
 #include <string.h>
 
 #include "encoding.h"
+#include "fft.h"
 #include "falcon.h"
 #include "hashing.h"
 #include "params.h"
@@ -93,6 +94,10 @@ __attribute__((noinline)) static size_t scan(void)
 static falcon_signature sig;
 static falcon_cplx g00[FALCON_MAX_N], g01[FALCON_MAX_N], g10[FALCON_MAX_N], g11[FALCON_MAX_N];
 static falcon_cplx t0[FALCON_MAX_N], t1[FALCON_MAX_N];
+static falcon_cplx fh[FALCON_MAX_N];
+static double fv[FALCON_MAX_N];
+static falcon_secret_key sk3;
+static falcon_public_key pk3;
 #endif
 
 static falcon_secret_key sk, sk2;
@@ -155,6 +160,24 @@ int main(void)
         CHECK(falcon_sign(&sig, &sk2, msg, sizeof msg, p, &srng) == FALCON_OK, "sign");
         size_t hits = scan();
         CHECK(hits == 0, "sign: %zu Werte des Ziels t im Stack zurückgeblieben", hits);
+    }
+    /* keygen: FFT von f als Nadeln (gram_schmidt_norm, Basis). Gleicher Seed wie oben, also
+     * derselbe Schlüssel; f vorab aus dem ersten Lauf. */
+    {
+        falcon_shake256_ctx kctx3;
+        falcon_rng krng3 = shake_rng(&kctx3, (const uint8_t *)"zeroize-key", 11);
+        for (size_t i = 0; i < p->n; i++) {
+            fv[i] = (double)sk.f[i];
+        }
+        (void)falcon_fft(fh, fv, p->n);
+        nneedles = 0;
+        add_needles(fh, p->n);
+        finish_needles();
+        paint();
+        CHECK(falcon_keygen(&sk3, &pk3, p, &krng3) == FALCON_OK, "keygen 2");
+        size_t hits = scan();
+        CHECK(memcmp(sk3.f, sk.f, sizeof sk.f) == 0, "keygen 2: gleicher Schlüssel");
+        CHECK(hits == 0, "keygen: %zu Werte der FFT von f im Stack zurückgeblieben", hits);
     }
 #endif
     return test_summary("zeroize");
