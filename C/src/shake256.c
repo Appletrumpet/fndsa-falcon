@@ -24,16 +24,21 @@ static const unsigned RHO_OFFSETS[25] = {
     18, 2,  61, 56, 14,
 };
 
-static uint64_t rotl(uint64_t x, unsigned r)
+/* Ohne Verzweigung: (64 - r) & 63 deckt r = 0 ab. */
+static inline uint64_t rotl(uint64_t x, unsigned r)
 {
-    return r == 0 ? x : (x << r) | (x >> (64 - r));
+    return (x << r) | (x >> ((64 - r) & 63));
 }
+
+/* Ziel der Lane x + 5y nach rho und pi: y + 5 * ((2x + 3y) mod 5) (FIPS 202, §3.2.3). */
+static const unsigned char PI_TARGET[25] = {
+    0, 10, 20, 5, 15, 16, 1, 11, 21, 6, 7, 17, 2, 12, 22, 23, 8, 18, 3, 13, 14, 24, 9, 19, 4
+};
 
 static void keccak_f1600(uint64_t *a)
 {
     for (int round = 0; round < 24; round++) {
         uint64_t c[5];
-        uint64_t d[5];
         uint64_t b[25];
 
         /* theta */
@@ -41,26 +46,27 @@ static void keccak_f1600(uint64_t *a)
             c[x] = a[x] ^ a[x + 5] ^ a[x + 10] ^ a[x + 15] ^ a[x + 20];
         }
         for (int x = 0; x < 5; x++) {
-            d[x] = c[(x + 4) % 5] ^ rotl(c[(x + 1) % 5], 1);
-        }
-        for (int i = 0; i < 25; i++) {
-            a[i] ^= d[i % 5];
+            uint64_t d = c[x == 0 ? 4 : x - 1] ^ rotl(c[x == 4 ? 0 : x + 1], 1);
+            a[x] ^= d;
+            a[x + 5] ^= d;
+            a[x + 10] ^= d;
+            a[x + 15] ^= d;
+            a[x + 20] ^= d;
         }
 
         /* rho und pi: A'[y, 2x + 3y] = ROT(A[x, y]) */
-        for (int y = 0; y < 5; y++) {
-            for (int x = 0; x < 5; x++) {
-                int nx = y;
-                int ny = (2 * x + 3 * y) % 5;
-                b[nx + 5 * ny] = rotl(a[x + 5 * y], RHO_OFFSETS[x + 5 * y]);
-            }
+        for (int i = 0; i < 25; i++) {
+            b[PI_TARGET[i]] = rotl(a[i], RHO_OFFSETS[i]);
         }
 
         /* chi */
-        for (int y = 0; y < 5; y++) {
-            for (int x = 0; x < 5; x++) {
-                a[x + 5 * y] = b[x + 5 * y] ^ (~b[(x + 1) % 5 + 5 * y] & b[(x + 2) % 5 + 5 * y]);
-            }
+        for (int y = 0; y < 25; y += 5) {
+            uint64_t b0 = b[y], b1 = b[y + 1], b2 = b[y + 2], b3 = b[y + 3], b4 = b[y + 4];
+            a[y] = b0 ^ (~b1 & b2);
+            a[y + 1] = b1 ^ (~b2 & b3);
+            a[y + 2] = b2 ^ (~b3 & b4);
+            a[y + 3] = b3 ^ (~b4 & b0);
+            a[y + 4] = b4 ^ (~b0 & b1);
         }
 
         /* iota */
