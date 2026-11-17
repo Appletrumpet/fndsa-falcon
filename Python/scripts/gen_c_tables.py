@@ -98,7 +98,24 @@ def main() -> None:
     ]
     for i in range(0, len(powers), 12):
         lines.append("    " + ", ".join(f"{x:5d}" for x in powers[i:i + 12]) + ",")
-    lines += ["};", "", "#endif", ""]
+    lines += ["};", ""]
+
+    # Iterative NTT in C (Stufe 2, Z6): psi^brv(k) und psi^-brv(k) mit 10-Bit-Umkehrung. Für Grad
+    # n < 1024 gilt derselbe Anfang der Tabelle: brv_10(k) = brv_m(k) * 1024 / n.
+    logmax = MAX_N.bit_length() - 1
+
+    def brv(k):
+        return int(format(k, f"0{logmax}b")[::-1], 2)
+
+    br = [powers[brv(k)] for k in range(MAX_N)]
+    br_inv = [powers[(2 * MAX_N - brv(k)) % (2 * MAX_N)] for k in range(MAX_N)]
+    for name, table, text in (("FALCON_NTT_BR", br, "psi^brv(k)"), ("FALCON_NTT_BR_INV", br_inv, "psi^-brv(k)")):
+        lines.append(f"/* {text} mod q für k = 0 .. {MAX_N - 1}, brv = Umkehrung der {logmax} Bits. */")
+        lines.append(f"static const uint16_t {name}[{MAX_N}] = {{")
+        for i in range(0, MAX_N, 12):
+            lines.append("    " + ", ".join(f"{x:5d}" for x in table[i:i + 12]) + ",")
+        lines += ["};", ""]
+    lines += ["#endif", ""]
     OUT.write_text("\n".join(lines))
     print(OUT)
 

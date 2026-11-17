@@ -47,9 +47,16 @@ static int32_t inv_zeta(size_t n, size_t k)
     return FALCON_PSI_POWERS[(PSI_ORDER - zeta_exponent(n, k)) % PSI_ORDER];
 }
 
+/* a, b in 0 .. q-1, also a * b < 2^28: Barrett mit 32-Bit-Kehrwert genügt, der Quotient ist
+ * höchstens um 1 zu klein (x * (2^32/q - m) / 2^32 < 2^-4). */
 static int32_t mul_q(int32_t a, int32_t b)
 {
-    return (int32_t)reduce_q((uint64_t)a * (uint64_t)b);
+    const uint64_t m = 0xFFFFFFFFu / FALCON_Q;
+    uint32_t x = (uint32_t)a * (uint32_t)b;
+    uint32_t quot = (uint32_t)(((uint64_t)x * m) >> 32);
+    uint32_t r = x - quot * FALCON_Q;
+    r -= (uint32_t)falcon_ct_mask(1u ^ ((uint64_t)(r - FALCON_Q) >> 31 & 1u)) & FALCON_Q;
+    return (int32_t)r;
 }
 
 static int32_t add_q(int32_t a, int32_t b)
@@ -109,6 +116,59 @@ static void intt_rec(int32_t *x, int32_t *tmp, size_t n)
     }
 }
 
+static int32_t inverse_q(int32_t x);
+
+/* ------------------------------------------------------------------------- */
+/* Iterative NTT für mul_mod_q, div_mod_q, is_invertible_mod_q (Stufe 2, Z6)    */
+/* ------------------------------------------------------------------------- */
+
+/* Andere Reihenfolge der Werte als ntt_rec (die Spezifikation lässt sie frei, §8.1.3); Produkt
+ * und Quotient sind exakt und damit gleich. Werte bleiben in 0 .. q-1, Indizes hängen nur von n ab. */
+static void ntt_fast(int32_t *a, size_t n)
+{
+    for (size_t len = n / 2; len >= 1; len /= 2) {
+        size_t base = n / (2 * len);
+        for (size_t b = 0; b < base; b++) {
+            int32_t zeta = FALCON_NTT_BR[base + b];
+            int32_t *x = a + 2 * len * b;
+            for (size_t j = 0; j < len; j++) {
+                int32_t t = mul_q(zeta, x[j + len]);
+                x[j + len] = sub_q(x[j], t);
+                x[j] = add_q(x[j], t);
+            }
+        }
+    }
+}
+
+/* Umkehrung von ntt_fast: (u, v) -> (u + v, (u - v) / zeta), am Ende durch n teilen. */
+static void intt_fast(int32_t *a, size_t n)
+{
+    for (size_t len = 1; len < n; len *= 2) {
+        size_t base = n / (2 * len);
+        for (size_t b = 0; b < base; b++) {
+            int32_t zeta_inv = FALCON_NTT_BR_INV[base + b];
+            int32_t *x = a + 2 * len * b;
+            for (size_t j = 0; j < len; j++) {
+                int32_t u = x[j], v = x[j + len];
+                x[j] = add_q(u, v);
+                x[j + len] = mul_q(sub_q(u, v), zeta_inv);
+            }
+        }
+    }
+    int32_t n_inv = inverse_q((int32_t)n);
+    for (size_t i = 0; i < n; i++) {
+        a[i] = mul_q(a[i], n_inv);
+    }
+}
+
+/* a mod q in die Form für ntt_fast bringen. */
+static void load_q(int32_t *out, const int32_t *a, size_t n)
+{
+    for (size_t i = 0; i < n; i++) {
+        out[i] = falcon_mod_q(a[i]);
+    }
+}
+
 int falcon_ntt(int32_t *out, const int32_t *a, size_t n)
 {
     if (check_length(n) != FALCON_OK) {
@@ -142,12 +202,16 @@ int falcon_mul_mod_q(int32_t *out, const int32_t *a, const int32_t *b, size_t n)
     if (check_length(n) != FALCON_OK) {
         return FALCON_ERR_VALUE;
     }
-    ntt_rec(ah, a, 1, n);
-    ntt_rec(bh, b, 1, n);
+    load_q(ah, a, n);
+    load_q(bh, b, n);
+    ntt_fast(ah, n);
+    ntt_fast(bh, n);
     for (size_t i = 0; i < n; i++) {
         ch[i] = mul_q(ah[i], bh[i]);
     }
-    int rc = falcon_intt(out, ch, n);
+    intt_fast(ch, n);
+    memcpy(out, ch, n * sizeof *out);
+    int rc = FALCON_OK;
     falcon_secure_zero(ah, n * sizeof ah[0]); /* Z5 */
     falcon_secure_zero(bh, n * sizeof bh[0]);
     falcon_secure_zero(ch, n * sizeof ch[0]);
@@ -177,8 +241,10 @@ int falcon_div_mod_q(int32_t *out, const int32_t *a, const int32_t *b, size_t n)
     if (check_length(n) != FALCON_OK) {
         return FALCON_ERR_VALUE;
     }
-    ntt_rec(ah, a, 1, n);
-    ntt_rec(bh, b, 1, n);
+    load_q(ah, a, n);
+    load_q(bh, b, n);
+    ntt_fast(ah, n);
+    ntt_fast(bh, n);
     /* Nullprüfung ohne Verzweigung (recompute_G läuft auf geheimen Werten); nur „nicht
      * invertierbar“ wird am Ende freigegeben. inverse_q(0) ist 0, das Ergebnis wird dann verworfen. */
     uint64_t zero = 0;
@@ -187,7 +253,12 @@ int falcon_div_mod_q(int32_t *out, const int32_t *a, const int32_t *b, size_t n)
         ch[i] = mul_q(ah[i], inverse_q(bh[i]));
     }
     FALCON_DECLASSIFY(&zero, sizeof zero);
-    int rc = zero ? FALCON_ERR_VALUE : falcon_intt(out, ch, n);
+    int rc = FALCON_ERR_VALUE;
+    if (!zero) {
+        intt_fast(ch, n);
+        memcpy(out, ch, n * sizeof *out);
+        rc = FALCON_OK;
+    }
     falcon_secure_zero(ah, n * sizeof ah[0]); /* Z5 */
     falcon_secure_zero(bh, n * sizeof bh[0]);
     falcon_secure_zero(ch, n * sizeof ch[0]);
@@ -201,7 +272,8 @@ int falcon_is_invertible_mod_q(const int32_t *a, size_t n)
     if (check_length(n) != FALCON_OK) {
         return FALCON_ERR_VALUE;
     }
-    ntt_rec(ah, a, 1, n);
+    load_q(ah, a, n);
+    ntt_fast(ah, n);
     int invertible = 1;
     for (size_t i = 0; i < n; i++) {
         invertible &= ah[i] != 0;
