@@ -22,6 +22,8 @@ typedef struct {
 void falcon_big_init(falcon_big *a);
 void falcon_big_free(falcon_big *a);
 void falcon_big_set_i64(falcon_big *a, int64_t x);
+/* Wie set_i64 für 128-Bit-Werte (Erweiterung von gcc und clang); |x| < 2^127. */
+void falcon_big_set_i128(falcon_big *a, __int128 x);
 void falcon_big_copy(falcon_big *r, const falcon_big *a);
 int falcon_big_is_zero(const falcon_big *a);
 int falcon_big_cmp(const falcon_big *a, const falcon_big *b);

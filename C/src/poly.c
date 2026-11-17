@@ -2,6 +2,7 @@
 
 #include <stdlib.h>
 
+#include "ct.h"
 #include "params.h"
 
 uint64_t falcon_norm_sq(const int32_t *a, size_t n)
@@ -62,9 +63,73 @@ void falcon_poly_neg(falcon_big *out, const falcon_big *a, size_t n)
     }
 }
 
+/* Betrag < 2^63 vorausgesetzt (geprüft über die Bitlänge). */
+static int64_t small_value(const falcon_big *a)
+{
+    uint64_t m = a->len > 0 ? a->limb[0] : 0;
+    if (a->len > 1) {
+        m |= (uint64_t)a->limb[1] << 32;
+    }
+    return a->neg ? -(int64_t)m : (int64_t)m;
+}
+
+static size_t max_bits(const falcon_big *a, size_t n)
+{
+    size_t m = 0;
+    for (size_t i = 0; i < n; i++) {
+        size_t b = falcon_big_bit_length(&a[i]);
+        m = b > m ? b : m;
+    }
+    return m;
+}
+
+/* Schneller Weg für kleine Koeffizienten (Stufe 2, Z6): Passt jede Summe von Produkten in 128 Bit,
+ * wird mit nativen Ganzzahlen gerechnet und nur das Ergebnis in grosse Ganzzahlen umgewandelt.
+ * Das Ergebnis ist exakt und damit gleich. In NTRUSolve trifft das auf die grossen Grade zu
+ * (n = 128 bis 1024, Koeffizienten mit wenigen Bit), wo sonst n^2 Aufrufe auf grossen Zahlen anfallen. */
+static int poly_mul_small(falcon_big *out, const falcon_big *a, const falcon_big *b, size_t n)
+{
+    size_t ba = max_bits(a, n), bb = max_bits(b, n);
+    size_t bn = 0;
+    while (((size_t)1 << bn) < n) {
+        bn++;
+    }
+    /* |Summe| < n * 2^(ba + bb) <= 2^(bn + ba + bb) muss unter 2^127 bleiben. */
+    if (n > FALCON_MAX_N || ba > 63 || bb > 63 || ba + bb + bn > 126) {
+        return 0;
+    }
+    int64_t av[FALCON_MAX_N], bv[FALCON_MAX_N];
+    __int128 acc[FALCON_MAX_N];
+    for (size_t i = 0; i < n; i++) {
+        av[i] = small_value(&a[i]);
+        bv[i] = small_value(&b[i]);
+        acc[i] = 0;
+    }
+    for (size_t i = 0; i < n; i++) {
+        __int128 x = av[i];
+        for (size_t j = 0; j < n - i; j++) {
+            acc[i + j] += x * bv[j];
+        }
+        for (size_t j = n - i; j < n; j++) {
+            acc[i + j - n] -= x * bv[j]; /* x^n = -1 */
+        }
+    }
+    for (size_t k = 0; k < n; k++) {
+        falcon_big_set_i128(&out[k], acc[k]);
+    }
+    falcon_secure_zero(av, n * sizeof av[0]); /* Z5: Werte aus keygen */
+    falcon_secure_zero(bv, n * sizeof bv[0]);
+    falcon_secure_zero(acc, n * sizeof acc[0]);
+    return 1;
+}
+
 void falcon_poly_mul(falcon_big *out, const falcon_big *a, const falcon_big *b, size_t n)
 {
     falcon_big product;
+
+    if (poly_mul_small(out, a, b, n)) {
+        return;
+    }
 
     falcon_big_init(&product);
     for (size_t k = 0; k < n; k++) {

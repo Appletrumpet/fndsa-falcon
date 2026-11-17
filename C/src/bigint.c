@@ -67,6 +67,18 @@ void falcon_big_set_i64(falcon_big *a, int64_t x)
     trim(a);
 }
 
+void falcon_big_set_i128(falcon_big *a, __int128 x)
+{
+    unsigned __int128 m = x < 0 ? (unsigned __int128)0 - (unsigned __int128)x : (unsigned __int128)x;
+    reserve(a, 4);
+    for (int i = 0; i < 4; i++) {
+        a->limb[i] = (uint32_t)(m >> (32 * i));
+    }
+    a->len = 4;
+    a->neg = x < 0;
+    trim(a);
+}
+
 void falcon_big_copy(falcon_big *r, const falcon_big *a)
 {
     if (r == a) {
