@@ -570,6 +570,46 @@ Zusage, dass die Laufzeit auch auf Prozessoren ohne konstante
 Schiebebefehle nicht von der Weite abhängt, bleibt wichtiger als die
 15 %.
 
+### 5.4 Angriffstests auf die Schnittstelle (11.11.2026)
+
+Gezielte Angriffe auf die öffentlichen Funktionen. Die Tests waren nur
+für diese Prüfung gedacht und sind nicht im Repo geblieben.
+
+**Befund 1, Signatur hat zwei gültige Formen (mittel):** Verify nimmt
+die gepolsterte Signatur (feste Länge, Nullbytes am Ende) und die
+ungepolsterte an (§3.11.3, siehe `encoding::decompress`). Wer bei einer
+gepolsterten Signatur die Nullbytes am Ende abschneidet, erhält eine
+andere Bytefolge, die ebenfalls gilt: 400 von 400 Signaturen (je 200 für
+Falcon-512 und -1024). Ein Angreifer kann so ohne Schlüssel zu einer
+fremden Signatur eine zweite gültige erzeugen; die Implementierung ist
+auf Byte-Ebene nicht stark unfälschbar (SUF-CMA). Nachricht und s₂
+bleiben dieselben, gefälscht wird also nichts Neues. Ein Problem ist das
+nur für Anwendungen, die Signaturbytes als eindeutige Kennung nutzen
+(z. B. Erkennung wiederholter Nachrichten); diese sollten die Nachricht
+oder s₂ vergleichen, nicht die Bytes. Grund für die zweite Form: Der
+NIST-KAT Falcon-1024, count = 82, ist ungepolstert und länger als die
+feste Länge. **Entschieden (11.11.2026): nur dokumentieren**, kein
+strikter Modus.
+
+**Befund 2, keine Längengrenze (gering):** `Signature::from_bytes`
+kopiert beliebig lange Eingaben. Eine 64-MiB-Signatur wurde angenommen
+und erst von Verify abgelehnt (7 ms, fast nur das Kopieren). Viele solche
+Anfragen binden Speicher; Anwendungen begrenzen die Länge vorher selbst.
+
+**Abweichung, keine Kontext-Strings:** Wie das ursprüngliche Falcon,
+ohne Kontext und Pre-Hash-Variante des FIPS-206-Entwurfs.
+
+**Ohne Befund:**
+
+| Angriff | Ergebnis |
+|---|---|
+| 512er-Signatur gegen 1024er-Key, umgeschriebener Header | abgelehnt |
+| Public Key mit logn 2–8 | `UnsupportedLogN` |
+| Schwache Public Keys (h = 0, h = 1) | angenommen, fremde Signaturen gelten nicht; Verify braucht keine Schlüsselprüfung |
+| 3000 Secret Keys mit 1–8 gekippten Bits laden und signieren | alle abgelehnt, keine Panik |
+| Zufallsquelle liefert nur Nullen | Signatur deterministisch und gültig, kein Leck (gleiches Salt und gleicher Sampler-Seed); Keygen gibt immer denselben Schlüssel, die Zufallsquelle ist Sache des Aufrufers |
+| Verify gültig gegen ungültig | gleiche Laufzeit (18 µs) |
+
 ---
 
 ## 6. Wie wir die Seitenkanalresistenz prüfen

@@ -173,7 +173,7 @@ impl Fpr {
     }
 
     /// Abschneiden (Richtung 0); |x| < 2⁶³.
-    #[allow(dead_code)] // nur in Tests benutzt
+    #[cfg(any(test, feature = "fuzzing"))]
     pub fn trunc(self) -> i64 {
         let p = int_parts(self.0);
         apply_sign(p.s, p.int)

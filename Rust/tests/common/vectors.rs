@@ -30,10 +30,6 @@ impl Case {
         vals
     }
 
-    pub fn has(&self, key: &str) -> bool {
-        self.fields.contains_key(key)
-    }
-
     /// Liste von Gleitkommazahlen als Bits.
     pub fn floats(&self, key: &str) -> Vec<u64> {
         self.field(key, "floats").iter().map(|h| hex64(h)).collect()
