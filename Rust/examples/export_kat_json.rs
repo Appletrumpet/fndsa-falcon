@@ -6,7 +6,7 @@
 //! Nachricht, alles als Hex. Jeder Fall wird vorher mit Verify geprüft.
 //!
 //! ```text
-//! cargo run --example export_kat_json -- web/kat.json
+//! cargo run --example export_kat_json -- ../UI/kat.json
 //! ```
 
 #[path = "../tests/common/mod.rs"]

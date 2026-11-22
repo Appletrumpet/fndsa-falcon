@@ -10,20 +10,45 @@
 <body>
 <div class="app">
   <header class="topbar">
-    <div class="brand">
-      <img src="logo.svg" alt="" width="44" height="44">
-      <span class="wordmark">FALCON</span>
+    <div class="nav">
+      <button class="icon-btn" id="menu-btn" aria-haspopup="menu" aria-expanded="false" aria-controls="menu" aria-label="Seiten">
+        <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      </button>
+      <div class="brand">
+        <img src="logo.svg" alt="" width="40" height="40">
+        <span class="wordmark">FALCON</span>
+      </div>
+      <span class="crumb" id="crumb">/ Prüfen</span>
+      <div class="dropdown" id="menu" role="menu" aria-label="Seiten" hidden>
+        <button role="menuitem" data-view="sign">Signieren</button>
+        <button role="menuitem" data-view="verify">Prüfen</button>
+        <button role="menuitem" data-view="chat">Chat</button>
+        <hr>
+        <button role="menuitem" data-view="compare">Vergleich</button>
+      </div>
     </div>
-    <nav class="tabs" role="tablist" aria-label="Ansicht">
-      <button role="tab" id="tab-sign" aria-selected="false" aria-controls="view-sign">Signieren</button>
-      <button role="tab" id="tab-verify" aria-selected="true" aria-controls="view-verify">Prüfen</button>
-      <button role="tab" id="tab-chat" aria-selected="false" aria-controls="view-chat">Chat</button>
-    </nav>
-    <div class="badge" id="badge">Falcon-512 · WASM</div>
+    <div class="top-right">
+      <div class="segmented" role="group" aria-label="Parametersatz">
+        <button id="set-512" aria-pressed="true">512 <kbd>1</kbd></button>
+        <button id="set-1024" aria-pressed="false">1024 <kbd>2</kbd></button>
+      </div>
+      <div class="impl">
+        <button class="impl-btn" id="impl-btn" aria-haspopup="menu" aria-expanded="false" aria-controls="impl-menu">
+          <span id="impl-name">Rust</span><span class="impl-rt" id="impl-rt">WASM</span>
+          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/></svg>
+        </button>
+        <div class="dropdown right" id="impl-menu" role="menu" aria-label="Implementierung" hidden>
+          <div class="menu-label">Implementierung</div>
+          <button role="menuitemradio" data-impl="rust" aria-checked="true"><span>Rust</span><small>WASM</small></button>
+          <button role="menuitemradio" data-impl="c" aria-checked="false"><span>C</span><small>WASM</small></button>
+          <button role="menuitemradio" data-impl="python" aria-checked="false"><span>Python</span><small>Pyodide · langsamer</small></button>
+        </div>
+      </div>
+    </div>
   </header>
 
   <!-- Prüfen -->
-  <main id="view-verify" role="tabpanel" aria-labelledby="tab-verify">
+  <main id="view-verify" aria-label="Prüfen">
     <section class="row two">
       <article class="tile">
         <div class="tile-head"><span class="label">Public Key</span><span class="meta" id="pk-meta"></span></div>
@@ -77,10 +102,6 @@
         <button id="btn-reset">Original <kbd>R</kbd></button>
         <button id="btn-own">Eigene Daten</button>
       </div>
-      <div class="segmented" role="group" aria-label="Parametersatz">
-        <button id="set-512" aria-pressed="true">512 <kbd>1</kbd></button>
-        <button id="set-1024" aria-pressed="false">1024 <kbd>2</kbd></button>
-      </div>
     </section>
 
     <dialog id="own-dialog">
@@ -107,12 +128,12 @@
   </main>
 
   <!-- Signieren -->
-  <main id="view-sign" role="tabpanel" aria-labelledby="tab-sign" hidden>
+  <main id="view-sign" aria-label="Signieren" hidden>
     <section class="row two">
       <article class="tile">
         <div class="tile-head"><span class="label">Schlüsselpaar</span><span class="meta" id="key-meta">noch keines</span></div>
         <div class="hex" id="key-pk-hex"></div>
-        <div class="note" id="key-note">Secret Key bleibt im WebAssembly-Speicher und wird beim Verwerfen gelöscht.</div>
+        <div class="note" id="key-note">Der Secret Key bleibt im Speicher der gewählten Implementierung und wird beim Verwerfen gelöscht.</div>
         <div class="tile-actions">
           <button class="primary" id="btn-keygen">Schlüssel erzeugen</button>
         </div>
@@ -140,12 +161,12 @@
       <div class="group">
         <button id="btn-to-verify" disabled>In „Prüfen“ übernehmen</button>
       </div>
-      <p class="hint">Nur zur Vorführung: Auf WebAssembly gelten die Prüfungen der konstanten Laufzeit nicht (PLAN.md §6). Keine echten Schlüssel verwenden.</p>
+      <p class="hint">Nur zur Vorführung: Auf WebAssembly gelten die Prüfungen der konstanten Laufzeit nicht (Rust/PLAN.md §6). Keine echten Schlüssel verwenden.</p>
     </section>
   </main>
 
   <!-- Chat: jede Nachricht signiert, beim Empfänger geprüft -->
-  <main id="view-chat" role="tabpanel" aria-labelledby="tab-chat" hidden>
+  <main id="view-chat" aria-label="Chat" hidden>
     <section class="chat-layout">
       <article class="tile chat">
         <div class="tile-head"><span class="label">Chat mit Alice</span><span class="meta" id="chat-meta">Schlüssel werden erzeugt …</span></div>
@@ -186,9 +207,68 @@
     </section>
   </main>
 
+  <!-- Vergleich: gleiche Nachricht, gleicher Seed, alle drei Implementierungen -->
+  <main id="view-compare" aria-label="Vergleich" hidden>
+    <section class="tile">
+      <div class="tile-head"><span class="label">Nachricht</span><span class="meta" id="cmp-msg-meta"></span></div>
+      <textarea id="cmp-msg" rows="2" spellcheck="false">Hallo Bern, das ist Falcon im Browser.</textarea>
+    </section>
+    <section class="row three" id="cmp-cols">
+      <article class="tile cmp" data-impl="rust">
+        <div class="tile-head"><span class="cmp-name">Rust</span><span class="meta">WASM</span></div>
+        <dl class="cmp-vals">
+          <dt>Keygen</dt><dd data-k="keygen">–</dd>
+          <dt>Sign</dt><dd data-k="sign">–</dd>
+          <dt>Verify</dt><dd data-k="verify">–</dd>
+          <dt>Signatur</dt><dd data-k="size">–</dd>
+          <dt>Public Key</dt><dd data-k="fp">–</dd>
+        </dl>
+        <div class="cmp-state" data-k="state">bereit</div>
+      </article>
+      <article class="tile cmp" data-impl="c">
+        <div class="tile-head"><span class="cmp-name">C</span><span class="meta">WASM</span></div>
+        <dl class="cmp-vals">
+          <dt>Keygen</dt><dd data-k="keygen">–</dd>
+          <dt>Sign</dt><dd data-k="sign">–</dd>
+          <dt>Verify</dt><dd data-k="verify">–</dd>
+          <dt>Signatur</dt><dd data-k="size">–</dd>
+          <dt>Public Key</dt><dd data-k="fp">–</dd>
+        </dl>
+        <div class="cmp-state" data-k="state">bereit</div>
+      </article>
+      <article class="tile cmp" data-impl="python">
+        <div class="tile-head"><span class="cmp-name">Python</span><span class="meta">Pyodide</span></div>
+        <dl class="cmp-vals">
+          <dt>Keygen</dt><dd data-k="keygen">–</dd>
+          <dt>Sign</dt><dd data-k="sign">–</dd>
+          <dt>Verify</dt><dd data-k="verify">–</dd>
+          <dt>Signatur</dt><dd data-k="size">–</dd>
+          <dt>Public Key</dt><dd data-k="fp">–</dd>
+        </dl>
+        <div class="cmp-state" data-k="state">bereit</div>
+      </article>
+    </section>
+    <section class="row two">
+      <article class="tile">
+        <div class="tile-head"><span class="label">Gegenseitig prüfen</span></div>
+        <div class="cmp-check" id="cmp-cross">Jede Signatur wird von allen drei Implementierungen geprüft.</div>
+      </article>
+      <article class="tile">
+        <div class="tile-head"><span class="label">Gleicher Seed</span></div>
+        <div class="cmp-check" id="cmp-seed">Alle drei erzeugen ihr Schlüsselpaar aus denselben 48 Bytes.</div>
+      </article>
+    </section>
+    <section class="controls">
+      <div class="group">
+        <button class="primary" id="cmp-run">Alle starten</button>
+      </div>
+      <p class="hint">Sign und Verify als Mittel aus mehreren Läufen; Keygen einmal. Python läuft in Pyodide und ist deshalb deutlich langsamer.</p>
+    </section>
+  </main>
+
   <footer class="footer">
     <span id="version">lädt …</span>
-    <span>Tastatur: Enter prüfen · B Bit kippen · R Original · 1/2 Parametersatz</span>
+    <span id="keys-hint">Tastatur: Enter prüfen · B Bit kippen · R Original · 1/2 Parametersatz</span>
   </footer>
 </div>
 <script type="module" src="app.js"></script>

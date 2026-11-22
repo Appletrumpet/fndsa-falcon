@@ -2,9 +2,9 @@ name: Rust
 
 on:
   push:
-    paths: ["Rust/**", "Python/data/**", ".github/workflows/rust.yml"]
+    paths: ["Rust/**", "Python/data/**", "UI/**", "C/src/**", "Python/falcon/**", ".github/workflows/rust.yml"]
   pull_request:
-    paths: ["Rust/**", "Python/data/**", ".github/workflows/rust.yml"]
+    paths: ["Rust/**", "Python/data/**", "UI/**", "C/src/**", "Python/falcon/**", ".github/workflows/rust.yml"]
 
 jobs:
   check:
@@ -119,8 +119,9 @@ jobs:
         run: cargo +nightly test --release --target x86_64-unknown-linux-gnu --lib --tests
 
   web:
-    # Web-Oberfläche (UI-PLAN.md §7): Tests der WASM-Hülle, WASM bauen,
-    # KAT-Daten erzeugen. Auf main zusätzlich als Pages-Artefakt hochladen.
+    # Web-Oberfläche UI/ (UI/README.md): Tests der Rust-Hülle, Rust und C
+    # als WASM bauen (C mit dem Docker-Image von Emscripten), Python-Paket
+    # und KAT-Daten bereitstellen. Auf main zusätzlich als Pages-Artefakt.
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
@@ -134,15 +135,15 @@ jobs:
         working-directory: Rust/wasm
         run: cargo test --release
       - name: Bauen
-        run: bash Rust/web/build.sh
+        run: bash UI/build.sh
       - name: Pages-Artefakt
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         uses: actions/upload-pages-artifact@v3
         with:
-          path: Rust/web
+          path: UI
 
   pages:
-    # Veröffentlicht web/ auf GitHub Pages (UI-PLAN.md W6). Nur auf main und
+    # Veröffentlicht UI/ auf GitHub Pages (UI-PLAN.md W6). Nur auf main und
     # nur, wenn in den Repository-Einstellungen Pages auf "GitHub Actions"
     # steht (kann nur der Besitzer einstellen).
     needs: web

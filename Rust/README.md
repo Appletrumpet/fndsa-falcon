@@ -69,17 +69,16 @@ bash ci.sh          # Formatierung, Clippy, Tests, Release-Build, Doku
 
 Kleinste unterstützte Rust-Version: 1.87 (`rust-version` in `Cargo.toml`).
 
-**Web-Oberfläche** (Vorführung im Browser, [UI-PLAN.md](UI-PLAN.md)):
-Signaturen prüfen mit den fünf Schritten von Verify, Bit kippen, eigene
-Daten, Schlüssel erzeugen und signieren, dazu ein Chat, in dem jede
-Nachricht signiert und beim Empfänger geprüft wird (mit Prüfbericht und
-„Nachricht verfälschen“). Bauen und starten (Linux oder WSL;
-einmal vorher `rustup target add wasm32-unknown-unknown` und
-`cargo install wasm-bindgen-cli --version 0.2.100 --locked`):
+**Web-Oberfläche** (Vorführung im Browser, [UI-PLAN.md](UI-PLAN.md),
+liegt in [`../UI`](../UI/README.md)): Signaturen prüfen mit den fünf
+Schritten von Verify, Bit kippen, eigene Daten, Schlüssel erzeugen und
+signieren, ein Chat mit Prüfbericht je Nachricht und ein Vergleich von
+Rust, C und Python. Die Implementierung ist oben rechts wählbar. Bauen und
+starten (Voraussetzungen in `UI/build.sh`):
 
 ```bash
-bash web/build.sh
-python -m http.server -d web 8000     # http://localhost:8000
+bash UI/build.sh
+python -m http.server -d UI 8000      # http://localhost:8000
 ```
 
 Für Erklärungen gibt es `VerifyingKey::verify_report`: Schritt, an dem
@@ -94,7 +93,7 @@ Die CI auf GitHub (`.github/workflows/rust.yml`) hat neun Jobs:
 - `platforms`: alle Tests auf i686 (32 Bit) und s390x (Big-Endian, QEMU),
   wasm32 übersetzen;
 - `sanitizer`: alle Tests mit AddressSanitizer;
-- `web`: Tests der WASM-Hülle, Web-Oberfläche bauen; `pages`
+- `web`: Tests der WASM-Hülle, Web-Oberfläche `UI/` bauen (Rust, C, Python); `pages`
   veröffentlicht sie auf `main` über GitHub Pages;
 - `dudect`: Zeitmessung auf x86-64 und aarch64, Tabelle in der
   Zusammenfassung des Laufs (geteilte Maschinen: nur ein Hinweis, der Job
@@ -358,9 +357,7 @@ examples/      seed_corpus: Start-Korpus für die Fuzz-Ziele;
                kat_rsp: KAT-Dateien im NIST-Format erzeugen;
                export_kat_json: KAT-Fälle für die Web-Oberfläche;
                bench: Laufzeitmessung nach Messprotokoll
-wasm/          WASM-Hülle für die Web-Oberfläche (eigenes Paket)
-web/           Web-Oberfläche: index.html, style.css, app.js, logo.svg,
-               build.sh (erzeugt pkg/ und kat.json)
+wasm/          WASM-Hülle für die Web-Oberfläche ../UI (eigenes Paket)
 fuzz/          Fuzz-Ziele (cargo fuzz): decode_pk, decode_sk, decompress,
                verify, signing_key, sign, keygen, fpr
 ctgrind.sh     Valgrind-Prüfung (examples/ctgrind.rs)

@@ -7,6 +7,10 @@ Implementierung selbst (Phasen 0–8) bleibt dort beschrieben.
 `pages`, wartet auf die Pages-Einstellung und einen Merge nach `main`).
 Ergebnis und Abweichungen in Abschnitt 10.
 
+**Seit 22.11.2026** liegt die Oberfläche im Ordner `UI/` im Wurzelverzeichnis
+und kann mit Rust, C oder Python rechnen (Abschnitt 12). Pfadangaben
+`Rust/web/` in den Abschnitten 6 bis 11 beziehen sich auf den alten Ort.
+
 ## 1. Ziel
 
 Eine Web-App, die die Rust-Implementierung im Browser vorführt, vor allem
@@ -342,3 +346,44 @@ Dritte Ansicht „Chat“ nach Entwurf 3 (Messenger mit Prüfbericht), ohne
 Geprüft in der Vorschau (Chromium) bei 1920 × 1080, 1280 × 800 und 375 px:
 Senden als du und als Alice, Verfälschen und Wiederherstellen, Wechsel auf
 Falcon-1024, keine Fehler in der Konsole.
+
+## 12. Ordner `UI/` mit drei Implementierungen (22.11.2026)
+
+Die Oberfläche ist von `Rust/web/` nach `UI/` umgezogen und rechnet jetzt
+wahlweise mit Rust, C oder Python. Entwurf: Seitenmenü als Hamburger oben
+links (Signieren, Prüfen, Chat, Vergleich), Wahl der Implementierung und
+512/1024 oben rechts; die Wahl gilt für alle Ansichten. Details in
+[`UI/README.md`](../UI/README.md).
+
+| Implementierung | Im Browser | Hülle |
+|---|---|---|
+| Rust | WebAssembly (`wasm-bindgen`) | `Rust/wasm` (unverändert) |
+| C | WebAssembly (Emscripten 3.1.74, gleiche Gleitkomma-Optionen wie `C/Makefile`) | `UI/c/wasm_api.c` |
+| Python | Pyodide 0.26.4 in einem Web Worker, vom CDN | `UI/py/webapi.py`, `UI/python-worker.js` |
+
+Alle drei bieten dieselbe Schnittstelle (`UI/engines.js`): Keygen aus
+48 Bytes Seed, Sign mit Zufall des Aufrufers, Verify mit Prüfbericht
+(Fehlerschritt, Norm, Schranke). C und Python bekommen ihren Zufall als
+SHAKE-256-Strom über dem Seed (wie `ShakeRNG` in den Python-Tests).
+
+**Neue Ansicht „Vergleich“:** gleiche Nachricht und gleicher Seed für alle
+drei; je Spalte Keygen, Sign (Mittel aus 10 bzw. 3 Läufen), Verify,
+Signaturlänge und Anfang des Public Keys. Danach prüft jede
+Implementierung die Signaturen der anderen (3 × 3).
+
+**Geprüft (Chromium):**
+
+- Prüfbericht Rust gegen C für alle 20 KAT-Fälle mit je 40 gekippten Bits,
+  verändertem Header und gekürzten Signaturen: 880 von 880 gleich
+  (Ergebnis, Fehlerschritt, Norm). Rust gegen Python: 144 von 144 gleich.
+- Vergleich Falcon-512 und -1024: 9 von 9 gegenseitige Prüfungen gültig;
+  C und Python erzeugen aus demselben Seed bitgleiche Public Keys. Rust
+  erzeugt Schlüssel wie die Referenz (NIST-KAT) und kommt deshalb auf einen
+  anderen Schlüssel.
+- Signieren und Chat mit Python und C, Wechsel der Implementierung bei
+  offenem Chat, 375 px ohne seitliches Scrollen, keine Konsolenfehler.
+
+Gemessen (Falcon-512, Chromium, ein Lauf, nur Grössenordnung): Sign Rust
+9 ms, C 0,6 ms, Python 33 ms; Verify Rust und C rund 45 µs, Python 8 ms.
+C ist beim Signieren viel schneller, weil es die Gleitkommaeinheit nutzt;
+Rust emuliert Gleitkomma für konstante Laufzeit (PLAN.md 3.3).
