@@ -103,11 +103,6 @@ pub mod dudect {
         s0[0].re.to_bits()
     }
 
-    /// Ob auf dieser CPU das DIT-Flag gesetzt wird (nur aarch64).
-    pub fn dit_available() -> bool {
-        crate::ct::dit_available()
-    }
-
     /// Zahl der SamplerZ-Runden seit dem letzten Aufruf (setzt zurück).
     pub fn take_sampler_rounds() -> u64 {
         crate::sampler::ROUNDS.swap(0, core::sync::atomic::Ordering::Relaxed)
@@ -142,14 +137,14 @@ pub use params::{LogN, Params, FALCON_1024, FALCON_512, Q};
 
 /// Fehler beim Dekodieren oder Erzeugen von Schlüsseln und Signaturen.
 ///
-/// `non_exhaustive`: Sign und Keygen (Phase 4/5) bringen neue Fälle dazu.
+/// `non_exhaustive`, damit spätere Fälle die Schnittstelle nicht brechen.
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum Error {
     /// logn liegt nicht in 1..=10.
     InvalidLogN,
-    /// Für dieses logn gibt es (noch) keinen vollständigen Parametersatz;
-    /// bisher nur Falcon-512 und Falcon-1024.
+    /// Für dieses logn gibt es keinen Parametersatz; FN-DSA definiert nur
+    /// Falcon-512 und Falcon-1024.
     UnsupportedLogN,
     /// Byteformat ungültig (Grund als Text).
     InvalidEncoding(&'static str),
@@ -197,7 +192,7 @@ impl VerifyingKey {
     /// Dekodiert einen Public Key (Header 0000nnnn, 14 Bit je Koeffizient).
     ///
     /// Fehler `UnsupportedLogN`, wenn das Format zwar gültig ist, es für den
-    /// Grad aber keinen Parametersatz gibt (bisher alles ausser 512/1024).
+    /// Grad aber keinen Parametersatz gibt (alles ausser 512/1024).
     pub fn from_bytes(b: &[u8]) -> Result<Self, Error> {
         let (logn, h) = encoding::decode_pk(b)?;
         let params = logn.params().ok_or(Error::UnsupportedLogN)?;
@@ -345,7 +340,7 @@ impl SigningKey {
     /// Prüfungen laufen ohne Verzweigung auf den Werten; nur das Ergebnis
     /// gültig/ungültig verzweigt.
     ///
-    /// Fehler: ungültige Kodierung, `UnsupportedLogN` (bisher nur 512 und
+    /// Fehler: ungültige Kodierung, `UnsupportedLogN` (nur 512 und
     /// 1024), `NotInvertible` (f nicht invertierbar mod q), `InvalidKey`.
     pub fn from_bytes(b: &[u8]) -> Result<Self, Error> {
         let _dit = ct::DitGuard::new();
@@ -547,7 +542,7 @@ fn leaf_bounds(params: &Params) -> (fpr::Fpr, fpr::Fpr) {
 }
 
 /// Schlüsselpaar erzeugen (Alg. 4). Aus `rng` kommen 48 Bytes Seed; der
-/// Rest ist `keygen_from_seed`. Fehler nur `UnsupportedLogN` (bisher nur
+/// Rest ist `keygen_from_seed`. Fehler nur `UnsupportedLogN` (nur
 /// Falcon-512 und Falcon-1024).
 pub fn keygen(
     logn: LogN,

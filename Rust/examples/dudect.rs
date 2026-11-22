@@ -184,7 +184,7 @@ fn main() {
         "Ziel: {}-{}, DIT gesetzt: {}",
         std::env::consts::ARCH,
         std::env::consts::OS,
-        if d::dit_available() { "ja" } else { "nein" }
+        if fndsa::dit_available() { "ja" } else { "nein" }
     );
     println!(
         "{:<34} {:>9} {:>10} {:>10} {:>8}",
