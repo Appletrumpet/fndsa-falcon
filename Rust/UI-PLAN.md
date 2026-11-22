@@ -387,3 +387,8 @@ Gemessen (Falcon-512, Chromium, ein Lauf, nur Grössenordnung): Sign Rust
 9 ms, C 0,6 ms, Python 33 ms; Verify Rust und C rund 45 µs, Python 8 ms.
 C ist beim Signieren viel schneller, weil es die Gleitkommaeinheit nutzt;
 Rust emuliert Gleitkomma für konstante Laufzeit (PLAN.md 3.3).
+
+**Neues Logo (22.11.2026):** `UI/logo.svg` ersetzt den Platzhalter aus 3.4,
+ein abstrahierter Falke im Flug aus leichter Seitenansicht (Kopf mit
+Hakenschnabel, Flügel mit Knick am Handgelenk, gerader Schwanz),
+gleiche Türkistöne wie bisher.
